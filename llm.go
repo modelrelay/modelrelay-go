@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	llm "github.com/recall-gpt/modelrelay/llmproxy"
+	llm "github.com/modelrelay/modelrelay/llmproxy"
 )
 
 // LLMClient proxies chat completions through the SaaS API.

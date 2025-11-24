@@ -10,7 +10,7 @@ shared primitives from `billingproxy` and `llmproxy` into a high-level interface
 ## Installation
 
 ```bash
-go get github.com/recall-gpt/modelrelay/sdk/go
+go get github.com/modelrelay/modelrelay/sdk/go
 ```
 
 ## Usage
@@ -21,8 +21,8 @@ access.
 
 ```go
 import (
-    llm "github.com/recall-gpt/modelrelay/llmproxy"
-    "github.com/recall-gpt/modelrelay/sdk/go"
+    llm "github.com/modelrelay/modelrelay/llmproxy"
+    "github.com/modelrelay/modelrelay/sdk/go"
 )
 
 func main() {

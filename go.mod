@@ -1,12 +1,12 @@
-module github.com/recall-gpt/modelrelay/sdk/go
+module github.com/modelrelay/modelrelay/sdk/go
 
 go 1.25.4
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/recall-gpt/modelrelay/billingproxy v0.0.0-20251119210239-1133abe831c1
-	github.com/recall-gpt/modelrelay/cloud v0.0.0-20251119210239-1133abe831c1
-	github.com/recall-gpt/modelrelay/llmproxy v0.0.0-20251119210239-1133abe831c1
+	github.com/modelrelay/modelrelay/billingproxy v0.0.0-20251119210239-1133abe831c1
+	github.com/modelrelay/modelrelay/cloud v0.0.0-20251119210239-1133abe831c1
+	github.com/modelrelay/modelrelay/llmproxy v0.0.0-20251119210239-1133abe831c1
 	go.opentelemetry.io/otel/trace v1.38.0
 )
 
@@ -20,8 +20,8 @@ require (
 	golang.org/x/sys v0.38.0 // indirect
 )
 
-replace github.com/recall-gpt/modelrelay/billingproxy => ../../billingproxy
+replace github.com/modelrelay/modelrelay/billingproxy => ../../billingproxy
 
-replace github.com/recall-gpt/modelrelay/llmproxy => ../../llmproxy
+replace github.com/modelrelay/modelrelay/llmproxy => ../../llmproxy
 
-replace github.com/recall-gpt/modelrelay/cloud => ../../cloud
+replace github.com/modelrelay/modelrelay/cloud => ../../cloud

@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/recall-gpt/modelrelay/sdk/go"
-	sdkauth "github.com/recall-gpt/modelrelay/sdk/go/auth"
+	"github.com/modelrelay/modelrelay/sdk/go"
+	sdkauth "github.com/modelrelay/modelrelay/sdk/go/auth"
 )
 
 var (

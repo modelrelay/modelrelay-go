@@ -3,7 +3,7 @@ package sdk
 import (
 	"net/http"
 
-	llm "github.com/recall-gpt/modelrelay/llmproxy"
+	llm "github.com/modelrelay/modelrelay/llmproxy"
 )
 
 const (

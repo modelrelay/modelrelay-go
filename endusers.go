@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	usagecore "github.com/recall-gpt/modelrelay/billingproxy/usage"
+	usagecore "github.com/modelrelay/modelrelay/billingproxy/usage"
 )
 
 // EndUserCheckoutRequest mirrors POST /end-users/checkout.

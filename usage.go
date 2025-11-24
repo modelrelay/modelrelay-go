@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/recall-gpt/modelrelay/billingproxy/usage"
+	"github.com/modelrelay/modelrelay/billingproxy/usage"
 )
 
 // UsageClient exposes quota summary helpers backed by the SaaS API.

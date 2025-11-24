@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	llm "github.com/recall-gpt/modelrelay/llmproxy"
-	"github.com/recall-gpt/modelrelay/sdk/go"
+	llm "github.com/modelrelay/modelrelay/llmproxy"
+	"github.com/modelrelay/modelrelay/sdk/go"
 )
 
 func main() {

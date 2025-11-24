@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	llm "github.com/recall-gpt/modelrelay/llmproxy"
+	llm "github.com/modelrelay/modelrelay/llmproxy"
 )
 
 // TelemetryHooks expose observability callbacks without forcing dependencies on the caller.

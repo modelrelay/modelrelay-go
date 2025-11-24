@@ -10,8 +10,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	llm "github.com/recall-gpt/modelrelay/llmproxy"
-	"github.com/recall-gpt/modelrelay/llmproxy/sse"
+	llm "github.com/modelrelay/modelrelay/llmproxy"
+	"github.com/modelrelay/modelrelay/llmproxy/sse"
 )
 
 func TestProxyMessage(t *testing.T) {
