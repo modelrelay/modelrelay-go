@@ -12,12 +12,14 @@ const (
 
 // ProxyRequest mirrors the SaaS /llm/proxy JSON contract.
 type ProxyRequest struct {
-	Provider    string
-	Model       string
-	MaxTokens   int64
-	Temperature *float64
-	Messages    []llm.ProxyMessage
-	Metadata    map[string]string
+	Provider      string
+	Model         string
+	MaxTokens     int64
+	Temperature   *float64
+	Messages      []llm.ProxyMessage
+	Metadata      map[string]string
+	Stop          []string
+	StopSequences []string
 }
 
 // ProxyResponse wraps the server response and surfaces the echoed request ID.

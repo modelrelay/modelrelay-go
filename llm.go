@@ -66,6 +66,8 @@ type proxyRequestPayload struct {
 	Temperature *float64           `json:"temperature,omitempty"`
 	Messages    []llm.ProxyMessage `json:"messages"`
 	Metadata    map[string]string  `json:"metadata,omitempty"`
+	Stop        []string           `json:"stop,omitempty"`
+	StopSeqs    []string           `json:"stop_sequences,omitempty"`
 }
 
 func newProxyRequestPayload(req ProxyRequest) proxyRequestPayload {
@@ -78,6 +80,12 @@ func newProxyRequestPayload(req ProxyRequest) proxyRequestPayload {
 	}
 	if len(req.Metadata) > 0 {
 		payload.Metadata = req.Metadata
+	}
+	if len(req.Stop) > 0 {
+		payload.Stop = req.Stop
+	}
+	if len(req.StopSequences) > 0 {
+		payload.StopSeqs = req.StopSequences
 	}
 	return payload
 }
