@@ -55,6 +55,47 @@ type EndUserSubscription struct {
 	Active             bool               `json:"active"`
 }
 
+// EndUserListOptions controls filters + pagination for listing end users.
+type EndUserListOptions struct {
+	Query    string
+	Statuses []string
+	Page     int
+	PageSize int
+}
+
+// EndUserListItem represents a single end-user account with subscription/usage snapshot.
+type EndUserListItem struct {
+	ID                   uuid.UUID          `json:"id"`
+	EndUserID            string             `json:"end_user_id"`
+	DeviceID             *string            `json:"device_id,omitempty"`
+	StripeCustomerID     string             `json:"stripe_customer_id,omitempty"`
+	StripeSubscriptionID string             `json:"stripe_subscription_id,omitempty"`
+	Plan                 string             `json:"plan"`
+	Status               string             `json:"status"`
+	SubscriptionStatus   string             `json:"subscription_status"`
+	CurrentPeriodStartAt *time.Time         `json:"current_period_start_at,omitempty"`
+	CurrentPeriodEndAt   *time.Time         `json:"current_period_end_at,omitempty"`
+	LastWebhookAt        *time.Time         `json:"last_webhook_at,omitempty"`
+	Usage                *usagecore.Summary `json:"usage,omitempty"`
+	MonthlyLimit         int64              `json:"monthly_limit,omitempty"`
+	PlanID               string             `json:"plan_id,omitempty"`
+	PlanName             string             `json:"plan_name,omitempty"`
+	PriceID              string             `json:"price_id,omitempty"`
+	TrialEndsAt          *time.Time         `json:"trial_ends_at,omitempty"`
+	CreatedAt            time.Time          `json:"created_at"`
+	UpdatedAt            time.Time          `json:"updated_at"`
+}
+
+// EndUserListResponse wraps paginated list results.
+type EndUserListResponse struct {
+	Items              []EndUserListItem `json:"items"`
+	Page               int               `json:"page"`
+	PageSize           int               `json:"page_size"`
+	Total              int64             `json:"total"`
+	HasNext            bool              `json:"has_next"`
+	StripeDashboardURL string            `json:"stripe_dashboard_url"`
+}
+
 // SubscriptionView normalizes subscription metadata for client consumption.
 type SubscriptionView struct {
 	ID                   uuid.UUID  `json:"id"`
@@ -120,6 +161,44 @@ func (e *EndUsersClient) Subscription(ctx context.Context, endUserID string) (En
 	var payload EndUserSubscription
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return EndUserSubscription{}, err
+	}
+	return payload, nil
+}
+
+// ListAccounts returns paginated end-user accounts with subscription + usage snapshots.
+func (e *EndUsersClient) ListAccounts(ctx context.Context, opts EndUserListOptions) (EndUserListResponse, error) {
+	if e == nil || e.client == nil {
+		return EndUserListResponse{}, fmt.Errorf("sdk: end-users client not initialized")
+	}
+	values := url.Values{}
+	if strings.TrimSpace(opts.Query) != "" {
+		values.Set("q", strings.TrimSpace(opts.Query))
+	}
+	if len(opts.Statuses) > 0 {
+		values.Set("status", strings.Join(opts.Statuses, ","))
+	}
+	if opts.Page > 0 {
+		values.Set("page", fmt.Sprintf("%d", opts.Page))
+	}
+	if opts.PageSize > 0 {
+		values.Set("page_size", fmt.Sprintf("%d", opts.PageSize))
+	}
+	path := "/end-users"
+	if qs := values.Encode(); qs != "" {
+		path = path + "?" + qs
+	}
+	req, err := e.client.newJSONRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return EndUserListResponse{}, err
+	}
+	resp, err := e.client.send(req)
+	if err != nil {
+		return EndUserListResponse{}, err
+	}
+	defer resp.Body.Close()
+	var payload EndUserListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return EndUserListResponse{}, err
 	}
 	return payload, nil
 }
