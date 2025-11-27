@@ -15,7 +15,7 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
-	github.com/stripe/stripe-go/v78 v78.12.0 // indirect
+	github.com/stripe/stripe-go/v84 v84.0.0 // indirect
 	go.opentelemetry.io/otel v1.38.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 )
