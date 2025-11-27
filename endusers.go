@@ -68,7 +68,7 @@ type EndUserListItem struct {
 	ID                   uuid.UUID          `json:"id"`
 	EndUserID            string             `json:"end_user_id"`
 	DeviceID             *string            `json:"device_id,omitempty"`
-	StripeCustomerID     string             `json:"stripe_customer_id,omitempty"`
+	StripeCustomerID     *string            `json:"stripe_customer_id,omitempty"`
 	StripeSubscriptionID string             `json:"stripe_subscription_id,omitempty"`
 	Plan                 string             `json:"plan"`
 	Status               string             `json:"status"`
