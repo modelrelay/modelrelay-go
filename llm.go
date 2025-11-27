@@ -19,7 +19,11 @@ type LLMClient struct {
 
 // ProxyMessage performs a blocking completion and returns the aggregated response.
 func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options ...ProxyOption) (*ProxyResponse, error) {
-	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/llm/proxy", newProxyRequestPayload(req))
+	reqPayload, err := newProxyRequestPayload(req)
+	if err != nil {
+		return nil, err
+	}
+	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/llm/proxy", reqPayload)
 	if err != nil {
 		return nil, err
 	}
@@ -31,19 +35,21 @@ func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options 
 		return nil, err
 	}
 	defer resp.Body.Close()
-	var payload llm.ProxyResponse
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	var respPayload ProxyResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respPayload); err != nil {
 		return nil, err
 	}
-	return &ProxyResponse{
-		ProxyResponse: payload,
-		RequestID:     requestIDFromHeaders(resp.Header),
-	}, nil
+	respPayload.RequestID = requestIDFromHeaders(resp.Header)
+	return &respPayload, nil
 }
 
 // ProxyStream opens a streaming SSE connection for chat completions.
 func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options ...ProxyOption) (*StreamHandle, error) {
-	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/llm/proxy", newProxyRequestPayload(req))
+	payload, err := newProxyRequestPayload(req)
+	if err != nil {
+		return nil, err
+	}
+	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/llm/proxy", payload)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +60,7 @@ func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options .
 		return nil, err
 	}
 	return &StreamHandle{
-		Stream:    newSSEStream(ctx, resp.Body, c.client.telemetry),
+		stream:    newSSEStream(ctx, resp.Body, c.client.telemetry),
 		RequestID: requestIDFromHeaders(resp.Header),
 	}, nil
 }
@@ -70,10 +76,14 @@ type proxyRequestPayload struct {
 	StopSeqs    []string           `json:"stop_sequences,omitempty"`
 }
 
-func newProxyRequestPayload(req ProxyRequest) proxyRequestPayload {
+func newProxyRequestPayload(req ProxyRequest) (proxyRequestPayload, error) {
+	if err := req.Validate(); err != nil {
+		return proxyRequestPayload{}, err
+	}
+
 	payload := proxyRequestPayload{
-		Provider:    req.Provider,
-		Model:       req.Model,
+		Provider:    req.Provider.String(),
+		Model:       req.Model.String(),
 		MaxTokens:   req.MaxTokens,
 		Temperature: req.Temperature,
 		Messages:    req.Messages,
@@ -87,7 +97,7 @@ func newProxyRequestPayload(req ProxyRequest) proxyRequestPayload {
 	if len(req.StopSequences) > 0 {
 		payload.StopSeqs = req.StopSequences
 	}
-	return payload
+	return payload, nil
 }
 
 type sseStream struct {
@@ -107,18 +117,18 @@ func newSSEStream(ctx context.Context, body io.ReadCloser, telemetry TelemetryHo
 	}
 }
 
-func (s *sseStream) Next() (llm.StreamEvent, bool, error) {
+func (s *sseStream) Next() (StreamEvent, bool, error) {
 	if s.closed {
-		return llm.StreamEvent{}, false, nil
+		return StreamEvent{}, false, nil
 	}
 	for {
 		eventName, data, err := s.readEvent()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				s.Close()
-				return llm.StreamEvent{}, false, nil
+				return StreamEvent{}, false, nil
 			}
-			return llm.StreamEvent{}, false, err
+			return StreamEvent{}, false, err
 		}
 		if eventName == "" && len(data) == 0 {
 			continue
@@ -174,24 +184,24 @@ func (s *sseStream) readEvent() (string, []byte, error) {
 	}
 }
 
-func buildStreamEvent(name string, data []byte) llm.StreamEvent {
-	event := llm.StreamEvent{
+func buildStreamEvent(name string, data []byte) StreamEvent {
+	event := StreamEvent{
 		Kind: streamEventKind(name),
 		Name: name,
 		Data: append([]byte(nil), data...),
 	}
 	var meta struct {
-		ResponseID string     `json:"response_id"`
-		Model      string     `json:"model"`
-		StopReason string     `json:"stop_reason"`
-		Usage      *llm.Usage `json:"usage"`
+		ResponseID string `json:"response_id"`
+		Model      string `json:"model"`
+		StopReason string `json:"stop_reason"`
+		Usage      *Usage `json:"usage"`
 	}
 	if len(data) > 0 {
 		_ = json.Unmarshal(data, &meta)
 	}
 	event.ResponseID = meta.ResponseID
-	event.Model = meta.Model
-	event.StopReason = meta.StopReason
+	event.Model = ParseModelID(meta.Model)
+	event.StopReason = ParseStopReason(meta.StopReason)
 	event.Usage = meta.Usage
 	return event
 }

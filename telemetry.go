@@ -4,8 +4,6 @@ import (
 	"context"
 	"net/http"
 	"time"
-
-	llm "github.com/modelrelay/modelrelay/llmproxy"
 )
 
 // TelemetryHooks expose observability callbacks without forcing dependencies on the caller.
@@ -15,7 +13,7 @@ type TelemetryHooks struct {
 	// OnHTTPResponse fires after the request completes (even when err != nil).
 	OnHTTPResponse func(ctx context.Context, req *http.Request, resp *http.Response, err error, latency time.Duration)
 	// OnStreamEvent fires for every streaming event returned by /llm/proxy.
-	OnStreamEvent func(ctx context.Context, event llm.StreamEvent)
+	OnStreamEvent func(ctx context.Context, event StreamEvent)
 	// OnLogEntry allows callers to capture SDK log events (info/errors).
 	OnLogEntry func(ctx context.Context, entry LogEntry)
 	// OnMetric records lightweight counters/gauges for observability dashboards.

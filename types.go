@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"fmt"
 	"net/http"
 
 	llm "github.com/modelrelay/modelrelay/llmproxy"
@@ -10,10 +11,10 @@ const (
 	requestIDHeader = "X-ModelRelay-Chat-Request-Id"
 )
 
-// ProxyRequest mirrors the SaaS /llm/proxy JSON contract.
+// ProxyRequest mirrors the SaaS /llm/proxy JSON contract using typed enums.
 type ProxyRequest struct {
-	Provider      string
-	Model         string
+	Provider      ProviderID
+	Model         ModelID
 	MaxTokens     int64
 	Temperature   *float64
 	Messages      []llm.ProxyMessage
@@ -22,16 +23,42 @@ type ProxyRequest struct {
 	StopSequences []string
 }
 
+// Validate returns an error when required fields are missing.
+func (r ProxyRequest) Validate() error {
+	if r.Model.IsEmpty() {
+		return fmt.Errorf("model is required")
+	}
+	if len(r.Messages) == 0 {
+		return fmt.Errorf("at least one message is required")
+	}
+	return nil
+}
+
 // ProxyResponse wraps the server response and surfaces the echoed request ID.
 type ProxyResponse struct {
-	llm.ProxyResponse
-	RequestID string
+	ID         string     `json:"id"`
+	Provider   ProviderID `json:"provider"`
+	Content    []string   `json:"content"`
+	StopReason StopReason `json:"stop_reason,omitempty"`
+	Model      ModelID    `json:"model"`
+	Usage      Usage      `json:"usage"`
+	RequestID  string     `json:"-"`
 }
 
 // StreamHandle exposes the streaming interface plus associated metadata.
 type StreamHandle struct {
-	llm.Stream
 	RequestID string
+	stream    *sseStream
+}
+
+// Next advances the stream, returning false when the stream is complete.
+func (s *StreamHandle) Next() (StreamEvent, bool, error) {
+	return s.stream.Next()
+}
+
+// Close terminates the underlying stream.
+func (s *StreamHandle) Close() error {
+	return s.stream.Close()
 }
 
 // ProxyOption customizes outgoing proxy requests (headers, request IDs, etc.).

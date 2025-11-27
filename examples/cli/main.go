@@ -53,7 +53,7 @@ func main() {
 	defer cancel()
 
 	stream, err := client.LLM.ProxyStream(ctx, sdk.ProxyRequest{
-		Model:     *model,
+		Model:     sdk.ParseModelID(*model),
 		MaxTokens: int64(*maxTokens),
 		Messages: []llm.ProxyMessage{{
 			Role:    "user",

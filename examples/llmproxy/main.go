@@ -26,7 +26,7 @@ func main() {
 	defer cancel()
 
 	stream, err := client.LLM.ProxyStream(ctx, sdk.ProxyRequest{
-		Model:     "openai/gpt-4o-mini",
+		Model:     sdk.ModelOpenAIGPT4oMini,
 		MaxTokens: 64,
 		Messages: []llm.ProxyMessage{
 			{Role: "system", Content: "You are a witty assistant."},

@@ -45,7 +45,7 @@ func TestProxyMessage(t *testing.T) {
 	}
 
 	resp, err := client.LLM.ProxyMessage(context.Background(), ProxyRequest{
-		Model:     "demo",
+		Model:     ParseModelID("demo"),
 		MaxTokens: 32,
 		Messages:  []llm.ProxyMessage{{Role: "user", Content: "ping"}},
 		Metadata:  map[string]string{"trace_id": "abc123"},
@@ -81,7 +81,7 @@ func TestProxyStream(t *testing.T) {
 	}
 
 	stream, err := client.LLM.ProxyStream(context.Background(), ProxyRequest{
-		Model:     "demo",
+		Model:     ParseModelID("demo"),
 		MaxTokens: 16,
 		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
 	}, WithRequestID("stream-req"))
@@ -172,7 +172,7 @@ func TestStreamParsesLLMProxySSE(t *testing.T) {
 	if got.Kind != llm.StreamEventKindMessageStop {
 		t.Fatalf("unexpected kind %s", got.Kind)
 	}
-	if got.ResponseID != "resp_xyz" || got.Model != "openai/gpt-test" || got.StopReason != "end_turn" {
+	if got.ResponseID != "resp_xyz" || got.Model != ParseModelID("openai/gpt-test") || got.StopReason != ParseStopReason("end_turn") {
 		t.Fatalf("unexpected event metadata %+v", got)
 	}
 }
@@ -189,7 +189,7 @@ func TestAPIErrorDecoding(t *testing.T) {
 		t.Fatalf("new client: %v", err)
 	}
 
-	_, err = client.LLM.ProxyMessage(context.Background(), ProxyRequest{Model: "demo", MaxTokens: 1, Messages: []llm.ProxyMessage{{Role: "user", Content: "ping"}}})
+	_, err = client.LLM.ProxyMessage(context.Background(), ProxyRequest{Model: ParseModelID("demo"), MaxTokens: 1, Messages: []llm.ProxyMessage{{Role: "user", Content: "ping"}}})
 	if err == nil {
 		t.Fatalf("expected error")
 	}

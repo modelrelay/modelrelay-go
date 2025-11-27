@@ -48,6 +48,27 @@ See `examples/` for runnable code:
 - `examples/cli`: Interactive chat CLI using the streaming proxy.
 - `examples/apikeys`: API key management.
 
+### Typed models, providers, and stop reasons
+
+The Go SDK now surfaces typed identifiers for common providers/models and stop
+reasons. Unknown strings are preserved and marked as `Other` so you can pass
+custom IDs safely:
+
+```go
+req := sdk.ProxyRequest{
+    Provider: sdk.ProviderOpenAI,
+    Model:    sdk.ModelOpenAIGPT4oMini,
+    Messages: []llm.ProxyMessage{{Role: "user", Content: "hi"}},
+}
+resp, _ := client.LLM.ProxyMessage(ctx, req)
+if resp.StopReason.IsOther() {
+    log.Printf("provider returned custom stop reason %q", resp.StopReason)
+}
+```
+
+`Usage` now includes optional `cached_tokens` / `reasoning_tokens` fields when
+providers emit them, and backfills `total_tokens` if the provider omits it.
+
 The CLI in `examples/apikeys` uses the same calls. Provide `MODELRELAY_EMAIL` and
 `MODELRELAY_PASSWORD` in the environment to log in, then run `go run ./examples/apikeys`
 to create a project key.
