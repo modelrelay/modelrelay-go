@@ -15,14 +15,15 @@ const (
 
 // ProxyRequest mirrors the SaaS /llm/proxy JSON contract using typed enums.
 type ProxyRequest struct {
-	Provider      ProviderID
-	Model         ModelID
-	MaxTokens     int64
-	Temperature   *float64
-	Messages      []llm.ProxyMessage
-	Metadata      map[string]string
-	Stop          []string
-	StopSequences []string
+	Provider       ProviderID
+	Model          ModelID
+	MaxTokens      int64
+	Temperature    *float64
+	Messages       []llm.ProxyMessage
+	Metadata       map[string]string
+	Stop           []string
+	StopSequences  []string
+	ResponseFormat *llm.ResponseFormat
 }
 
 // Validate returns an error when required fields are missing.
@@ -32,6 +33,11 @@ func (r ProxyRequest) Validate() error {
 	}
 	if len(r.Messages) == 0 {
 		return fmt.Errorf("at least one message is required")
+	}
+	if rf := r.ResponseFormat; rf != nil && rf.Type == llm.ResponseFormatTypeJSONSchema {
+		if rf.JSONSchema == nil || strings.TrimSpace(rf.JSONSchema.Name) == "" || len(rf.JSONSchema.Schema) == 0 {
+			return fmt.Errorf("response_format.json_schema.name and schema are required when type=json_schema")
+		}
 	}
 	return nil
 }

@@ -74,6 +74,12 @@ func (b *ProxyRequestBuilder) Assistant(content string) *ProxyRequestBuilder {
 	return b.Message("assistant", content)
 }
 
+// ResponseFormat sets the structured output configuration.
+func (b *ProxyRequestBuilder) ResponseFormat(format llm.ResponseFormat) *ProxyRequestBuilder {
+	b.req.ResponseFormat = &format
+	return b
+}
+
 // Messages replaces the existing message list.
 func (b *ProxyRequestBuilder) Messages(msgs []llm.ProxyMessage) *ProxyRequestBuilder {
 	b.req.Messages = msgs

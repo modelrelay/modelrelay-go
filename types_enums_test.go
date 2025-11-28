@@ -57,11 +57,12 @@ func TestProxyRequestBuilderValidation(t *testing.T) {
 	req, err := NewProxyRequestBuilder(ModelOpenAIGPT51).
 		User("hello").
 		MetadataEntry("trace_id", "abc").
+		ResponseFormat(llm.ResponseFormat{Type: llm.ResponseFormatTypeJSONObject}).
 		Build()
 	if err != nil {
 		t.Fatalf("unexpected builder error: %v", err)
 	}
-	if len(req.Messages) != 1 || req.Metadata["trace_id"] != "abc" {
+	if len(req.Messages) != 1 || req.Metadata["trace_id"] != "abc" || req.ResponseFormat == nil || req.ResponseFormat.Type != llm.ResponseFormatTypeJSONObject {
 		t.Fatalf("builder failed: %+v", req)
 	}
 }

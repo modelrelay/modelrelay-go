@@ -80,14 +80,15 @@ func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options .
 }
 
 type proxyRequestPayload struct {
-	Provider    string             `json:"provider,omitempty"`
-	Model       string             `json:"model"`
-	MaxTokens   int64              `json:"max_tokens"`
-	Temperature *float64           `json:"temperature,omitempty"`
-	Messages    []llm.ProxyMessage `json:"messages"`
-	Metadata    map[string]string  `json:"metadata,omitempty"`
-	Stop        []string           `json:"stop,omitempty"`
-	StopSeqs    []string           `json:"stop_sequences,omitempty"`
+	Provider       string              `json:"provider,omitempty"`
+	Model          string              `json:"model"`
+	MaxTokens      int64               `json:"max_tokens"`
+	Temperature    *float64            `json:"temperature,omitempty"`
+	Messages       []llm.ProxyMessage  `json:"messages"`
+	Metadata       map[string]string   `json:"metadata,omitempty"`
+	Stop           []string            `json:"stop,omitempty"`
+	StopSeqs       []string            `json:"stop_sequences,omitempty"`
+	ResponseFormat *llm.ResponseFormat `json:"response_format,omitempty"`
 }
 
 func newProxyRequestPayload(req ProxyRequest) (proxyRequestPayload, error) {
@@ -96,11 +97,12 @@ func newProxyRequestPayload(req ProxyRequest) (proxyRequestPayload, error) {
 	}
 
 	payload := proxyRequestPayload{
-		Provider:    req.Provider.String(),
-		Model:       req.Model.String(),
-		MaxTokens:   req.MaxTokens,
-		Temperature: req.Temperature,
-		Messages:    req.Messages,
+		Provider:       req.Provider.String(),
+		Model:          req.Model.String(),
+		MaxTokens:      req.MaxTokens,
+		Temperature:    req.Temperature,
+		Messages:       req.Messages,
+		ResponseFormat: req.ResponseFormat,
 	}
 	if len(req.Metadata) > 0 {
 		payload.Metadata = req.Metadata

@@ -101,6 +101,29 @@ case errors.As(err, &transportErr):
 `Usage` now includes optional `cached_tokens` / `reasoning_tokens` fields when
 providers emit them, and backfills `total_tokens` if the provider omits it.
 
+### Structured outputs (`response_format`)
+
+Ask providers to return structured JSON instead of free-form text:
+
+```go
+schema := json.RawMessage(`{"type":"object","properties":{"headline":{"type":"string"}}}`)
+strict := true
+req := sdk.ProxyRequest{
+    Provider: sdk.ProviderOpenAI,
+    Model:    sdk.ModelOpenAIGPT4oMini,
+    Messages: []llm.ProxyMessage{{Role: "user", Content: "Summarize ModelRelay"}},
+    ResponseFormat: &llm.ResponseFormat{
+        Type: llm.ResponseFormatTypeJSONSchema,
+        JSONSchema: &llm.JSONSchemaFormat{Name: "summary", Schema: schema, Strict: &strict},
+    },
+}
+resp, _ := client.LLM.ProxyMessage(ctx, req)
+fmt.Println(resp.Content[0]) // JSON string matching your schema
+```
+
+Providers that don’t support structured outputs are automatically skipped during
+routing, and the request falls back to text if `response_format` is omitted.
+
 The CLI in `examples/apikeys` uses the same calls. Provide `MODELRELAY_EMAIL` and
 `MODELRELAY_PASSWORD` in the environment to log in, then run `go run ./examples/apikeys`
 to create a project key.
