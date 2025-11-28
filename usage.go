@@ -19,7 +19,7 @@ func (u *UsageClient) Summary(ctx context.Context) (usage.Summary, error) {
 	if err != nil {
 		return usage.Summary{}, err
 	}
-	resp, err := u.client.send(req)
+	resp, _, err := u.client.send(req, nil, nil)
 	if err != nil {
 		return usage.Summary{}, err
 	}
@@ -39,7 +39,7 @@ func (u *UsageClient) DailyUsageByKey(ctx context.Context) ([]usage.UsagePoint, 
 	if err != nil {
 		return nil, err
 	}
-	resp, err := u.client.send(req)
+	resp, _, err := u.client.send(req, nil, nil)
 	if err != nil {
 		return nil, err
 	}

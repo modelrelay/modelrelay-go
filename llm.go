@@ -20,6 +20,11 @@ type LLMClient struct {
 // ProxyMessage performs a blocking completion and returns the aggregated response.
 func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options ...ProxyOption) (*ProxyResponse, error) {
 	callOpts := buildProxyCallOptions(options)
+	if callOpts.retry == nil {
+		cfg := c.client.retryCfg
+		cfg.RetryPost = true
+		callOpts.retry = &cfg
+	}
 	req.Metadata = mergeMetadataMaps(c.client.defaultMetadata, req.Metadata, callOpts.metadata)
 	reqPayload, err := newProxyRequestPayload(req)
 	if err != nil {
@@ -31,9 +36,9 @@ func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options 
 	}
 	httpReq.Header.Set("Accept", "application/json")
 	applyProxyHeaders(httpReq, callOpts)
-	resp, err := c.client.send(httpReq)
+	resp, retryMeta, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
 	if err != nil {
-		c.client.telemetry.log(ctx, LogLevelError, "proxy_message_failed", map[string]any{"error": err.Error()})
+		c.client.telemetry.log(ctx, LogLevelError, "proxy_message_failed", map[string]any{"error": err.Error(), "retries": retryMeta})
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -48,6 +53,11 @@ func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options 
 // ProxyStream opens a streaming SSE connection for chat completions.
 func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options ...ProxyOption) (*StreamHandle, error) {
 	callOpts := buildProxyCallOptions(options)
+	if callOpts.retry == nil {
+		cfg := c.client.retryCfg
+		cfg.RetryPost = true
+		callOpts.retry = &cfg
+	}
 	req.Metadata = mergeMetadataMaps(c.client.defaultMetadata, req.Metadata, callOpts.metadata)
 	payload, err := newProxyRequestPayload(req)
 	if err != nil {
@@ -59,7 +69,7 @@ func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options .
 	}
 	httpReq.Header.Set("Accept", "text/event-stream")
 	applyProxyHeaders(httpReq, callOpts)
-	resp, err := c.client.send(httpReq)
+	resp, _, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
 	if err != nil {
 		return nil, err
 	}

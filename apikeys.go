@@ -43,7 +43,7 @@ func (a *APIKeysClient) List(ctx context.Context) ([]APIKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := a.client.send(req)
+	resp, _, err := a.client.send(req, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (a *APIKeysClient) Create(ctx context.Context, req APIKeyCreateRequest) (AP
 	if err != nil {
 		return APIKey{}, err
 	}
-	resp, err := a.client.send(httpReq)
+	resp, _, err := a.client.send(httpReq, nil, nil)
 	if err != nil {
 		return APIKey{}, err
 	}
@@ -94,7 +94,7 @@ func (a *APIKeysClient) Delete(ctx context.Context, id uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	resp, err := a.client.send(req)
+	resp, _, err := a.client.send(req, nil, nil)
 	if err != nil {
 		return err
 	}

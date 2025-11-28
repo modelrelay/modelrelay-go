@@ -21,8 +21,10 @@ access.
 
 ```go
 import (
+    "errors"
     "net/http"
     "os"
+    "time"
 
     llm "github.com/modelrelay/modelrelay/llmproxy"
     "github.com/modelrelay/modelrelay/sdk/go"
@@ -30,11 +32,14 @@ import (
 
 func main() {
     client, err := sdk.NewClient(sdk.Config{
-        APIKey: os.Getenv("MODELRELAY_API_KEY"),
-		Environment: sdk.EnvironmentStaging,               // production, staging, or sandbox presets
-		ClientHeader: "my-service/1.0",                  // sets X-ModelRelay-Client
-		DefaultMetadata: map[string]string{"env": "stg"}, // merged into every chat request
-		DefaultHeaders:  http.Header{"X-Debug": []string{"sdk-demo"}},
+        APIKey:          os.Getenv("MODELRELAY_API_KEY"),
+        Environment:     sdk.EnvironmentStaging,                // production, staging, or sandbox presets
+        ClientHeader:    "my-service/1.0",                     // sets X-ModelRelay-Client
+        DefaultMetadata: map[string]string{"env": "stg"},    // merged into every chat request
+        DefaultHeaders:  http.Header{"X-Debug": []string{"sdk-demo"}},
+        ConnectTimeout:  sdk.DurationPtr(5 * time.Second),      // defaults: 5s connect / 60s overall
+        RequestTimeout:  sdk.DurationPtr(60 * time.Second),
+        Retry:           &sdk.RetryConfig{MaxAttempts: 3},      // exponential backoff + jitter
     })
     // ...
 }
@@ -78,7 +83,19 @@ resp, _ = client.LLM.ProxyMessage(ctx, req,
 	sdk.WithMetadata(map[string]string{"user": "alice", "env": "sandbox"}),
 	sdk.WithHeader("X-Debug", "call-123"),
 	sdk.WithRequestID("req-123"),
+	sdk.WithTimeout(30*time.Second),
+	sdk.DisableRetry(),
 )
+
+// Error typing: distinguish config vs transport vs API failures.
+var apiErr sdk.APIError
+var transportErr sdk.TransportError
+switch {
+case errors.As(err, &apiErr):
+	log.Printf("api error status=%d code=%s retry=%+v", apiErr.Status, apiErr.Code, apiErr.Retry)
+case errors.As(err, &transportErr):
+	log.Printf("transport error: %v (retry=%+v)", transportErr, transportErr.Retry)
+}
 ```
 
 `Usage` now includes optional `cached_tokens` / `reasoning_tokens` fields when

@@ -47,7 +47,7 @@ func (a *AuthClient) FrontendToken(ctx context.Context, req FrontendTokenRequest
 	if err != nil {
 		return FrontendToken{}, err
 	}
-	resp, err := a.client.send(httpReq)
+	resp, _, err := a.client.send(httpReq, nil, nil)
 	if err != nil {
 		return FrontendToken{}, err
 	}

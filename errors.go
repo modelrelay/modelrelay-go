@@ -7,6 +7,41 @@ import (
 	"net/http"
 )
 
+// ErrorCategory tags SDK errors for callers.
+type ErrorCategory string
+
+const (
+	ErrorCategoryConfig    ErrorCategory = "config"
+	ErrorCategoryTransport ErrorCategory = "transport"
+	ErrorCategoryAPI       ErrorCategory = "api"
+)
+
+// ConfigError indicates invalid caller configuration.
+type ConfigError struct {
+	Reason string
+}
+
+func (e ConfigError) Error() string { return "sdk config: " + e.Reason }
+
+// TransportError wraps network/timeout failures.
+type TransportError struct {
+	Message string
+	Cause   error
+	Retry   *RetryMetadata
+}
+
+func (e TransportError) Error() string {
+	if e.Message != "" {
+		return e.Message
+	}
+	if e.Cause != nil {
+		return e.Cause.Error()
+	}
+	return "transport error"
+}
+
+func (e TransportError) Unwrap() error { return e.Cause }
+
 // APIError captures structured SaaS error metadata.
 type APIError struct {
 	Status    int
@@ -14,6 +49,7 @@ type APIError struct {
 	Message   string
 	RequestID string
 	Fields    []FieldError
+	Retry     *RetryMetadata
 }
 
 // FieldError represents a validation failure for a single field.
@@ -33,9 +69,10 @@ func (e APIError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
 }
 
-func decodeAPIError(resp *http.Response) error {
+func decodeAPIError(resp *http.Response, retry *RetryMetadata) error {
 	data, _ := io.ReadAll(resp.Body)
 	apiErr := APIError{Status: resp.StatusCode}
+	apiErr.Retry = retry
 	if len(data) == 0 {
 		apiErr.Message = resp.Status
 		return apiErr

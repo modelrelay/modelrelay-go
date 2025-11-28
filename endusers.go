@@ -126,7 +126,7 @@ func (e *EndUsersClient) Checkout(ctx context.Context, req EndUserCheckoutReques
 	if err != nil {
 		return EndUserCheckoutResponse{}, err
 	}
-	resp, err := e.client.send(httpReq)
+	resp, _, err := e.client.send(httpReq, nil, nil)
 	if err != nil {
 		return EndUserCheckoutResponse{}, err
 	}
@@ -153,7 +153,7 @@ func (e *EndUsersClient) Subscription(ctx context.Context, endUserID string) (En
 	if err != nil {
 		return EndUserSubscription{}, err
 	}
-	resp, err := e.client.send(httpReq)
+	resp, _, err := e.client.send(httpReq, nil, nil)
 	if err != nil {
 		return EndUserSubscription{}, err
 	}
@@ -191,7 +191,7 @@ func (e *EndUsersClient) ListAccounts(ctx context.Context, opts EndUserListOptio
 	if err != nil {
 		return EndUserListResponse{}, err
 	}
-	resp, err := e.client.send(req)
+	resp, _, err := e.client.send(req, nil, nil)
 	if err != nil {
 		return EndUserListResponse{}, err
 	}
@@ -242,7 +242,7 @@ func (e *EndUsersClient) ListPlans(ctx context.Context) ([]EndUserPlan, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := e.client.send(req)
+	resp, _, err := e.client.send(req, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +268,7 @@ func (e *EndUsersClient) UpsertPlan(ctx context.Context, req EndUserPlanRequest)
 	if err != nil {
 		return EndUserPlan{}, err
 	}
-	resp, err := e.client.send(httpReq)
+	resp, _, err := e.client.send(httpReq, nil, nil)
 	if err != nil {
 		return EndUserPlan{}, err
 	}

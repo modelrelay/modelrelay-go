@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	llm "github.com/modelrelay/modelrelay/llmproxy"
 )
@@ -68,6 +69,8 @@ type ProxyOption func(*proxyCallOptions)
 type proxyCallOptions struct {
 	headers  http.Header
 	metadata map[string]string
+	timeout  *time.Duration
+	retry    *RetryConfig
 }
 
 // WithRequestID sets the X-ModelRelay-Chat-Request-Id header for the request.
@@ -147,6 +150,35 @@ func WithMetadata(metadata map[string]string) ProxyOption {
 			}
 			opts.metadata[k] = v
 		}
+	}
+}
+
+// WithTimeout overrides the request timeout for this call (0 disables timeout).
+func WithTimeout(timeout time.Duration) ProxyOption {
+	return func(opts *proxyCallOptions) {
+		opts.timeout = &timeout
+	}
+}
+
+// WithRetry overrides the retry policy for this call.
+func WithRetry(cfg RetryConfig) ProxyOption {
+	return func(opts *proxyCallOptions) {
+		copy := cfg
+		if copy.BaseBackoff == 0 {
+			copy.BaseBackoff = defaultRetryConfig().BaseBackoff
+		}
+		if copy.MaxBackoff == 0 {
+			copy.MaxBackoff = defaultRetryConfig().MaxBackoff
+		}
+		opts.retry = &copy
+	}
+}
+
+// DisableRetry forces a single attempt for this call.
+func DisableRetry() ProxyOption {
+	return func(opts *proxyCallOptions) {
+		cfg := RetryConfig{MaxAttempts: 1, BaseBackoff: 0, MaxBackoff: 0, RetryPost: false}
+		opts.retry = &cfg
 	}
 }
 

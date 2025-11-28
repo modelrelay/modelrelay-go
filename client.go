@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"runtime/debug"
@@ -19,6 +20,8 @@ const (
 	stagingBaseURL    = "https://api-stg.modelrelay.ai/api/v1"
 	sandboxBaseURL    = "https://api.sandbox.modelrelay.ai/api/v1"
 	defaultClientHead = "modelrelay-go/dev"
+	defaultConnectTO  = 5 * time.Second
+	defaultRequestTO  = 60 * time.Second
 )
 
 // Environment presets for well-known API hosts.
@@ -53,6 +56,11 @@ type Config struct {
 	ClientHeader    string
 	DefaultHeaders  http.Header
 	DefaultMetadata map[string]string
+	// Optional timeouts (nil => defaults). Set to 0 to disable.
+	ConnectTimeout *time.Duration
+	RequestTimeout *time.Duration
+	// Optional retry/backoff policy (nil => defaults).
+	Retry *RetryConfig
 }
 
 // Client provides high-level helpers for interacting with the ModelRelay API.
@@ -65,6 +73,9 @@ type Client struct {
 	clientHead      string
 	defaultHeaders  http.Header
 	defaultMetadata map[string]string
+	connectTimeout  time.Duration
+	requestTimeout  time.Duration
+	retryCfg        RetryConfig
 
 	// Grouped service clients.
 	LLM      *LLMClient
@@ -82,15 +93,15 @@ func NewClient(cfg Config) (*Client, error) {
 	}
 	normalized, err := normalizeBaseURL(baseURL)
 	if err != nil {
-		return nil, err
+		return nil, ConfigError{Reason: err.Error()}
 	}
 	httpClient := cfg.HTTPClient
 	if httpClient == nil {
-		httpClient = http.DefaultClient
+		httpClient = newHTTPClient(resolveConnectTimeout(cfg.ConnectTimeout), resolveRequestTimeout(cfg.RequestTimeout))
 	}
 	auth := buildAuthChain(cfg)
 	if len(auth) == 0 {
-		return nil, errors.New("sdk: api key or access token required")
+		return nil, ConfigError{Reason: "api key or access token required"}
 	}
 	ua := strings.TrimSpace(cfg.UserAgent)
 	if ua == "" {
@@ -102,6 +113,10 @@ func NewClient(cfg Config) (*Client, error) {
 	}
 	defaultHeaders := sanitizeHeaders(cfg.DefaultHeaders)
 	defaultMetadata := sanitizeMetadata(cfg.DefaultMetadata)
+	retryCfg := defaultRetryConfig()
+	if cfg.Retry != nil {
+		retryCfg = cfg.Retry.normalized()
+	}
 	client := &Client{
 		baseURL:         normalized,
 		httpClient:      httpClient,
@@ -111,6 +126,9 @@ func NewClient(cfg Config) (*Client, error) {
 		clientHead:      clientHeader,
 		defaultHeaders:  defaultHeaders,
 		defaultMetadata: defaultMetadata,
+		connectTimeout:  resolveConnectTimeout(cfg.ConnectTimeout),
+		requestTimeout:  resolveRequestTimeout(cfg.RequestTimeout),
+		retryCfg:        retryCfg,
 	}
 	client.LLM = &LLMClient{client: client}
 	client.Usage = &UsageClient{client: client}
@@ -197,6 +215,33 @@ func sanitizeMetadata(src map[string]string) map[string]string {
 	return out
 }
 
+func resolveConnectTimeout(val *time.Duration) time.Duration {
+	if val == nil {
+		return defaultConnectTO
+	}
+	return *val
+}
+
+func resolveRequestTimeout(val *time.Duration) time.Duration {
+	if val == nil {
+		return defaultRequestTO
+	}
+	return *val
+}
+
+func resolveTimeout(override *time.Duration, def time.Duration) time.Duration {
+	if override != nil {
+		return *override
+	}
+	return def
+}
+
+func newHTTPClient(connectTimeout, requestTimeout time.Duration) *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DialContext = (&net.Dialer{Timeout: connectTimeout}).DialContext
+	return &http.Client{Transport: transport, Timeout: 0}
+}
+
 func deriveDefaultClientHeader() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
 		version := strings.TrimSpace(info.Main.Version)
@@ -209,17 +254,23 @@ func deriveDefaultClientHeader() string {
 
 func (c *Client) newJSONRequest(ctx context.Context, method, path string, payload any) (*http.Request, error) {
 	var body io.Reader
+	var getBody func() (io.ReadCloser, error)
 	if payload != nil {
 		encoded, err := json.Marshal(payload)
 		if err != nil {
 			return nil, err
 		}
 		body = bytes.NewReader(encoded)
+		buf := encoded
+		getBody = func() (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewReader(buf)), nil
+		}
 	}
 	req, err := http.NewRequestWithContext(ctx, method, c.buildURL(path), body)
 	if err != nil {
 		return nil, err
 	}
+	req.GetBody = getBody
 	if payload != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -248,31 +299,24 @@ func (c *Client) prepare(req *http.Request) {
 	}
 }
 
-func (c *Client) send(req *http.Request) (*http.Response, error) {
-	c.prepare(req)
-	if c.telemetry.OnHTTPRequest != nil {
-		c.telemetry.OnHTTPRequest(req.Context(), req)
+func (c *Client) send(req *http.Request, timeout *time.Duration, retry *RetryConfig) (*http.Response, *RetryMetadata, error) {
+	req = req.Clone(req.Context())
+	duration := resolveTimeout(timeout, c.requestTimeout)
+	ctx := req.Context()
+	if duration > 0 {
+		if dl, ok := ctx.Deadline(); !ok || time.Until(dl) > duration {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, duration)
+			req = req.WithContext(ctx)
+			defer cancel()
+		}
 	}
-	c.telemetry.log(req.Context(), LogLevelInfo, "http_request", map[string]any{
-		"method": req.Method,
-		"url":    req.URL.String(),
-	})
-	start := time.Now()
-	resp, err := c.httpClient.Do(req)
-	if c.telemetry.OnHTTPResponse != nil {
-		c.telemetry.OnHTTPResponse(req.Context(), req, resp, err, time.Since(start))
+	cfg := c.retryCfg
+	if retry != nil {
+		cfg = retry.normalized()
 	}
-	c.telemetry.metric(req.Context(), "sdk_http_request_latency_ms", float64(time.Since(start).Milliseconds()), map[string]string{
-		"path": req.URL.Path,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode >= 400 {
-		defer resp.Body.Close()
-		return nil, decodeAPIError(resp)
-	}
-	return resp, nil
+	resp, meta, err := c.sendWithRetry(req, cfg)
+	return resp, meta, err
 }
 
 func (c *Client) buildURL(path string) string {
@@ -283,4 +327,116 @@ func (c *Client) buildURL(path string) string {
 		path = "/" + path
 	}
 	return c.baseURL + path
+}
+
+func (c *Client) sendWithRetry(req *http.Request, cfg RetryConfig) (*http.Response, *RetryMetadata, error) {
+	cfg = cfg.normalized()
+	var meta RetryMetadata
+	var lastErr error
+	for attempt := 1; attempt <= cfg.MaxAttempts; attempt++ {
+		cloned, err := cloneRequest(req)
+		if err != nil {
+			return nil, &meta, TransportError{Message: "request not rewindable", Cause: err, Retry: &meta}
+		}
+		c.prepare(cloned)
+		if c.telemetry.OnHTTPRequest != nil {
+			c.telemetry.OnHTTPRequest(cloned.Context(), cloned)
+		}
+		start := time.Now()
+		resp, err := c.httpClient.Do(cloned)
+		latency := time.Since(start)
+		if c.telemetry.OnHTTPResponse != nil {
+			c.telemetry.OnHTTPResponse(cloned.Context(), cloned, resp, err, latency)
+		}
+		c.telemetry.metric(cloned.Context(), "sdk_http_request_latency_ms", float64(latency.Milliseconds()), map[string]string{
+			"path": cloned.URL.Path,
+		})
+
+		retriable, status, reason := shouldRetry(cloned, resp, err, cfg)
+		meta.Attempts = attempt
+		meta.MaxAttempts = cfg.MaxAttempts
+		meta.LastStatus = status
+		meta.LastError = reason
+
+		if err == nil && resp != nil && resp.StatusCode < 400 {
+			return resp, copyRetryMeta(meta), nil
+		}
+		if !retriable || attempt == cfg.MaxAttempts {
+			if err != nil {
+				return nil, copyRetryMeta(meta), TransportError{Message: reason, Cause: err, Retry: copyRetryMeta(meta)}
+			}
+			defer resp.Body.Close()
+			return nil, copyRetryMeta(meta), decodeAPIError(resp, copyRetryMeta(meta))
+		}
+
+		if resp != nil {
+			resp.Body.Close()
+		}
+		backoff := cfg.backoffDelay(attempt)
+		meta.LastBackoff = backoff
+		c.telemetry.log(cloned.Context(), LogLevelInfo, "sdk_retry", map[string]any{
+			"attempt":      attempt,
+			"max_attempts": cfg.MaxAttempts,
+			"backoff_ms":   backoff.Milliseconds(),
+			"reason":       reason,
+			"status":       status,
+			"path":         cloned.URL.Path,
+			"method":       cloned.Method,
+			"retry_post":   cfg.RetryPost,
+		})
+		time.Sleep(backoff)
+		lastErr = err
+	}
+	return nil, copyRetryMeta(meta), lastErr
+}
+
+func copyRetryMeta(meta RetryMetadata) *RetryMetadata {
+	m := meta
+	return &m
+}
+
+func cloneRequest(req *http.Request) (*http.Request, error) {
+	cloned := req.Clone(req.Context())
+	if req.Body == nil {
+		return cloned, nil
+	}
+	if req.GetBody == nil {
+		return nil, errors.New("sdk: request body is not rewindable")
+	}
+	body, err := req.GetBody()
+	if err != nil {
+		return nil, err
+	}
+	cloned.Body = body
+	return cloned, nil
+}
+
+func shouldRetry(req *http.Request, resp *http.Response, err error, cfg RetryConfig) (bool, int, string) {
+	isSafeMethod := req.Method == http.MethodGet || req.Method == http.MethodHead || req.Method == http.MethodOptions
+	allowNonSafe := cfg.RetryPost
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return false, 0, err.Error()
+		}
+		if !isSafeMethod && !allowNonSafe {
+			return false, 0, err.Error()
+		}
+		if ne, ok := err.(net.Error); ok {
+			if ne.Timeout() || ne.Temporary() {
+				return true, 0, err.Error()
+			}
+		}
+		return true, 0, err.Error()
+	}
+	if resp == nil {
+		return false, 0, "nil response"
+	}
+	status := resp.StatusCode
+	if status == http.StatusTooManyRequests || status >= 500 {
+		if !isSafeMethod && !allowNonSafe {
+			return false, status, resp.Status
+		}
+		return true, status, resp.Status
+	}
+	return false, status, resp.Status
 }
