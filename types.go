@@ -3,6 +3,7 @@ package sdk
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	llm "github.com/modelrelay/modelrelay/llmproxy"
 )
@@ -65,38 +66,93 @@ func (s *StreamHandle) Close() error {
 type ProxyOption func(*proxyCallOptions)
 
 type proxyCallOptions struct {
-	headers http.Header
+	headers  http.Header
+	metadata map[string]string
 }
 
 // WithRequestID sets the X-ModelRelay-Chat-Request-Id header for the request.
 func WithRequestID(requestID string) ProxyOption {
 	return func(opts *proxyCallOptions) {
-		if requestID == "" {
+		clean := strings.TrimSpace(requestID)
+		if clean == "" {
 			return
 		}
 		if opts.headers == nil {
 			opts.headers = make(http.Header)
 		}
-		opts.headers.Set(requestIDHeader, requestID)
+		opts.headers.Set(requestIDHeader, clean)
 	}
 }
 
 // WithHeader attaches an arbitrary header to the underlying HTTP request.
 func WithHeader(key, value string) ProxyOption {
 	return func(opts *proxyCallOptions) {
-		if key == "" || value == "" {
+		if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" {
 			return
 		}
 		if opts.headers == nil {
 			opts.headers = make(http.Header)
 		}
-		opts.headers.Add(key, value)
+		opts.headers.Add(strings.TrimSpace(key), strings.TrimSpace(value))
 	}
 }
 
-func applyProxyOptions(req *http.Request, options []ProxyOption) {
+// WithHeaders attaches multiple headers to the underlying HTTP request.
+func WithHeaders(headers map[string]string) ProxyOption {
+	return func(opts *proxyCallOptions) {
+		if len(headers) == 0 {
+			return
+		}
+		if opts.headers == nil {
+			opts.headers = make(http.Header)
+		}
+		for key, value := range headers {
+			k := strings.TrimSpace(key)
+			v := strings.TrimSpace(value)
+			if k == "" || v == "" {
+				continue
+			}
+			opts.headers.Add(k, v)
+		}
+	}
+}
+
+// WithMetadataEntry adds a single metadata key/value to the request payload.
+func WithMetadataEntry(key, value string) ProxyOption {
+	return func(opts *proxyCallOptions) {
+		if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" {
+			return
+		}
+		if opts.metadata == nil {
+			opts.metadata = make(map[string]string)
+		}
+		opts.metadata[strings.TrimSpace(key)] = strings.TrimSpace(value)
+	}
+}
+
+// WithMetadata merges the provided metadata map into the request payload.
+func WithMetadata(metadata map[string]string) ProxyOption {
+	return func(opts *proxyCallOptions) {
+		if len(metadata) == 0 {
+			return
+		}
+		if opts.metadata == nil {
+			opts.metadata = make(map[string]string, len(metadata))
+		}
+		for key, value := range metadata {
+			k := strings.TrimSpace(key)
+			v := strings.TrimSpace(value)
+			if k == "" || v == "" {
+				continue
+			}
+			opts.metadata[k] = v
+		}
+	}
+}
+
+func buildProxyCallOptions(options []ProxyOption) proxyCallOptions {
 	if len(options) == 0 {
-		return
+		return proxyCallOptions{}
 	}
 	cfg := proxyCallOptions{}
 	for _, opt := range options {
@@ -105,10 +161,14 @@ func applyProxyOptions(req *http.Request, options []ProxyOption) {
 		}
 		opt(&cfg)
 	}
-	if len(cfg.headers) == 0 {
-		return
-	}
-	for key, values := range cfg.headers {
+	cfg.headers = sanitizeHeaders(cfg.headers)
+	cfg.metadata = sanitizeMetadata(cfg.metadata)
+	return cfg
+}
+
+func applyProxyHeaders(req *http.Request, opts proxyCallOptions) {
+	for key, values := range opts.headers {
+		req.Header.Del(key)
 		for _, value := range values {
 			req.Header.Add(key, value)
 		}

@@ -19,6 +19,8 @@ type LLMClient struct {
 
 // ProxyMessage performs a blocking completion and returns the aggregated response.
 func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options ...ProxyOption) (*ProxyResponse, error) {
+	callOpts := buildProxyCallOptions(options)
+	req.Metadata = mergeMetadataMaps(c.client.defaultMetadata, req.Metadata, callOpts.metadata)
 	reqPayload, err := newProxyRequestPayload(req)
 	if err != nil {
 		return nil, err
@@ -28,7 +30,7 @@ func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options 
 		return nil, err
 	}
 	httpReq.Header.Set("Accept", "application/json")
-	applyProxyOptions(httpReq, options)
+	applyProxyHeaders(httpReq, callOpts)
 	resp, err := c.client.send(httpReq)
 	if err != nil {
 		c.client.telemetry.log(ctx, LogLevelError, "proxy_message_failed", map[string]any{"error": err.Error()})
@@ -45,6 +47,8 @@ func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options 
 
 // ProxyStream opens a streaming SSE connection for chat completions.
 func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options ...ProxyOption) (*StreamHandle, error) {
+	callOpts := buildProxyCallOptions(options)
+	req.Metadata = mergeMetadataMaps(c.client.defaultMetadata, req.Metadata, callOpts.metadata)
 	payload, err := newProxyRequestPayload(req)
 	if err != nil {
 		return nil, err
@@ -54,7 +58,7 @@ func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options .
 		return nil, err
 	}
 	httpReq.Header.Set("Accept", "text/event-stream")
-	applyProxyOptions(httpReq, options)
+	applyProxyHeaders(httpReq, callOpts)
 	resp, err := c.client.send(httpReq)
 	if err != nil {
 		return nil, err
@@ -98,6 +102,28 @@ func newProxyRequestPayload(req ProxyRequest) (proxyRequestPayload, error) {
 		payload.StopSeqs = req.StopSequences
 	}
 	return payload, nil
+}
+
+func mergeMetadataMaps(defaults, req, overrides map[string]string) map[string]string {
+	merged := make(map[string]string)
+	addMetadata(merged, defaults)
+	addMetadata(merged, req)
+	addMetadata(merged, overrides)
+	if len(merged) == 0 {
+		return nil
+	}
+	return merged
+}
+
+func addMetadata(dst map[string]string, src map[string]string) {
+	for key, value := range src {
+		k := strings.TrimSpace(key)
+		v := strings.TrimSpace(value)
+		if k == "" || v == "" {
+			continue
+		}
+		dst[k] = v
+	}
 }
 
 type sseStream struct {

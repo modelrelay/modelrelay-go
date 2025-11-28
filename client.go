@@ -9,30 +9,62 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"strings"
 	"time"
 )
 
-const defaultBaseURL = "https://api.modelrelay.ai/api/v1"
-const defaultUserAgent = "modelrelay-sdk/0.1"
+const (
+	defaultBaseURL    = "https://api.modelrelay.ai/api/v1"
+	stagingBaseURL    = "https://api-stg.modelrelay.ai/api/v1"
+	sandboxBaseURL    = "https://api.sandbox.modelrelay.ai/api/v1"
+	defaultClientHead = "modelrelay-go/dev"
+)
 
-// Config wires authentication, base URL, and telemetry for the API client.
+// Environment presets for well-known API hosts.
+type Environment string
+
+const (
+	EnvironmentProduction Environment = "production"
+	EnvironmentStaging    Environment = "staging"
+	EnvironmentSandbox    Environment = "sandbox"
+)
+
+func (e Environment) baseURL() string {
+	switch e {
+	case EnvironmentStaging:
+		return stagingBaseURL
+	case EnvironmentSandbox:
+		return sandboxBaseURL
+	default:
+		return defaultBaseURL
+	}
+}
+
+// Config wires authentication, base URL, headers/metadata defaults, and telemetry for the API client.
 type Config struct {
-	BaseURL     string
-	APIKey      string
-	AccessToken string
-	HTTPClient  *http.Client
-	Telemetry   TelemetryHooks
-	UserAgent   string
+	BaseURL         string
+	Environment     Environment
+	APIKey          string
+	AccessToken     string
+	HTTPClient      *http.Client
+	Telemetry       TelemetryHooks
+	UserAgent       string
+	ClientHeader    string
+	DefaultHeaders  http.Header
+	DefaultMetadata map[string]string
 }
 
 // Client provides high-level helpers for interacting with the ModelRelay API.
 type Client struct {
-	baseURL    string
-	httpClient *http.Client
-	auth       authChain
-	telemetry  TelemetryHooks
-	userAgent  string
+	baseURL         string
+	httpClient      *http.Client
+	auth            authChain
+	telemetry       TelemetryHooks
+	userAgent       string
+	clientHead      string
+	defaultHeaders  http.Header
+	defaultMetadata map[string]string
 
 	// Grouped service clients.
 	LLM      *LLMClient
@@ -46,7 +78,7 @@ type Client struct {
 func NewClient(cfg Config) (*Client, error) {
 	baseURL := cfg.BaseURL
 	if baseURL == "" {
-		baseURL = defaultBaseURL
+		baseURL = cfg.Environment.baseURL()
 	}
 	normalized, err := normalizeBaseURL(baseURL)
 	if err != nil {
@@ -60,16 +92,25 @@ func NewClient(cfg Config) (*Client, error) {
 	if len(auth) == 0 {
 		return nil, errors.New("sdk: api key or access token required")
 	}
-	ua := cfg.UserAgent
+	ua := strings.TrimSpace(cfg.UserAgent)
 	if ua == "" {
-		ua = defaultUserAgent
+		ua = deriveDefaultClientHeader()
 	}
+	clientHeader := strings.TrimSpace(cfg.ClientHeader)
+	if clientHeader == "" {
+		clientHeader = deriveDefaultClientHeader()
+	}
+	defaultHeaders := sanitizeHeaders(cfg.DefaultHeaders)
+	defaultMetadata := sanitizeMetadata(cfg.DefaultMetadata)
 	client := &Client{
-		baseURL:    normalized,
-		httpClient: httpClient,
-		auth:       auth,
-		telemetry:  cfg.Telemetry,
-		userAgent:  ua,
+		baseURL:         normalized,
+		httpClient:      httpClient,
+		auth:            auth,
+		telemetry:       cfg.Telemetry,
+		userAgent:       ua,
+		clientHead:      clientHeader,
+		defaultHeaders:  defaultHeaders,
+		defaultMetadata: defaultMetadata,
 	}
 	client.LLM = &LLMClient{client: client}
 	client.Usage = &UsageClient{client: client}
@@ -113,6 +154,59 @@ func buildAuthChain(cfg Config) authChain {
 	return chain
 }
 
+func sanitizeHeaders(src http.Header) http.Header {
+	if len(src) == 0 {
+		return nil
+	}
+	out := make(http.Header)
+	for key, values := range src {
+		trimmedKey := strings.TrimSpace(key)
+		if trimmedKey == "" {
+			continue
+		}
+		for _, v := range values {
+			trimmedVal := strings.TrimSpace(v)
+			if trimmedVal == "" {
+				continue
+			}
+			out.Add(trimmedKey, trimmedVal)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func sanitizeMetadata(src map[string]string) map[string]string {
+	if len(src) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(src))
+	for k, v := range src {
+		key := strings.TrimSpace(k)
+		val := strings.TrimSpace(v)
+		if key == "" || val == "" {
+			continue
+		}
+		out[key] = val
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func deriveDefaultClientHeader() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		version := strings.TrimSpace(info.Main.Version)
+		if version != "" && version != "(devel)" {
+			return fmt.Sprintf("modelrelay-go/%s", version)
+		}
+	}
+	return defaultClientHead
+}
+
 func (c *Client) newJSONRequest(ctx context.Context, method, path string, payload any) (*http.Request, error) {
 	var body io.Reader
 	if payload != nil {
@@ -140,7 +234,18 @@ func (c *Client) prepare(req *http.Request) {
 	if c.userAgent != "" {
 		req.Header.Set("User-Agent", c.userAgent)
 	}
+	if c.clientHead != "" && req.Header.Get("X-ModelRelay-Client") == "" {
+		req.Header.Set("X-ModelRelay-Client", c.clientHead)
+	}
 	c.auth.Apply(req)
+	for key, values := range c.defaultHeaders {
+		if req.Header.Get(key) != "" {
+			continue
+		}
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
 }
 
 func (c *Client) send(req *http.Request) (*http.Response, error) {

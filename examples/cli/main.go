@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ func main() {
 	model := flag.String("model", "openai/gpt-4o-mini", "LLM model identifier")
 	maxTokens := flag.Int("max-tokens", 256, "Maximum tokens to request")
 	requestID := flag.String("request-id", "", "Optional X-ModelRelay-Chat-Request-Id value")
+	env := flag.String("env", "production", "Target environment: production|staging|sandbox")
 	flag.Parse()
 
 	prompt := strings.Join(flag.Args(), " ")
@@ -34,7 +36,18 @@ func main() {
 		log.Fatal("MODELRELAY_API_KEY is not set")
 	}
 
-	cfg := sdk.Config{APIKey: apiKey}
+	cfg := sdk.Config{
+		APIKey:          apiKey,
+		ClientHeader:    "modelrelay-cli/1.0",
+		DefaultMetadata: map[string]string{"cli": "true"},
+		DefaultHeaders:  http.Header{"X-Debug": []string{"cli-default"}},
+	}
+	switch strings.ToLower(strings.TrimSpace(*env)) {
+	case "staging":
+		cfg.Environment = sdk.EnvironmentStaging
+	case "sandbox":
+		cfg.Environment = sdk.EnvironmentSandbox
+	}
 	if *baseURL != "" {
 		cfg.BaseURL = *baseURL
 	}
@@ -44,10 +57,12 @@ func main() {
 		log.Fatalf("new client: %v", err)
 	}
 
-	opts := make([]sdk.ProxyOption, 0, 1)
+	opts := make([]sdk.ProxyOption, 0, 2)
 	if *requestID != "" {
 		opts = append(opts, sdk.WithRequestID(*requestID))
 	}
+	opts = append(opts, sdk.WithHeader("X-Debug", "cli-run"))
+	opts = append(opts, sdk.WithMetadataEntry("prompt_length", fmt.Sprintf("%d", len(prompt))))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -59,7 +74,7 @@ func main() {
 			Role:    "user",
 			Content: prompt,
 		}},
-		Metadata: map[string]string{"cli": "true"},
+		Metadata: map[string]string{"source": "cli"},
 	}, opts...)
 	if err != nil {
 		log.Fatalf("proxy stream: %v", err)

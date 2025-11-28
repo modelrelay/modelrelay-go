@@ -21,6 +21,9 @@ access.
 
 ```go
 import (
+    "net/http"
+    "os"
+
     llm "github.com/modelrelay/modelrelay/llmproxy"
     "github.com/modelrelay/modelrelay/sdk/go"
 )
@@ -28,6 +31,10 @@ import (
 func main() {
     client, err := sdk.NewClient(sdk.Config{
         APIKey: os.Getenv("MODELRELAY_API_KEY"),
+		Environment: sdk.EnvironmentStaging,               // production, staging, or sandbox presets
+		ClientHeader: "my-service/1.0",                  // sets X-ModelRelay-Client
+		DefaultMetadata: map[string]string{"env": "stg"}, // merged into every chat request
+		DefaultHeaders:  http.Header{"X-Debug": []string{"sdk-demo"}},
     })
     // ...
 }
@@ -64,6 +71,14 @@ resp, _ := client.LLM.ProxyMessage(ctx, req)
 if resp.StopReason.IsOther() {
     log.Printf("provider returned custom stop reason %q", resp.StopReason)
 }
+
+// Per-call overrides: metadata takes precedence over config defaults, and
+// headers set here override defaults on the underlying HTTP request.
+resp, _ = client.LLM.ProxyMessage(ctx, req,
+	sdk.WithMetadata(map[string]string{"user": "alice", "env": "sandbox"}),
+	sdk.WithHeader("X-Debug", "call-123"),
+	sdk.WithRequestID("req-123"),
+)
 ```
 
 `Usage` now includes optional `cached_tokens` / `reasoning_tokens` fields when

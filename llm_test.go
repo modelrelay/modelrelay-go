@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -117,6 +118,137 @@ func TestProxyStream(t *testing.T) {
 	if stream.RequestID != "resp-stream" {
 		t.Fatalf("unexpected stream request id %s", stream.RequestID)
 	}
+}
+
+func TestProxyOptionsMergeDefaults(t *testing.T) {
+	configHeaders := http.Header{"X-Debug": []string{"cfg", ""}, "X-App": []string{"go-client"}}
+	configMetadata := map[string]string{"env": "prod", "trace_id": "cfg", "app": "go"}
+
+	t.Run("blocking", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("X-Debug") != "call" {
+				t.Fatalf("expected call-scoped header override, got %q", r.Header.Get("X-Debug"))
+			}
+			vals := r.Header.Values("X-Multi")
+			if len(vals) != 2 || vals[0] != "one" || vals[1] != "two" {
+				t.Fatalf("expected two X-Multi values, got %+v", vals)
+			}
+			if r.Header.Get("X-App") != "go-client" {
+				t.Fatalf("expected default header, got %q", r.Header.Get("X-App"))
+			}
+			if client := r.Header.Get("X-ModelRelay-Client"); client == "" {
+				t.Fatalf("missing client header")
+			}
+			var payload proxyRequestPayload
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode payload: %v", err)
+			}
+			if payload.Metadata["env"] != "staging" {
+				t.Fatalf("expected env from request, got %+v", payload.Metadata)
+			}
+			if payload.Metadata["trace_id"] != "call" {
+				t.Fatalf("expected call metadata override, got %+v", payload.Metadata)
+			}
+			if payload.Metadata["app"] != "go" {
+				t.Fatalf("expected default metadata to persist, got %+v", payload.Metadata)
+			}
+			if payload.Metadata["user"] != "alice" {
+				t.Fatalf("expected per-call metadata entry, got %+v", payload.Metadata)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(llm.ProxyResponse{ID: "resp_blocking", Provider: "echo", Model: payload.Model, Content: []string{"ok"}, Usage: llm.Usage{}})
+		}))
+		defer srv.Close()
+
+		client, err := NewClient(Config{
+			BaseURL:         srv.URL,
+			APIKey:          "test",
+			HTTPClient:      srv.Client(),
+			DefaultHeaders:  configHeaders,
+			DefaultMetadata: configMetadata,
+		})
+		if err != nil {
+			t.Fatalf("new client: %v", err)
+		}
+
+		_, err = client.LLM.ProxyMessage(context.Background(), ProxyRequest{
+			Model:    ParseModelID("demo"),
+			Messages: []llm.ProxyMessage{{Role: "user", Content: "hi"}},
+			Metadata: map[string]string{"env": "staging", "request": "true"},
+		},
+			WithMetadata(map[string]string{"trace_id": "call"}),
+			WithMetadataEntry("user", "alice"),
+			WithHeader("X-Debug", "call"),
+			WithHeader("X-Multi", "one"),
+			WithHeader("X-Multi", "two"),
+		)
+		if err != nil {
+			t.Fatalf("proxy message: %v", err)
+		}
+	})
+
+	t.Run("streaming", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("X-Debug") != "call-stream" {
+				t.Fatalf("expected stream header override, got %q", r.Header.Get("X-Debug"))
+			}
+			var payload proxyRequestPayload
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode payload: %v", err)
+			}
+			if payload.Metadata["env"] != "sandbox" || payload.Metadata["trace_id"] != "stream" {
+				t.Fatalf("unexpected metadata %+v", payload.Metadata)
+			}
+			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set(requestIDHeader, "resp-stream-merge")
+			fmt.Fprintf(w, "event: message_start\ndata: {\"response_id\":\"resp-123\",\"model\":\"demo\"}\n\n")
+			fmt.Fprintf(w, "event: message_stop\ndata: {\"response_id\":\"resp-123\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1,\"total_tokens\":2}}\n\n")
+		}))
+		defer srv.Close()
+
+		client, err := NewClient(Config{
+			BaseURL:         srv.URL,
+			APIKey:          "test",
+			HTTPClient:      srv.Client(),
+			DefaultHeaders:  configHeaders,
+			DefaultMetadata: configMetadata,
+		})
+		if err != nil {
+			t.Fatalf("new client: %v", err)
+		}
+
+		stream, err := client.LLM.ProxyStream(context.Background(), ProxyRequest{
+			Model:    ParseModelID("demo"),
+			Messages: []llm.ProxyMessage{{Role: "user", Content: "hello"}},
+			Metadata: map[string]string{"env": "sandbox"},
+		},
+			WithMetadataEntry("trace_id", "stream"),
+			WithHeader("X-Debug", "call-stream"),
+		)
+		if err != nil {
+			t.Fatalf("proxy stream: %v", err)
+		}
+		defer stream.Close()
+
+		if stream.RequestID != "resp-stream-merge" {
+			t.Fatalf("unexpected request id %s", stream.RequestID)
+		}
+		_, ok, err := stream.Next()
+		if err != nil || !ok {
+			t.Fatalf("expected first event err=%v ok=%v", err, ok)
+		}
+		_, ok, err = stream.Next()
+		if err != nil || !ok {
+			t.Fatalf("expected stop event err=%v ok=%v", err, ok)
+		}
+		_, ok, err = stream.Next()
+		if err != nil {
+			t.Fatalf("final event err=%v", err)
+		}
+		if ok {
+			t.Fatalf("expected end of stream")
+		}
+	})
 }
 
 func TestUsageSummary(t *testing.T) {
