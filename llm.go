@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -51,7 +52,7 @@ func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options 
 	return &respPayload, nil
 }
 
-// ProxyStream opens a streaming SSE connection for chat completions.
+// ProxyStream opens a streaming connection for chat completions.
 func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options ...ProxyOption) (*StreamHandle, error) {
 	callOpts := buildProxyCallOptions(options)
 	if callOpts.retry == nil {
@@ -68,14 +69,24 @@ func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options .
 	if err != nil {
 		return nil, err
 	}
-	httpReq.Header.Set("Accept", "text/event-stream")
+	if callOpts.stream == StreamFormatNDJSON {
+		httpReq.Header.Set("Accept", "application/x-ndjson")
+	} else {
+		httpReq.Header.Set("Accept", "text/event-stream")
+	}
 	applyProxyHeaders(httpReq, callOpts)
 	resp, _, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
 	if err != nil {
 		return nil, err
 	}
+	var stream streamReader
+	if callOpts.stream == StreamFormatNDJSON {
+		stream = newNDJSONStream(ctx, resp.Body, c.client.telemetry)
+	} else {
+		stream = newSSEStream(ctx, resp.Body, c.client.telemetry)
+	}
 	return &StreamHandle{
-		stream:    newSSEStream(ctx, resp.Body, c.client.telemetry),
+		stream:    stream,
 		RequestID: requestIDFromHeaders(resp.Header),
 	}, nil
 }
@@ -140,6 +151,17 @@ func addMetadata(dst map[string]string, src map[string]string) {
 }
 
 type sseStream struct {
+	ctx       context.Context
+	reader    *bufio.Reader
+	body      io.ReadCloser
+	telemetry TelemetryHooks
+	closed    bool
+	closeOnce sync.Once
+	mu        sync.Mutex
+	done      chan struct{}
+}
+
+type ndjsonStream struct {
 	ctx       context.Context
 	reader    *bufio.Reader
 	body      io.ReadCloser
@@ -247,6 +269,104 @@ func (s *sseStream) readEvent() (string, []byte, error) {
 			dataBuilder.WriteString(strings.TrimSpace(line[len("data:"):]))
 		}
 	}
+}
+
+func newNDJSONStream(ctx context.Context, body io.ReadCloser, telemetry TelemetryHooks) *ndjsonStream {
+	stream := &ndjsonStream{
+		ctx:       ctx,
+		reader:    bufio.NewReader(body),
+		body:      body,
+		telemetry: telemetry,
+		done:      make(chan struct{}),
+	}
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = stream.Close()
+		case <-stream.done:
+			return
+		}
+	}()
+	return stream
+}
+
+func (s *ndjsonStream) Next() (StreamEvent, bool, error) {
+	if s.isClosed() {
+		return StreamEvent{}, false, nil
+	}
+	for {
+		line, err := s.reader.ReadBytes('\n')
+		if err != nil {
+			if errors.Is(err, io.EOF) && len(line) == 0 {
+				s.Close()
+				return StreamEvent{}, false, nil
+			}
+			if errors.Is(err, context.Canceled) {
+				return StreamEvent{}, false, nil
+			}
+			if len(line) == 0 {
+				return StreamEvent{}, false, err
+			}
+		}
+		line = bytes.TrimSpace(line)
+		if len(line) == 0 {
+			continue
+		}
+		event, perr := parseNDJSONEvent(line)
+		if perr != nil {
+			return StreamEvent{}, false, perr
+		}
+		if s.telemetry.OnStreamEvent != nil {
+			s.telemetry.OnStreamEvent(s.ctx, event)
+		}
+		s.telemetry.metric(s.ctx, "sdk_stream_events_total", 1, map[string]string{"event": event.EventName()})
+		return event, true, nil
+	}
+}
+
+func (s *ndjsonStream) Close() error {
+	var err error
+	s.closeOnce.Do(func() {
+		s.mu.Lock()
+		s.closed = true
+		s.mu.Unlock()
+		close(s.done)
+		if cwe, ok := s.body.(interface{ CloseWithError(error) error }); ok {
+			_ = cwe.CloseWithError(context.Canceled)
+		}
+		err = s.body.Close()
+	})
+	return err
+}
+
+func (s *ndjsonStream) isClosed() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.closed
+}
+
+func parseNDJSONEvent(line []byte) (StreamEvent, error) {
+	var envelope struct {
+		Event      string          `json:"event"`
+		Data       json.RawMessage `json:"data"`
+		ResponseID string          `json:"response_id"`
+		Model      string          `json:"model"`
+		StopReason string          `json:"stop_reason"`
+		Usage      *Usage          `json:"usage"`
+	}
+	if err := json.Unmarshal(line, &envelope); err != nil {
+		return StreamEvent{}, err
+	}
+	event := StreamEvent{
+		Kind:       streamEventKind(envelope.Event),
+		Name:       envelope.Event,
+		Data:       append([]byte(nil), envelope.Data...),
+		ResponseID: envelope.ResponseID,
+		Model:      ParseModelID(envelope.Model),
+		StopReason: ParseStopReason(envelope.StopReason),
+		Usage:      envelope.Usage,
+	}
+	return event, nil
 }
 
 func buildStreamEvent(name string, data []byte) StreamEvent {

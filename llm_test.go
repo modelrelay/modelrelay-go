@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -119,6 +120,70 @@ func TestProxyStream(t *testing.T) {
 	}
 	if stream.RequestID != "resp-stream" {
 		t.Fatalf("unexpected stream request id %s", stream.RequestID)
+	}
+}
+
+func TestProxyStreamNDJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept") != "application/x-ndjson" {
+			t.Fatalf("expected ndjson accept header, got %s", r.Header.Get("Accept"))
+		}
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		w.Header().Set(requestIDHeader, "resp-ndjson")
+		lines := []string{
+			`{"event":"message_start","response_id":"resp_json","model":"demo"}`,
+			`{"event":"message_delta","data":{"foo":"bar"}}`,
+			`{"event":"message_stop","response_id":"resp_json","usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}`,
+		}
+		payload := strings.Join(lines, "\n") + "\n"
+		w.Write([]byte(payload))
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	stream, err := client.LLM.ProxyStream(context.Background(), ProxyRequest{
+		Model:     ParseModelID("demo"),
+		MaxTokens: 16,
+		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
+	}, WithNDJSONStream())
+	if err != nil {
+		t.Fatalf("proxy stream: %v", err)
+	}
+	t.Cleanup(func() { stream.Close() })
+
+	event, ok, err := stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected first event, err=%v ok=%v", err, ok)
+	}
+	if event.Kind != llm.StreamEventKindMessageStart {
+		t.Fatalf("unexpected kind %s", event.Kind)
+	}
+	event, ok, err = stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected delta event, err=%v ok=%v", err, ok)
+	}
+	if event.Kind != llm.StreamEventKindMessageDelta {
+		t.Fatalf("expected message_delta, got %s", event.Kind)
+	}
+	if string(event.Data) != `{"foo":"bar"}` {
+		t.Fatalf("unexpected delta data %s", event.Data)
+	}
+	event, ok, err = stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected stop event, err=%v ok=%v", err, ok)
+	}
+	if event.Kind != llm.StreamEventKindMessageStop {
+		t.Fatalf("expected message_stop, got %s", event.Kind)
+	}
+	if event.Usage == nil || event.Usage.TotalTokens != 3 {
+		t.Fatalf("missing usage %+v", event.Usage)
+	}
+	if stream.RequestID != "resp-ndjson" {
+		t.Fatalf("unexpected request id %s", stream.RequestID)
 	}
 }
 
