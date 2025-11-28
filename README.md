@@ -166,6 +166,13 @@ for {
         fmt.Printf("\nstop=%s usage=%+v\n", chunk.StopReason, *chunk.Usage)
     }
 }
+
+// Prefer aggregated output from the streaming endpoint? Use Collect.
+resp, err := client.LLM.Chat(sdk.ModelOpenAIGPT51).
+    User("Summarize RAG in 1 sentence").
+    RequestID("req-collect-1").
+    Collect(ctx)
+// resp.Content[0] contains the full text; usage/stop_reason/request_id are filled.
 ```
 
 ### Frontend Flow

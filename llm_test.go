@@ -7,9 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	llm "github.com/modelrelay/modelrelay/llmproxy"
 	"github.com/modelrelay/modelrelay/llmproxy/sse"
@@ -434,6 +436,75 @@ func TestChatStreamAdapterPopulatesMetadataFromMessage(t *testing.T) {
 	}
 	if chunk.ResponseID != "msg_nested" || chunk.Model != ParseModelID("openai/gpt-5.1") {
 		t.Fatalf("expected response metadata on stop, got %+v", chunk)
+	}
+}
+
+func TestChatStreamCollectAggregates(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set(requestIDHeader, "resp-collect")
+		flusher, _ := w.(http.Flusher)
+		fmt.Fprintf(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"resp_1\",\"model\":\"openai/gpt-5.1\"}}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"text\":\"Hel\"},\"message\":{\"id\":\"resp_1\",\"model\":\"openai/gpt-5.1\"}}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"text\":\"lo\"}}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_stop\ndata: {\"type\":\"message_stop\",\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":2,\"output_tokens\":3,\"total_tokens\":5},\"message\":{\"id\":\"resp_1\",\"model\":\"openai/gpt-5.1\"}}\n\n")
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	resp, err := client.LLM.Chat(ParseModelID("openai/gpt-5.1")).User("hi").Collect(ctx)
+	if err != nil {
+		t.Fatalf("collect: %v", err)
+	}
+	if len(resp.Content) != 1 || resp.Content[0] != "Hello" {
+		t.Fatalf("unexpected content %+v", resp.Content)
+	}
+	if resp.StopReason != ParseStopReason("end_turn") {
+		t.Fatalf("unexpected stop reason %+v", resp.StopReason)
+	}
+	if resp.Usage.TotalTokens != 5 {
+		t.Fatalf("unexpected usage %+v", resp.Usage)
+	}
+	if resp.Model != ParseModelID("openai/gpt-5.1") || resp.ID != "resp_1" || resp.RequestID != "resp-collect" {
+		t.Fatalf("unexpected metadata %+v", resp)
+	}
+}
+
+func TestSSEStreamCancelsOnContext(t *testing.T) {
+	clientConn, serverConn := net.Pipe()
+	ctx, cancel := context.WithCancel(context.Background())
+	stream := newSSEStream(ctx, clientConn, TelemetryHooks{})
+
+	type result struct {
+		ok  bool
+		err error
+	}
+	done := make(chan result, 1)
+	go func() {
+		_, ok, err := stream.Next()
+		done <- result{ok: ok, err: err}
+	}()
+
+	time.Sleep(20 * time.Millisecond)
+	cancel()
+	_ = serverConn.Close()
+	select {
+	case res := <-done:
+		if res.ok {
+			t.Fatalf("expected stream to end after cancel")
+		}
+	case <-time.After(200 * time.Millisecond):
+		t.Fatalf("stream did not cancel promptly")
 	}
 }
 

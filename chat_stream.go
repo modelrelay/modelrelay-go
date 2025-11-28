@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 
@@ -28,6 +29,67 @@ func newChatStream(handle *StreamHandle) *ChatStream {
 	return &ChatStream{handle: handle}
 }
 
+// Collect drains the stream into an aggregated ProxyResponse. It is pull-based
+// (no internal buffering beyond the current SSE frame) and respects context
+// cancellation. The stream is closed when the call returns.
+func (s *ChatStream) Collect(ctx context.Context) (*ProxyResponse, error) {
+	defer s.Close()
+
+	var builder strings.Builder
+	var usage *Usage
+	var stop StopReason
+	var model ModelID
+	var responseID string
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		chunk, ok, err := s.Next()
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			break
+		}
+
+		if chunk.ResponseID != "" {
+			responseID = chunk.ResponseID
+		}
+		if !chunk.Model.IsEmpty() {
+			model = chunk.Model
+		}
+		if chunk.TextDelta != "" {
+			builder.WriteString(chunk.TextDelta)
+		}
+		if chunk.StopReason != "" {
+			stop = chunk.StopReason
+		}
+		if chunk.Usage != nil {
+			usage = chunk.Usage
+		}
+	}
+
+	var content []string
+	if builder.Len() > 0 {
+		content = []string{builder.String()}
+	}
+	resp := &ProxyResponse{
+		ID:         responseID,
+		Model:      model,
+		Content:    content,
+		StopReason: stop,
+		RequestID:  s.RequestID(),
+	}
+	if usage != nil {
+		resp.Usage = *usage
+	}
+	return resp, nil
+}
+
 // RequestID echoes the X-ModelRelay-Chat-Request-Id header returned by the API.
 func (s *ChatStream) RequestID() string {
 	return s.handle.RequestID
@@ -38,7 +100,9 @@ func (s *ChatStream) Raw() *StreamHandle {
 	return s.handle
 }
 
-// Next advances the stream, returning false when the stream is complete.
+// Next advances the stream, returning false when the stream is complete. Calls
+// are pull-based: no internal buffering beyond the current SSE frame, so slow
+// consumers backpressure the server naturally.
 func (s *ChatStream) Next() (ChatStreamChunk, bool, error) {
 	event, ok, err := s.handle.Next()
 	if err != nil || !ok {

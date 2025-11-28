@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -67,6 +68,12 @@ func (s *StreamHandle) Next() (StreamEvent, bool, error) {
 // Close terminates the underlying stream.
 func (s *StreamHandle) Close() error {
 	return s.stream.Close()
+}
+
+// Collect drains the stream into an aggregated ProxyResponse using the same
+// semantics as ChatStream. The stream is closed when the call returns.
+func (s *StreamHandle) Collect(ctx context.Context) (*ProxyResponse, error) {
+	return newChatStream(s).Collect(ctx)
 }
 
 // ProxyOption customizes outgoing proxy requests (headers, request IDs, etc.).

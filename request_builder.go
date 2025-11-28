@@ -288,3 +288,13 @@ func (b *ChatBuilder) Stream(ctx context.Context) (*ChatStream, error) {
 	}
 	return newChatStream(handle), nil
 }
+
+// Collect opens a streaming chat request and aggregates the response, allowing
+// callers to use the streaming endpoint while receiving a blocking-style result.
+func (b *ChatBuilder) Collect(ctx context.Context) (*ProxyResponse, error) {
+	stream, err := b.Stream(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return stream.Collect(ctx)
+}

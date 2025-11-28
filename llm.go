@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 
 	llm "github.com/modelrelay/modelrelay/llmproxy"
 )
@@ -144,19 +145,32 @@ type sseStream struct {
 	body      io.ReadCloser
 	telemetry TelemetryHooks
 	closed    bool
+	closeOnce sync.Once
+	mu        sync.Mutex
+	done      chan struct{}
 }
 
 func newSSEStream(ctx context.Context, body io.ReadCloser, telemetry TelemetryHooks) *sseStream {
-	return &sseStream{
+	stream := &sseStream{
 		ctx:       ctx,
 		reader:    bufio.NewReader(body),
 		body:      body,
 		telemetry: telemetry,
+		done:      make(chan struct{}),
 	}
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = stream.Close()
+		case <-stream.done:
+			return
+		}
+	}()
+	return stream
 }
 
 func (s *sseStream) Next() (StreamEvent, bool, error) {
-	if s.closed {
+	if s.isClosed() {
 		return StreamEvent{}, false, nil
 	}
 	for {
@@ -181,11 +195,24 @@ func (s *sseStream) Next() (StreamEvent, bool, error) {
 }
 
 func (s *sseStream) Close() error {
-	if s.closed {
-		return nil
-	}
-	s.closed = true
-	return s.body.Close()
+	var err error
+	s.closeOnce.Do(func() {
+		s.mu.Lock()
+		s.closed = true
+		s.mu.Unlock()
+		close(s.done)
+		if cwe, ok := s.body.(interface{ CloseWithError(error) error }); ok {
+			_ = cwe.CloseWithError(context.Canceled)
+		}
+		err = s.body.Close()
+	})
+	return err
+}
+
+func (s *sseStream) isClosed() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.closed
 }
 
 func (s *sseStream) readEvent() (string, []byte, error) {
