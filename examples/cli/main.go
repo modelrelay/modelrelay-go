@@ -17,7 +17,7 @@ import (
 
 func main() {
 	baseURL := flag.String("base-url", "", "ModelRelay API base URL override")
-	model := flag.String("model", "openai/gpt-4o-mini", "LLM model identifier")
+	model := flag.String("model", "openai/gpt-5.1", "LLM model identifier")
 	maxTokens := flag.Int("max-tokens", 256, "Maximum tokens to request")
 	requestID := flag.String("request-id", "", "Optional X-ModelRelay-Chat-Request-Id value")
 	env := flag.String("env", "production", "Target environment: production|staging|sandbox")

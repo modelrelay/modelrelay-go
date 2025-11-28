@@ -25,29 +25,35 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
-	stream, err := client.LLM.ProxyStream(ctx, sdk.ProxyRequest{
-		Model:     sdk.ModelOpenAIGPT4oMini,
-		MaxTokens: 64,
-		Messages: []llm.ProxyMessage{
-			{Role: "system", Content: "You are a witty assistant."},
-			{Role: "user", Content: "Tell me a short joke"},
-		},
-		Metadata: map[string]string{"tenant": "example"},
-	}, sdk.WithRequestID("example-stream-1"))
+	stream, err := client.LLM.Chat(sdk.ModelOpenAIGPT51).
+		MaxTokens(64).
+		System("You are a witty assistant.").
+		User("Tell me a short joke").
+		MetadataEntry("tenant", "example").
+		RequestID("example-stream-1").
+		Stream(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer stream.Close()
 
 	for {
-		event, ok, err := stream.Next()
+		chunk, ok, err := stream.Next()
 		if err != nil {
 			log.Fatal(err)
 		}
 		if !ok {
 			break
 		}
-		log.Printf("%s: %s", event.Kind, string(event.Data))
+		if chunk.TextDelta != "" {
+			log.Printf("delta: %s", chunk.TextDelta)
+			continue
+		}
+		if chunk.Type == llm.StreamEventKindMessageStop && chunk.Usage != nil {
+			log.Printf("stop: reason=%s usage=%+v", chunk.StopReason, *chunk.Usage)
+			continue
+		}
+		log.Printf("event=%s data=%s", chunk.Type, string(chunk.Raw.Data))
 	}
-	log.Printf("request id: %s", stream.RequestID)
+	log.Printf("request id: %s", stream.RequestID())
 }

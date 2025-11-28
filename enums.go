@@ -153,6 +153,7 @@ type ModelID string
 const (
 	ModelOpenAIGPT4o                   ModelID = "openai/gpt-4o"
 	ModelOpenAIGPT4oMini               ModelID = "openai/gpt-4o-mini"
+	ModelOpenAIGPT51                   ModelID = "openai/gpt-5.1"
 	ModelAnthropicClaude35HaikuLatest  ModelID = "anthropic/claude-3-5-haiku-latest"
 	ModelAnthropicClaude35SonnetLatest ModelID = "anthropic/claude-3-5-sonnet-latest"
 	ModelAnthropicClaude35Haiku        ModelID = "anthropic/claude-3.5-haiku"
@@ -171,6 +172,8 @@ func ParseModelID(val string) ModelID {
 		return ModelOpenAIGPT4o
 	case "openai/gpt-4o-mini":
 		return ModelOpenAIGPT4oMini
+	case "openai/gpt-5.1":
+		return ModelOpenAIGPT51
 	case "anthropic/claude-3-5-haiku-latest":
 		return ModelAnthropicClaude35HaikuLatest
 	case "anthropic/claude-3-5-sonnet-latest":
@@ -191,7 +194,7 @@ func ParseModelID(val string) ModelID {
 // IsOther reports whether the model is not one of the built-in constants.
 func (m ModelID) IsOther() bool {
 	switch m {
-	case ModelOpenAIGPT4o, ModelOpenAIGPT4oMini, ModelAnthropicClaude35HaikuLatest,
+	case ModelOpenAIGPT4o, ModelOpenAIGPT4oMini, ModelOpenAIGPT51, ModelAnthropicClaude35HaikuLatest,
 		ModelAnthropicClaude35SonnetLatest, ModelAnthropicClaude35Haiku, ModelGrok2,
 		ModelGrok4Fast, ModelEcho1:
 		return false

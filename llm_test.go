@@ -251,6 +251,192 @@ func TestProxyOptionsMergeDefaults(t *testing.T) {
 	})
 }
 
+func TestChatBuilderBlocking(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get(requestIDHeader); got != "builder-req" {
+			t.Fatalf("expected request id header, got %s", got)
+		}
+		if got := r.Header.Get("X-Debug"); got != "true" {
+			t.Fatalf("expected debug header, got %s", got)
+		}
+		var payload proxyRequestPayload
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode payload: %v", err)
+		}
+		if payload.Provider != "openai" || payload.Model != "demo" {
+			t.Fatalf("unexpected provider/model %+v", payload)
+		}
+		if payload.MaxTokens != 32 || payload.Temperature == nil || *payload.Temperature != 0.4 {
+			t.Fatalf("unexpected params %+v", payload)
+		}
+		if len(payload.Messages) != 2 || payload.Messages[0].Role != "system" || payload.Messages[1].Role != "user" {
+			t.Fatalf("unexpected messages %+v", payload.Messages)
+		}
+		if len(payload.Stop) != 1 || payload.Stop[0] != "DONE" {
+			t.Fatalf("unexpected stop %+v", payload.Stop)
+		}
+		if payload.Metadata["trace_id"] != "abc123" {
+			t.Fatalf("unexpected metadata %+v", payload.Metadata)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(requestIDHeader, "resp-builder")
+		json.NewEncoder(w).Encode(llm.ProxyResponse{ID: "resp_abc", Provider: "openai", Model: "demo", Content: []string{"ok"}, StopReason: "end_turn", Usage: llm.Usage{TotalTokens: 3}})
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	resp, err := client.LLM.Chat(ParseModelID("demo")).
+		Provider(ParseProviderID("openai")).
+		MaxTokens(32).
+		Temperature(0.4).
+		System("you are helpful").
+		User("hi there").
+		Stop("DONE").
+		MetadataEntry("trace_id", "abc123").
+		Header("X-Debug", "true").
+		RequestID("builder-req").
+		Send(context.Background())
+	if err != nil {
+		t.Fatalf("chat builder send: %v", err)
+	}
+	if resp.RequestID != "resp-builder" {
+		t.Fatalf("unexpected echoed request id %s", resp.RequestID)
+	}
+	if resp.StopReason != ParseStopReason("end_turn") {
+		t.Fatalf("unexpected stop reason %+v", resp.StopReason)
+	}
+}
+
+func TestChatStreamAdapter(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set(requestIDHeader, "resp-chat-stream")
+		flusher, _ := w.(http.Flusher)
+		fmt.Fprintf(w, "event: message_start\ndata: {\"response_id\":\"resp_1\",\"model\":\"demo\"}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_delta\ndata: {\"response_id\":\"resp_1\",\"delta\":\"Hel\"}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_delta\ndata: {\"response_id\":\"resp_1\",\"delta\":{\"text\":\"lo\"}}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_stop\ndata: {\"response_id\":\"resp_1\",\"model\":\"demo\",\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2,\"total_tokens\":3}}\n\n")
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	stream, err := client.LLM.Chat(ParseModelID("demo")).
+		User("ping").
+		RequestID("stream-builder").
+		Stream(context.Background())
+	if err != nil {
+		t.Fatalf("chat stream: %v", err)
+	}
+	t.Cleanup(func() { stream.Close() })
+
+	if stream.RequestID() != "resp-chat-stream" {
+		t.Fatalf("unexpected request id %s", stream.RequestID())
+	}
+
+	chunk, ok, err := stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected start event err=%v ok=%v", err, ok)
+	}
+	if chunk.Type != llm.StreamEventKindMessageStart || chunk.Raw.Kind != llm.StreamEventKindMessageStart {
+		t.Fatalf("unexpected start chunk %+v", chunk)
+	}
+
+	chunk, ok, err = stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected first delta err=%v ok=%v", err, ok)
+	}
+	if chunk.TextDelta != "Hel" || chunk.ResponseID != "resp_1" {
+		t.Fatalf("unexpected delta chunk %+v", chunk)
+	}
+
+	chunk, ok, err = stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected second delta err=%v ok=%v", err, ok)
+	}
+	if chunk.TextDelta != "lo" {
+		t.Fatalf("expected nested text delta, got %+v", chunk)
+	}
+
+	chunk, ok, err = stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected stop event err=%v ok=%v", err, ok)
+	}
+	if chunk.StopReason != ParseStopReason("end_turn") {
+		t.Fatalf("unexpected stop reason %+v", chunk)
+	}
+	if chunk.Usage == nil || chunk.Usage.TotalTokens != 3 {
+		t.Fatalf("expected usage in stop chunk %+v", chunk)
+	}
+
+	_, ok, err = stream.Next()
+	if err != nil {
+		t.Fatalf("final event err=%v", err)
+	}
+	if ok {
+		t.Fatalf("expected end of stream")
+	}
+}
+
+func TestChatStreamAdapterPopulatesMetadataFromMessage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set(requestIDHeader, "resp-msg-metadata")
+		flusher, _ := w.(http.Flusher)
+		fmt.Fprintf(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_nested\",\"model\":\"openai/gpt-5.1\"}}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"text\":\"hi\"},\"message\":{\"id\":\"msg_nested\",\"model\":\"openai/gpt-5.1\"}}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_stop\ndata: {\"type\":\"message_stop\",\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":2,\"output_tokens\":3,\"total_tokens\":5},\"message\":{\"id\":\"msg_nested\",\"model\":\"openai/gpt-5.1\"}}\n\n")
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	stream, err := client.LLM.Chat(ParseModelID("openai/gpt-5.1")).User("hi").Stream(context.Background())
+	if err != nil {
+		t.Fatalf("chat stream: %v", err)
+	}
+	t.Cleanup(func() { stream.Close() })
+
+	chunk, ok, err := stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected start chunk err=%v ok=%v", err, ok)
+	}
+	if chunk.ResponseID != "msg_nested" || chunk.Model != ParseModelID("openai/gpt-5.1") {
+		t.Fatalf("expected response metadata, got %+v", chunk)
+	}
+
+	_, ok, err = stream.Next() // delta
+	if err != nil || !ok {
+		t.Fatalf("expected delta chunk err=%v ok=%v", err, ok)
+	}
+
+	chunk, ok, err = stream.Next() // stop
+	if err != nil || !ok {
+		t.Fatalf("expected stop chunk err=%v ok=%v", err, ok)
+	}
+	if chunk.StopReason != ParseStopReason("end_turn") || chunk.Usage == nil || chunk.Usage.TotalTokens != 5 {
+		t.Fatalf("unexpected stop chunk %+v", chunk)
+	}
+	if chunk.ResponseID != "msg_nested" || chunk.Model != ParseModelID("openai/gpt-5.1") {
+		t.Fatalf("expected response metadata on stop, got %+v", chunk)
+	}
+}
+
 func TestUsageSummary(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/llm/usage" {

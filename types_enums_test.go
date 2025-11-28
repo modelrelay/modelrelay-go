@@ -33,6 +33,10 @@ func TestProviderAndModelParsing(t *testing.T) {
 	if model != ModelOpenAIGPT4oMini {
 		t.Fatalf("expected gpt-4o-mini got %s", model)
 	}
+	latest := ParseModelID("openai/gpt-5.1")
+	if latest != ModelOpenAIGPT51 {
+		t.Fatalf("expected gpt-5.1 got %s", latest)
+	}
 	customModel := ParseModelID("my/model")
 	if !customModel.IsOther() || customModel.String() != "my/model" {
 		t.Fatalf("expected custom model preserved, got %q", customModel)
@@ -45,12 +49,12 @@ func TestProxyRequestBuilderValidation(t *testing.T) {
 		t.Fatalf("expected missing model validation error")
 	}
 
-	_, err = NewProxyRequest(ParseModelID("openai/gpt-4o-mini"), []llm.ProxyMessage{})
+	_, err = NewProxyRequest(ParseModelID("openai/gpt-5.1"), []llm.ProxyMessage{})
 	if err == nil {
 		t.Fatalf("expected validation error for empty messages")
 	}
 
-	req, err := NewProxyRequestBuilder(ModelOpenAIGPT4oMini).
+	req, err := NewProxyRequestBuilder(ModelOpenAIGPT51).
 		User("hello").
 		MetadataEntry("trace_id", "abc").
 		Build()

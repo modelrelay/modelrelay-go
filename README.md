@@ -69,7 +69,7 @@ custom IDs safely:
 ```go
 req := sdk.ProxyRequest{
     Provider: sdk.ProviderOpenAI,
-    Model:    sdk.ModelOpenAIGPT4oMini,
+    Model:    sdk.ModelOpenAIGPT51,
     Messages: []llm.ProxyMessage{{Role: "user", Content: "hi"}},
 }
 resp, _ := client.LLM.ProxyMessage(ctx, req)
@@ -104,6 +104,46 @@ providers emit them, and backfills `total_tokens` if the provider omits it.
 The CLI in `examples/apikeys` uses the same calls. Provide `MODELRELAY_EMAIL` and
 `MODELRELAY_PASSWORD` in the environment to log in, then run `go run ./examples/apikeys`
 to create a project key.
+
+### Chat builders & streaming adapter
+
+Fluent builders mirror the TS/Rust ergonomics for both blocking and streaming
+calls while keeping access to the underlying SSE events when needed:
+
+```go
+// Blocking request with stop sequences for fence suppression
+resp, err := client.LLM.Chat(sdk.ModelOpenAIGPT51).
+    Provider(sdk.ProviderOpenAI).
+    System("You are a concise assistant.").
+    User("Explain retrieval-augmented generation in one sentence").
+    StopSequences("\n\n```").
+    Metadata(map[string]string{"trace_id": "abc123"}).
+    RequestID("req-chat-123").
+    Send(ctx)
+
+// Streaming adapter emits text deltas and the final usage/stop_reason,
+// while chunk.Raw exposes the original StreamEvent payload.
+stream, _ := client.LLM.Chat(sdk.ModelOpenAIGPT51).
+    User("Tell me a joke about Go SDKs").
+    MaxTokens(64).
+    RequestID("req-stream-1").
+    Stream(ctx)
+defer stream.Close()
+
+for {
+    chunk, ok, err := stream.Next()
+    if err != nil || !ok {
+        break
+    }
+    if chunk.TextDelta != "" {
+        fmt.Print(chunk.TextDelta)
+        continue
+    }
+    if chunk.Type == llm.StreamEventKindMessageStop && chunk.Usage != nil {
+        fmt.Printf("\nstop=%s usage=%+v\n", chunk.StopReason, *chunk.Usage)
+    }
+}
+```
 
 ### Frontend Flow
 
