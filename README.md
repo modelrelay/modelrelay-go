@@ -1,11 +1,6 @@
 # ModelRelay SDK
 
-The `sdk` module is a thin Go client around the ModelRelay API. It composes the
-shared primitives from `billingproxy` and `llmproxy` into a high-level interface for:
-
-- Authentication (login, refresh, API key management).
-- End-user billing (checkout sessions, subscriptions, usage tracking).
-- LLM proxying (streaming chat completions, unified types).
+The `sdk` module is a thin Go client around the ModelRelay API for **consuming** LLM and usage endpoints.
 
 ## Installation
 
@@ -58,7 +53,6 @@ The SDK and CLI examples respect standard environment variables:
 See `examples/` for runnable code:
 
 - `examples/cli`: Interactive chat CLI using the streaming proxy.
-- `examples/apikeys`: API key management.
 
 ### Typed models, providers, and stop reasons
 
