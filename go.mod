@@ -4,9 +4,9 @@ go 1.25.4
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/modelrelay/modelrelay/billingproxy v0.0.0-20251119210239-1133abe831c1
-	github.com/modelrelay/modelrelay/cloud v0.0.0-20251119210239-1133abe831c1
-	github.com/modelrelay/modelrelay/llmproxy v0.0.0-20251119210239-1133abe831c1
+	github.com/modelrelay/modelrelay/billing v0.0.0-20251119210239-1133abe831c1
+	github.com/modelrelay/modelrelay/platform v0.0.0-20251119210239-1133abe831c1
+	github.com/modelrelay/modelrelay/providers v0.0.0-20251119210239-1133abe831c1
 	go.opentelemetry.io/otel/trace v1.38.0
 )
 
@@ -20,8 +20,8 @@ require (
 	golang.org/x/sys v0.38.0 // indirect
 )
 
-replace github.com/modelrelay/modelrelay/billingproxy => ../../billingproxy
+replace github.com/modelrelay/modelrelay/billing => ../../billing
 
-replace github.com/modelrelay/modelrelay/llmproxy => ../../llmproxy
+replace github.com/modelrelay/modelrelay/providers => ../../providers
 
-replace github.com/modelrelay/modelrelay/cloud => ../../cloud
+replace github.com/modelrelay/modelrelay/platform => ../../platform

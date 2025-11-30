@@ -1,7 +1,7 @@
 package sdk
 
 import (
-	llm "github.com/modelrelay/modelrelay/llmproxy"
+	llm "github.com/modelrelay/modelrelay/providers"
 	"testing"
 )
 

@@ -1,6 +1,6 @@
 package sdk
 
-import llm "github.com/modelrelay/modelrelay/llmproxy"
+import llm "github.com/modelrelay/modelrelay/providers"
 
 // StreamEvent mirrors SSE events emitted by /llm/proxy with typed metadata.
 type StreamEvent struct {

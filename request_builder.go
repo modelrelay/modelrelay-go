@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	llm "github.com/modelrelay/modelrelay/llmproxy"
+	llm "github.com/modelrelay/modelrelay/providers"
 )
 
 // NewProxyRequest constructs a validated request with the required fields set.

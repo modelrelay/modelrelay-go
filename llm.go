@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	llm "github.com/modelrelay/modelrelay/llmproxy"
+	llm "github.com/modelrelay/modelrelay/providers"
 )
 
 // LLMClient proxies chat completions through the SaaS API.

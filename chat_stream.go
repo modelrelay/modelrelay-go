@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	llm "github.com/modelrelay/modelrelay/llmproxy"
+	llm "github.com/modelrelay/modelrelay/providers"
 )
 
 // ChatStream wraps a StreamHandle and yields normalized chat deltas while

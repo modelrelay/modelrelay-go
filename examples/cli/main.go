@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	llm "github.com/modelrelay/modelrelay/llmproxy"
+	llm "github.com/modelrelay/modelrelay/providers"
 	"github.com/modelrelay/modelrelay/sdk/go"
 )
 
