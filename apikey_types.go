@@ -5,6 +5,7 @@ import "time"
 // APIKey describes the API key payload returned by the SaaS API.
 type APIKey struct {
 	ID          string     `json:"id"`
+	ProjectID   string     `json:"project_id"`
 	Label       string     `json:"label"`
 	Kind        string     `json:"kind"`
 	CreatedAt   time.Time  `json:"created_at"`
