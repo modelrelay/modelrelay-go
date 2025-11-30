@@ -14,7 +14,7 @@ import (
 // FrontendTokenRequest represents the payload for POST /auth/frontend-token.
 type FrontendTokenRequest struct {
 	PublishableKey string `json:"publishable_key"`
-	UserID         string `json:"user_id,omitempty"`
+	CustomerID     string `json:"customer_id,omitempty"`
 	DeviceID       string `json:"device_id,omitempty"`
 	TTLSeconds     int64  `json:"ttl_seconds,omitempty"`
 }

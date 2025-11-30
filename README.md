@@ -178,8 +178,8 @@ client, _ := sdk.NewClient(sdk.Config{
     APIKey: os.Getenv("MODELRELAY_PUBLISHABLE_KEY"), // mr_pk_xxx
 })
 
-// Exchange publishable key + user ID for a short-lived bearer token
+// Exchange publishable key + customer ID for a short-lived bearer token
 token, err := client.Auth.FrontendToken(context.Background(), sdk.FrontendTokenRequest{
     PublishableKey: os.Getenv("MODELRELAY_PUBLISHABLE_KEY"),
-    UserID:         "user-123",
+    CustomerID:     "customer-123",
 })
