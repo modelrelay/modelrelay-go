@@ -156,6 +156,7 @@ const (
 	ModelOpenAIGPT51                   ModelID = "openai/gpt-5.1"
 	ModelAnthropicClaude35HaikuLatest  ModelID = "anthropic/claude-3-5-haiku-latest"
 	ModelAnthropicClaude35SonnetLatest ModelID = "anthropic/claude-3-5-sonnet-latest"
+	ModelAnthropicClaudeOpus45         ModelID = "anthropic/claude-opus-4-5-20251101"
 	ModelAnthropicClaude35Haiku        ModelID = "anthropic/claude-3.5-haiku"
 	ModelGrok2                         ModelID = "grok-2"
 	ModelGrok4Fast                     ModelID = "grok-4-fast"
@@ -178,6 +179,8 @@ func ParseModelID(val string) ModelID {
 		return ModelAnthropicClaude35HaikuLatest
 	case "anthropic/claude-3-5-sonnet-latest":
 		return ModelAnthropicClaude35SonnetLatest
+	case "anthropic/claude-opus-4-5-20251101":
+		return ModelAnthropicClaudeOpus45
 	case "anthropic/claude-3.5-haiku":
 		return ModelAnthropicClaude35Haiku
 	case "grok-2":
@@ -195,8 +198,8 @@ func ParseModelID(val string) ModelID {
 func (m ModelID) IsOther() bool {
 	switch m {
 	case ModelOpenAIGPT4o, ModelOpenAIGPT4oMini, ModelOpenAIGPT51, ModelAnthropicClaude35HaikuLatest,
-		ModelAnthropicClaude35SonnetLatest, ModelAnthropicClaude35Haiku, ModelGrok2,
-		ModelGrok4Fast, ModelEcho1:
+		ModelAnthropicClaude35SonnetLatest, ModelAnthropicClaudeOpus45, ModelAnthropicClaude35Haiku,
+		ModelGrok2, ModelGrok4Fast, ModelEcho1:
 		return false
 	default:
 		return strings.TrimSpace(string(m)) != ""
