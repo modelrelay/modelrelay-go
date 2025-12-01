@@ -8,6 +8,40 @@ import (
 	llm "github.com/modelrelay/modelrelay/providers"
 )
 
+// MessageDeltaPayload is the typed structure for message_delta events.
+type MessageDeltaPayload struct {
+	Type  string              `json:"type"`
+	Delta MessageDeltaContent `json:"delta,omitempty"`
+	Usage *Usage              `json:"usage,omitempty"`
+}
+
+// MessageDeltaContent contains the text delta content.
+type MessageDeltaContent struct {
+	Type    string `json:"type"`
+	Text    string `json:"text"`
+	Content string `json:"content,omitempty"`
+}
+
+// MessageStartPayload is the typed structure for message_start events.
+type MessageStartPayload struct {
+	Type    string               `json:"type"`
+	Message *MessageStartMessage `json:"message,omitempty"`
+}
+
+// MessageStartMessage contains response metadata in start events.
+type MessageStartMessage struct {
+	ID    string `json:"id,omitempty"`
+	Model string `json:"model,omitempty"`
+}
+
+// MessageStopPayload is the typed structure for message_stop events.
+type MessageStopPayload struct {
+	Type       string               `json:"type"`
+	StopReason string               `json:"stop_reason"`
+	Usage      *Usage               `json:"usage,omitempty"`
+	Message    *MessageStartMessage `json:"message,omitempty"`
+}
+
 // ChatStream wraps a StreamHandle and yields normalized chat deltas while
 // preserving access to the underlying raw events.
 type ChatStream struct {
@@ -126,6 +160,51 @@ func mapChatStreamChunk(event StreamEvent) ChatStreamChunk {
 		Usage:      event.Usage,
 	}
 
+	// Try typed parsing based on event kind
+	switch event.Kind {
+	case llm.StreamEventKindMessageStart:
+		if start, ok := tryParseMessageStart(event.Data); ok {
+			if chunk.ResponseID == "" && start.Message != nil {
+				chunk.ResponseID = start.Message.ID
+			}
+			if chunk.Model.IsEmpty() && start.Message != nil {
+				chunk.Model = ParseModelID(start.Message.Model)
+			}
+			return chunk
+		}
+	case llm.StreamEventKindMessageDelta:
+		if delta, ok := tryParseMessageDelta(event.Data); ok {
+			if delta.Delta.Text != "" {
+				chunk.TextDelta = delta.Delta.Text
+			} else if delta.Delta.Content != "" {
+				chunk.TextDelta = delta.Delta.Content
+			}
+			if chunk.Usage == nil && delta.Usage != nil {
+				chunk.Usage = delta.Usage
+			}
+			return chunk
+		}
+	case llm.StreamEventKindMessageStop:
+		if stop, ok := tryParseMessageStop(event.Data); ok {
+			if chunk.StopReason == "" {
+				chunk.StopReason = ParseStopReason(stop.StopReason)
+			}
+			if chunk.Usage == nil && stop.Usage != nil {
+				chunk.Usage = stop.Usage
+			}
+			if stop.Message != nil {
+				if chunk.ResponseID == "" {
+					chunk.ResponseID = stop.Message.ID
+				}
+				if chunk.Model.IsEmpty() {
+					chunk.Model = ParseModelID(stop.Message.Model)
+				}
+			}
+			return chunk
+		}
+	}
+
+	// Fallback to dynamic parsing for unknown/varied formats
 	payload := parsePayload(event.Data)
 
 	if chunk.ResponseID == "" {
@@ -222,6 +301,7 @@ func extractTextDeltaPayload(payload map[string]any) string {
 	if payload == nil {
 		return ""
 	}
+	// Try typed delta extraction first
 	if deltaVal, ok := payload["delta"]; ok {
 		switch v := deltaVal.(type) {
 		case string:
@@ -235,6 +315,7 @@ func extractTextDeltaPayload(payload map[string]any) string {
 			}
 		}
 	}
+	// Fallback paths for other formats
 	if text, ok := payload["text_delta"].(string); ok {
 		return text
 	}
@@ -242,4 +323,49 @@ func extractTextDeltaPayload(payload map[string]any) string {
 		return text
 	}
 	return ""
+}
+
+// tryParseMessageDelta attempts typed parsing of delta event data.
+func tryParseMessageDelta(data []byte) (*MessageDeltaPayload, bool) {
+	if len(data) == 0 {
+		return nil, false
+	}
+	var payload MessageDeltaPayload
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, false
+	}
+	if payload.Type == "" {
+		return nil, false
+	}
+	return &payload, true
+}
+
+// tryParseMessageStart attempts typed parsing of start event data.
+func tryParseMessageStart(data []byte) (*MessageStartPayload, bool) {
+	if len(data) == 0 {
+		return nil, false
+	}
+	var payload MessageStartPayload
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, false
+	}
+	if payload.Type == "" {
+		return nil, false
+	}
+	return &payload, true
+}
+
+// tryParseMessageStop attempts typed parsing of stop event data.
+func tryParseMessageStop(data []byte) (*MessageStopPayload, bool) {
+	if len(data) == 0 {
+		return nil, false
+	}
+	var payload MessageStopPayload
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, false
+	}
+	if payload.Type == "" {
+		return nil, false
+	}
+	return &payload, true
 }
