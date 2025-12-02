@@ -56,29 +56,23 @@ func TestBearerTokenDuplication(t *testing.T) {
 	})
 }
 
-func TestEnvironmentPresets(t *testing.T) {
-	client, err := NewClient(Config{Environment: EnvironmentSandbox, APIKey: "test"})
-	if err != nil {
-		t.Fatalf("NewClient failed: %v", err)
-	}
-	if client.baseURL != sandboxBaseURL {
-		t.Fatalf("expected sandbox base url %s got %s", sandboxBaseURL, client.baseURL)
-	}
-
-	client, err = NewClient(Config{Environment: EnvironmentStaging, APIKey: "test"})
-	if err != nil {
-		t.Fatalf("NewClient failed: %v", err)
-	}
-	if client.baseURL != stagingBaseURL {
-		t.Fatalf("expected staging base url %s got %s", stagingBaseURL, client.baseURL)
-	}
-
-	client, err = NewClient(Config{BaseURL: "https://override.example.com/api/v1", Environment: EnvironmentSandbox, APIKey: "test"})
+func TestBaseURLOverride(t *testing.T) {
+	client, err := NewClient(Config{BaseURL: "https://override.example.com/api/v1", APIKey: "test"})
 	if err != nil {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 	if client.baseURL != "https://override.example.com/api/v1" {
-		t.Fatalf("base url should prefer explicit override, got %s", client.baseURL)
+		t.Fatalf("base url should use explicit override, got %s", client.baseURL)
+	}
+}
+
+func TestDefaultBaseURL(t *testing.T) {
+	client, err := NewClient(Config{APIKey: "test"})
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	if client.baseURL != defaultBaseURL {
+		t.Fatalf("expected default base url %s got %s", defaultBaseURL, client.baseURL)
 	}
 }
 
@@ -206,16 +200,6 @@ func TestNewClientWithKey(t *testing.T) {
 		_, _, err = client.send(req, nil, nil)
 		if err != nil {
 			t.Errorf("Request failed: %v", err)
-		}
-	})
-
-	t.Run("WithEnvironment", func(t *testing.T) {
-		client, err := NewClientWithKey("test", WithEnvironment(EnvironmentStaging))
-		if err != nil {
-			t.Fatalf("NewClientWithKey failed: %v", err)
-		}
-		if client.baseURL != stagingBaseURL {
-			t.Fatalf("expected staging URL %s, got %s", stagingBaseURL, client.baseURL)
 		}
 	})
 }

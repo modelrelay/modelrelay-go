@@ -17,38 +17,15 @@ import (
 
 const (
 	defaultBaseURL    = "https://api.modelrelay.ai/api/v1"
-	stagingBaseURL    = "https://api-stg.modelrelay.ai/api/v1"
-	sandboxBaseURL    = "https://api.sandbox.modelrelay.ai/api/v1"
 	defaultClientHead = "modelrelay-go/dev"
 	defaultConnectTO  = 5 * time.Second
 	defaultRequestTO  = 60 * time.Second
 )
 
-// Environment presets for well-known API hosts.
-type Environment string
-
-const (
-	EnvironmentProduction Environment = "production"
-	EnvironmentStaging    Environment = "staging"
-	EnvironmentSandbox    Environment = "sandbox"
-)
-
-func (e Environment) baseURL() string {
-	switch e {
-	case EnvironmentStaging:
-		return stagingBaseURL
-	case EnvironmentSandbox:
-		return sandboxBaseURL
-	default:
-		return defaultBaseURL
-	}
-}
-
 // Config wires authentication, base URL, headers/metadata defaults, and telemetry for the API client.
 // Deprecated: Use NewClientWithKey or NewClientWithToken with functional options instead.
 type Config struct {
 	BaseURL         string
-	Environment     Environment
 	APIKey          string
 	AccessToken     string
 	HTTPClient      *http.Client
@@ -69,7 +46,6 @@ type Option func(*clientOptions)
 
 type clientOptions struct {
 	baseURL         string
-	environment     Environment
 	httpClient      *http.Client
 	telemetry       TelemetryHooks
 	userAgent       string
@@ -81,14 +57,9 @@ type clientOptions struct {
 	retry           *RetryConfig
 }
 
-// WithBaseURL sets a custom API base URL (overrides Environment).
+// WithBaseURL sets a custom API base URL.
 func WithBaseURL(url string) Option {
 	return func(o *clientOptions) { o.baseURL = url }
-}
-
-// WithEnvironment selects a preset environment (production, staging, sandbox).
-func WithEnvironment(env Environment) Option {
-	return func(o *clientOptions) { o.environment = env }
 }
 
 // WithHTTPClient sets a custom HTTP client for requests.
@@ -165,7 +136,7 @@ type Client struct {
 // Example:
 //
 //	client, err := sdk.NewClientWithKey("mr_sk_...")
-//	client, err := sdk.NewClientWithKey("mr_sk_...", sdk.WithEnvironment(sdk.EnvironmentStaging))
+//	client, err := sdk.NewClientWithKey("mr_sk_...", sdk.WithBaseURL("https://custom.api.com/api/v1"))
 func NewClientWithKey(key string, opts ...Option) (*Client, error) {
 	if strings.TrimSpace(key) == "" {
 		return nil, ConfigError{Reason: "api key is required"}
@@ -203,7 +174,7 @@ func applyOptions(opts []Option) clientOptions {
 func newClientFromOptions(apiKey, accessToken string, opts clientOptions) (*Client, error) {
 	baseURL := opts.baseURL
 	if baseURL == "" {
-		baseURL = opts.environment.baseURL()
+		baseURL = defaultBaseURL
 	}
 	normalized, err := normalizeBaseURL(baseURL)
 	if err != nil {
@@ -270,7 +241,6 @@ func NewClient(cfg Config) (*Client, error) {
 	// Map Config to clientOptions and delegate
 	opts := clientOptions{
 		baseURL:         cfg.BaseURL,
-		environment:     cfg.Environment,
 		httpClient:      cfg.HTTPClient,
 		telemetry:       cfg.Telemetry,
 		userAgent:       cfg.UserAgent,

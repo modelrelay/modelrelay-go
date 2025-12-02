@@ -20,7 +20,6 @@ func main() {
 	model := flag.String("model", "openai/gpt-5.1", "LLM model identifier")
 	maxTokens := flag.Int("max-tokens", 256, "Maximum tokens to request")
 	requestID := flag.String("request-id", "", "Optional X-ModelRelay-Chat-Request-Id value")
-	env := flag.String("env", "production", "Target environment: production|staging|sandbox")
 	flag.Parse()
 
 	prompt := strings.Join(flag.Args(), " ")
@@ -41,12 +40,6 @@ func main() {
 		sdk.WithClientHeader("modelrelay-cli/1.0"),
 		sdk.WithDefaultMetadata(map[string]string{"cli": "true"}),
 		sdk.WithDefaultHeaders(http.Header{"X-Debug": []string{"cli-default"}}),
-	}
-	switch strings.ToLower(strings.TrimSpace(*env)) {
-	case "staging":
-		opts = append(opts, sdk.WithEnvironment(sdk.EnvironmentStaging))
-	case "sandbox":
-		opts = append(opts, sdk.WithEnvironment(sdk.EnvironmentSandbox))
 	}
 	if *baseURL != "" {
 		opts = append(opts, sdk.WithBaseURL(*baseURL))
