@@ -36,33 +36,33 @@ func main() {
 		log.Fatal("MODELRELAY_API_KEY is not set")
 	}
 
-	cfg := sdk.Config{
-		APIKey:          apiKey,
-		ClientHeader:    "modelrelay-cli/1.0",
-		DefaultMetadata: map[string]string{"cli": "true"},
-		DefaultHeaders:  http.Header{"X-Debug": []string{"cli-default"}},
+	// Build client options
+	opts := []sdk.Option{
+		sdk.WithClientHeader("modelrelay-cli/1.0"),
+		sdk.WithDefaultMetadata(map[string]string{"cli": "true"}),
+		sdk.WithDefaultHeaders(http.Header{"X-Debug": []string{"cli-default"}}),
 	}
 	switch strings.ToLower(strings.TrimSpace(*env)) {
 	case "staging":
-		cfg.Environment = sdk.EnvironmentStaging
+		opts = append(opts, sdk.WithEnvironment(sdk.EnvironmentStaging))
 	case "sandbox":
-		cfg.Environment = sdk.EnvironmentSandbox
+		opts = append(opts, sdk.WithEnvironment(sdk.EnvironmentSandbox))
 	}
 	if *baseURL != "" {
-		cfg.BaseURL = *baseURL
+		opts = append(opts, sdk.WithBaseURL(*baseURL))
 	}
 
-	client, err := sdk.NewClient(cfg)
+	client, err := sdk.NewClientWithKey(apiKey, opts...)
 	if err != nil {
 		log.Fatalf("new client: %v", err)
 	}
 
-	opts := make([]sdk.ProxyOption, 0, 2)
+	proxyOpts := make([]sdk.ProxyOption, 0, 3)
 	if *requestID != "" {
-		opts = append(opts, sdk.WithRequestID(*requestID))
+		proxyOpts = append(proxyOpts, sdk.WithRequestID(*requestID))
 	}
-	opts = append(opts, sdk.WithHeader("X-Debug", "cli-run"))
-	opts = append(opts, sdk.WithMetadataEntry("prompt_length", fmt.Sprintf("%d", len(prompt))))
+	proxyOpts = append(proxyOpts, sdk.WithHeader("X-Debug", "cli-run"))
+	proxyOpts = append(proxyOpts, sdk.WithMetadataEntry("prompt_length", fmt.Sprintf("%d", len(prompt))))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -75,7 +75,7 @@ func main() {
 			Content: prompt,
 		}},
 		Metadata: map[string]string{"source": "cli"},
-	}, opts...)
+	}, proxyOpts...)
 	if err != nil {
 		log.Fatalf("proxy stream: %v", err)
 	}

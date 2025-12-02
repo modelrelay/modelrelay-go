@@ -45,6 +45,7 @@ func (e Environment) baseURL() string {
 }
 
 // Config wires authentication, base URL, headers/metadata defaults, and telemetry for the API client.
+// Deprecated: Use NewClientWithKey or NewClientWithToken with functional options instead.
 type Config struct {
 	BaseURL         string
 	Environment     Environment
@@ -61,6 +62,78 @@ type Config struct {
 	RequestTimeout *time.Duration
 	// Optional retry/backoff policy (nil => defaults).
 	Retry *RetryConfig
+}
+
+// Option configures optional settings for the SDK client.
+type Option func(*clientOptions)
+
+type clientOptions struct {
+	baseURL         string
+	environment     Environment
+	httpClient      *http.Client
+	telemetry       TelemetryHooks
+	userAgent       string
+	clientHeader    string
+	defaultHeaders  http.Header
+	defaultMetadata map[string]string
+	connectTimeout  *time.Duration
+	requestTimeout  *time.Duration
+	retry           *RetryConfig
+}
+
+// WithBaseURL sets a custom API base URL (overrides Environment).
+func WithBaseURL(url string) Option {
+	return func(o *clientOptions) { o.baseURL = url }
+}
+
+// WithEnvironment selects a preset environment (production, staging, sandbox).
+func WithEnvironment(env Environment) Option {
+	return func(o *clientOptions) { o.environment = env }
+}
+
+// WithHTTPClient sets a custom HTTP client for requests.
+func WithHTTPClient(client *http.Client) Option {
+	return func(o *clientOptions) { o.httpClient = client }
+}
+
+// WithTelemetry configures telemetry hooks for observability.
+func WithTelemetry(hooks TelemetryHooks) Option {
+	return func(o *clientOptions) { o.telemetry = hooks }
+}
+
+// WithUserAgent sets a custom User-Agent header.
+func WithUserAgent(ua string) Option {
+	return func(o *clientOptions) { o.userAgent = ua }
+}
+
+// WithClientHeader sets the X-ModelRelay-Client header for SDK identification.
+func WithClientHeader(header string) Option {
+	return func(o *clientOptions) { o.clientHeader = header }
+}
+
+// WithDefaultHeaders sets headers applied to every request.
+func WithDefaultHeaders(headers http.Header) Option {
+	return func(o *clientOptions) { o.defaultHeaders = headers }
+}
+
+// WithDefaultMetadata sets metadata merged into every proxy request.
+func WithDefaultMetadata(metadata map[string]string) Option {
+	return func(o *clientOptions) { o.defaultMetadata = metadata }
+}
+
+// WithConnectTimeout sets the connection timeout (nil uses default, 0 disables).
+func WithConnectTimeout(d time.Duration) Option {
+	return func(o *clientOptions) { o.connectTimeout = &d }
+}
+
+// WithRequestTimeout sets the request timeout (nil uses default, 0 disables).
+func WithRequestTimeout(d time.Duration) Option {
+	return func(o *clientOptions) { o.requestTimeout = &d }
+}
+
+// WithRetryConfig sets the retry/backoff policy.
+func WithRetryConfig(cfg RetryConfig) Option {
+	return func(o *clientOptions) { o.retry = &cfg }
 }
 
 // Client provides high-level helpers for interacting with the ModelRelay API.
@@ -85,49 +158,97 @@ type Client struct {
 	Tiers     *TiersClient
 }
 
-// NewClient validates the configuration and returns a ready-to-use Client.
-func NewClient(cfg Config) (*Client, error) {
-	baseURL := cfg.BaseURL
+// NewClientWithKey creates a client authenticated with an API key.
+// The key parameter is required and must be non-empty.
+// Use functional options to configure additional settings.
+//
+// Example:
+//
+//	client, err := sdk.NewClientWithKey("mr_sk_...")
+//	client, err := sdk.NewClientWithKey("mr_sk_...", sdk.WithEnvironment(sdk.EnvironmentStaging))
+func NewClientWithKey(key string, opts ...Option) (*Client, error) {
+	if strings.TrimSpace(key) == "" {
+		return nil, ConfigError{Reason: "api key is required"}
+	}
+	options := applyOptions(opts)
+	return newClientFromOptions(key, "", options)
+}
+
+// NewClientWithToken creates a client authenticated with a bearer access token.
+// The token parameter is required and must be non-empty.
+// Use functional options to configure additional settings.
+//
+// Example:
+//
+//	client, err := sdk.NewClientWithToken("eyJ...")
+//	client, err := sdk.NewClientWithToken(frontendToken, sdk.WithBaseURL("https://custom.api.com"))
+func NewClientWithToken(token string, opts ...Option) (*Client, error) {
+	if strings.TrimSpace(token) == "" {
+		return nil, ConfigError{Reason: "access token is required"}
+	}
+	options := applyOptions(opts)
+	return newClientFromOptions("", token, options)
+}
+
+func applyOptions(opts []Option) clientOptions {
+	var options clientOptions
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&options)
+		}
+	}
+	return options
+}
+
+func newClientFromOptions(apiKey, accessToken string, opts clientOptions) (*Client, error) {
+	baseURL := opts.baseURL
 	if baseURL == "" {
-		baseURL = cfg.Environment.baseURL()
+		baseURL = opts.environment.baseURL()
 	}
 	normalized, err := normalizeBaseURL(baseURL)
 	if err != nil {
 		return nil, ConfigError{Reason: err.Error()}
 	}
-	httpClient := cfg.HTTPClient
+	httpClient := opts.httpClient
 	if httpClient == nil {
-		httpClient = newHTTPClient(resolveConnectTimeout(cfg.ConnectTimeout), resolveRequestTimeout(cfg.RequestTimeout))
+		httpClient = newHTTPClient(resolveConnectTimeout(opts.connectTimeout), resolveRequestTimeout(opts.requestTimeout))
 	}
-	auth := buildAuthChain(cfg)
-	if len(auth) == 0 {
-		return nil, ConfigError{Reason: "api key or access token required"}
+	var auth authChain
+	if accessToken != "" {
+		token := strings.TrimSpace(accessToken)
+		if strings.HasPrefix(strings.ToLower(token), "bearer ") {
+			token = strings.TrimSpace(token[7:])
+		}
+		auth = append(auth, bearerAuth{token: token})
 	}
-	ua := strings.TrimSpace(cfg.UserAgent)
+	if apiKey != "" {
+		auth = append(auth, apiKeyAuth{key: apiKey})
+	}
+	ua := strings.TrimSpace(opts.userAgent)
 	if ua == "" {
 		ua = deriveDefaultClientHeader()
 	}
-	clientHeader := strings.TrimSpace(cfg.ClientHeader)
+	clientHeader := strings.TrimSpace(opts.clientHeader)
 	if clientHeader == "" {
 		clientHeader = deriveDefaultClientHeader()
 	}
-	defaultHeaders := sanitizeHeaders(cfg.DefaultHeaders)
-	defaultMetadata := sanitizeMetadata(cfg.DefaultMetadata)
+	defaultHeaders := sanitizeHeaders(opts.defaultHeaders)
+	defaultMetadata := sanitizeMetadata(opts.defaultMetadata)
 	retryCfg := defaultRetryConfig()
-	if cfg.Retry != nil {
-		retryCfg = cfg.Retry.normalized()
+	if opts.retry != nil {
+		retryCfg = opts.retry.normalized()
 	}
 	client := &Client{
 		baseURL:         normalized,
 		httpClient:      httpClient,
 		auth:            auth,
-		telemetry:       cfg.Telemetry,
+		telemetry:       opts.telemetry,
 		userAgent:       ua,
 		clientHead:      clientHeader,
 		defaultHeaders:  defaultHeaders,
 		defaultMetadata: defaultMetadata,
-		connectTimeout:  resolveConnectTimeout(cfg.ConnectTimeout),
-		requestTimeout:  resolveRequestTimeout(cfg.RequestTimeout),
+		connectTimeout:  resolveConnectTimeout(opts.connectTimeout),
+		requestTimeout:  resolveRequestTimeout(opts.requestTimeout),
 		retryCfg:        retryCfg,
 	}
 	client.LLM = &LLMClient{client: client}
@@ -136,6 +257,31 @@ func NewClient(cfg Config) (*Client, error) {
 	client.Customers = &CustomersClient{client: client}
 	client.Tiers = &TiersClient{client: client}
 	return client, nil
+}
+
+// NewClient validates the configuration and returns a ready-to-use Client.
+// Deprecated: Use NewClientWithKey or NewClientWithToken instead for clearer
+// API key requirements and compile-time safety.
+func NewClient(cfg Config) (*Client, error) {
+	// Validate auth before delegating
+	if strings.TrimSpace(cfg.APIKey) == "" && strings.TrimSpace(cfg.AccessToken) == "" {
+		return nil, ConfigError{Reason: "api key or access token required"}
+	}
+	// Map Config to clientOptions and delegate
+	opts := clientOptions{
+		baseURL:         cfg.BaseURL,
+		environment:     cfg.Environment,
+		httpClient:      cfg.HTTPClient,
+		telemetry:       cfg.Telemetry,
+		userAgent:       cfg.UserAgent,
+		clientHeader:    cfg.ClientHeader,
+		defaultHeaders:  cfg.DefaultHeaders,
+		defaultMetadata: cfg.DefaultMetadata,
+		connectTimeout:  cfg.ConnectTimeout,
+		requestTimeout:  cfg.RequestTimeout,
+		retry:           cfg.Retry,
+	}
+	return newClientFromOptions(cfg.APIKey, cfg.AccessToken, opts)
 }
 
 func normalizeBaseURL(raw string) (string, error) {
@@ -155,21 +301,6 @@ func normalizeBaseURL(raw string) (string, error) {
 	}
 	u.Path = strings.TrimSuffix(u.Path, "/")
 	return strings.TrimSuffix(u.String(), "/"), nil
-}
-
-func buildAuthChain(cfg Config) authChain {
-	var chain authChain
-	if cfg.AccessToken != "" {
-		token := strings.TrimSpace(cfg.AccessToken)
-		if strings.HasPrefix(strings.ToLower(token), "bearer ") {
-			token = strings.TrimSpace(token[7:])
-		}
-		chain = append(chain, bearerAuth{token: token})
-	}
-	if cfg.APIKey != "" {
-		chain = append(chain, apiKeyAuth{key: cfg.APIKey})
-	}
-	return chain
 }
 
 func sanitizeHeaders(src http.Header) http.Header {

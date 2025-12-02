@@ -175,3 +175,93 @@ func TestDisableRetry(t *testing.T) {
 		t.Fatalf("expected 1 attempt, meta=%+v", meta)
 	}
 }
+
+func TestNewClientWithKey(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := r.Header.Get("X-ModelRelay-Api-Key")
+		if key != "mr_sk_test123" {
+			t.Errorf("Expected API key 'mr_sk_test123', got '%s'", key)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	t.Run("RequiresNonEmptyKey", func(t *testing.T) {
+		_, err := NewClientWithKey("")
+		if err == nil {
+			t.Fatal("expected error for empty key")
+		}
+		var cfgErr ConfigError
+		if !errors.As(err, &cfgErr) {
+			t.Fatalf("expected ConfigError, got %T", err)
+		}
+	})
+
+	t.Run("WithOptions", func(t *testing.T) {
+		client, err := NewClientWithKey("mr_sk_test123", WithBaseURL(srv.URL))
+		if err != nil {
+			t.Fatalf("NewClientWithKey failed: %v", err)
+		}
+		req, _ := client.newJSONRequest(context.Background(), "GET", "/foo", nil)
+		_, _, err = client.send(req, nil, nil)
+		if err != nil {
+			t.Errorf("Request failed: %v", err)
+		}
+	})
+
+	t.Run("WithEnvironment", func(t *testing.T) {
+		client, err := NewClientWithKey("test", WithEnvironment(EnvironmentStaging))
+		if err != nil {
+			t.Fatalf("NewClientWithKey failed: %v", err)
+		}
+		if client.baseURL != stagingBaseURL {
+			t.Fatalf("expected staging URL %s, got %s", stagingBaseURL, client.baseURL)
+		}
+	})
+}
+
+func TestNewClientWithToken(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		if auth != "Bearer my-frontend-token" {
+			t.Errorf("Expected 'Bearer my-frontend-token', got '%s'", auth)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	t.Run("RequiresNonEmptyToken", func(t *testing.T) {
+		_, err := NewClientWithToken("")
+		if err == nil {
+			t.Fatal("expected error for empty token")
+		}
+		var cfgErr ConfigError
+		if !errors.As(err, &cfgErr) {
+			t.Fatalf("expected ConfigError, got %T", err)
+		}
+	})
+
+	t.Run("WithOptions", func(t *testing.T) {
+		client, err := NewClientWithToken("my-frontend-token", WithBaseURL(srv.URL))
+		if err != nil {
+			t.Fatalf("NewClientWithToken failed: %v", err)
+		}
+		req, _ := client.newJSONRequest(context.Background(), "GET", "/foo", nil)
+		_, _, err = client.send(req, nil, nil)
+		if err != nil {
+			t.Errorf("Request failed: %v", err)
+		}
+	})
+
+	t.Run("TokenWithBearerPrefix", func(t *testing.T) {
+		client, err := NewClientWithToken("Bearer my-frontend-token", WithBaseURL(srv.URL))
+		if err != nil {
+			t.Fatalf("NewClientWithToken failed: %v", err)
+		}
+		req, _ := client.newJSONRequest(context.Background(), "GET", "/foo", nil)
+		_, _, err = client.send(req, nil, nil)
+		if err != nil {
+			t.Errorf("Request failed: %v", err)
+		}
+	})
+}
