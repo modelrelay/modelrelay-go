@@ -159,7 +159,8 @@ const (
 	ModelAnthropicClaudeOpus45         ModelID = "anthropic/claude-opus-4-5-20251101"
 	ModelAnthropicClaude35Haiku        ModelID = "anthropic/claude-3.5-haiku"
 	ModelGrok2                         ModelID = "grok-2"
-	ModelGrok4Fast                     ModelID = "grok-4-fast"
+	ModelGrok4_1FastNonReasoning       ModelID = "grok-4-1-fast-non-reasoning"
+	ModelGrok4_1FastReasoning          ModelID = "grok-4-1-fast-reasoning"
 	ModelEcho1                         ModelID = "echo-1"
 )
 
@@ -185,8 +186,10 @@ func ParseModelID(val string) ModelID {
 		return ModelAnthropicClaude35Haiku
 	case "grok-2":
 		return ModelGrok2
-	case "grok-4-fast":
-		return ModelGrok4Fast
+	case "grok-4-1-fast-non-reasoning":
+		return ModelGrok4_1FastNonReasoning
+	case "grok-4-1-fast-reasoning":
+		return ModelGrok4_1FastReasoning
 	case "echo-1":
 		return ModelEcho1
 	default:
@@ -199,7 +202,7 @@ func (m ModelID) IsOther() bool {
 	switch m {
 	case ModelOpenAIGPT4o, ModelOpenAIGPT4oMini, ModelOpenAIGPT51, ModelAnthropicClaude35HaikuLatest,
 		ModelAnthropicClaude35SonnetLatest, ModelAnthropicClaudeOpus45, ModelAnthropicClaude35Haiku,
-		ModelGrok2, ModelGrok4Fast, ModelEcho1:
+		ModelGrok2, ModelGrok4_1FastNonReasoning, ModelGrok4_1FastReasoning, ModelEcho1:
 		return false
 	default:
 		return strings.TrimSpace(string(m)) != ""
