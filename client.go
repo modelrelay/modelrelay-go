@@ -82,6 +82,7 @@ type Client struct {
 	Usage     *UsageClient
 	Auth      *AuthClient
 	Customers *CustomersClient
+	Tiers     *TiersClient
 }
 
 // NewClient validates the configuration and returns a ready-to-use Client.
@@ -133,6 +134,7 @@ func NewClient(cfg Config) (*Client, error) {
 	client.Usage = &UsageClient{client: client}
 	client.Auth = &AuthClient{client: client}
 	client.Customers = &CustomersClient{client: client}
+	client.Tiers = &TiersClient{client: client}
 	return client, nil
 }
 
