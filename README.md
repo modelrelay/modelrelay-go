@@ -169,6 +169,45 @@ resp, err := client.LLM.Chat(sdk.ModelOpenAIGPT51).
 // resp.Content[0] contains the full text; usage/stop_reason/request_id are filled.
 ```
 
+### Backend Customer Management
+
+Use a secret key (`mr_sk_*`) to manage customers from your backend:
+
+```go
+client, _ := sdk.NewClient(sdk.Config{
+    APIKey: os.Getenv("MODELRELAY_API_KEY"), // mr_sk_xxx
+})
+
+// Create or update a customer (upsert by external_id)
+customer, err := client.Customers.Upsert(context.Background(), sdk.CustomerUpsertRequest{
+    TierID:     "your-tier-uuid",
+    ExternalID: "github-user-12345",  // your app's user ID
+    Email:      "user@example.com",
+})
+
+// List all customers
+customers, err := client.Customers.List(context.Background())
+
+// Get a specific customer
+customer, err := client.Customers.Get(context.Background(), customerUUID)
+
+// Create a checkout session for subscription billing
+session, err := client.Customers.CreateCheckoutSession(context.Background(), customer.ID, sdk.CheckoutSessionRequest{
+    SuccessURL: "https://myapp.com/billing/success",
+    CancelURL:  "https://myapp.com/billing/cancel",
+})
+// Redirect user to session.URL to complete payment
+
+// Check subscription status
+status, err := client.Customers.GetSubscription(context.Background(), customer.ID)
+if status.Active {
+    // Grant access
+}
+
+// Delete a customer
+err = client.Customers.Delete(context.Background(), customer.ID)
+```
+
 ### Frontend Flow
 
 To issue tokens for a browser/mobile app:

@@ -78,9 +78,10 @@ type Client struct {
 	retryCfg        RetryConfig
 
 	// Grouped service clients.
-	LLM   *LLMClient
-	Usage *UsageClient
-	Auth  *AuthClient
+	LLM       *LLMClient
+	Usage     *UsageClient
+	Auth      *AuthClient
+	Customers *CustomersClient
 }
 
 // NewClient validates the configuration and returns a ready-to-use Client.
@@ -131,6 +132,7 @@ func NewClient(cfg Config) (*Client, error) {
 	client.LLM = &LLMClient{client: client}
 	client.Usage = &UsageClient{client: client}
 	client.Auth = &AuthClient{client: client}
+	client.Customers = &CustomersClient{client: client}
 	return client, nil
 }
 
