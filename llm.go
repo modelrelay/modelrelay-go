@@ -101,6 +101,8 @@ type proxyRequestPayload struct {
 	Stop           []string            `json:"stop,omitempty"`
 	StopSeqs       []string            `json:"stop_sequences,omitempty"`
 	ResponseFormat *llm.ResponseFormat `json:"response_format,omitempty"`
+	Tools          []llm.Tool          `json:"tools,omitempty"`
+	ToolChoice     *llm.ToolChoice     `json:"tool_choice,omitempty"`
 }
 
 func newProxyRequestPayload(req ProxyRequest) (proxyRequestPayload, error) {
@@ -124,6 +126,12 @@ func newProxyRequestPayload(req ProxyRequest) (proxyRequestPayload, error) {
 	}
 	if len(req.StopSequences) > 0 {
 		payload.StopSeqs = req.StopSequences
+	}
+	if len(req.Tools) > 0 {
+		payload.Tools = req.Tools
+	}
+	if req.ToolChoice != nil {
+		payload.ToolChoice = req.ToolChoice
 	}
 	return payload, nil
 }

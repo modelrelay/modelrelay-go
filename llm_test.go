@@ -607,13 +607,12 @@ func TestStreamParsesLLMProxySSE(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new http writer: %v", err)
 	}
+	// Use normalized fields directly on StreamEvent (preferred approach)
 	event := llm.StreamEvent{
-		Kind: llm.StreamEventKindMessageStop,
-		Data: llm.MarshalEvent(map[string]any{
-			"response_id": "resp_xyz",
-			"model":       "openai/gpt-test",
-			"stop_reason": "end_turn",
-		}),
+		Kind:       llm.StreamEventKindMessageStop,
+		ResponseID: "resp_xyz",
+		Model:      "openai/gpt-test",
+		StopReason: "end_turn",
 	}
 	if err := writer.Write(event); err != nil {
 		t.Fatalf("write event: %v", err)

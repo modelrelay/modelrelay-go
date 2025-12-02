@@ -25,6 +25,8 @@ type ProxyRequest struct {
 	Stop           []string
 	StopSequences  []string
 	ResponseFormat *llm.ResponseFormat
+	Tools          []llm.Tool
+	ToolChoice     *llm.ToolChoice
 }
 
 // Validate returns an error when required fields are missing.
@@ -45,13 +47,14 @@ func (r ProxyRequest) Validate() error {
 
 // ProxyResponse wraps the server response and surfaces the echoed request ID.
 type ProxyResponse struct {
-	ID         string     `json:"id"`
-	Provider   ProviderID `json:"provider"`
-	Content    []string   `json:"content"`
-	StopReason StopReason `json:"stop_reason,omitempty"`
-	Model      ModelID    `json:"model"`
-	Usage      Usage      `json:"usage"`
-	RequestID  string     `json:"-"`
+	ID         string         `json:"id"`
+	Provider   ProviderID     `json:"provider"`
+	Content    []string       `json:"content"`
+	StopReason StopReason     `json:"stop_reason,omitempty"`
+	Model      ModelID        `json:"model"`
+	Usage      Usage          `json:"usage"`
+	RequestID  string         `json:"-"`
+	ToolCalls  []llm.ToolCall `json:"tool_calls,omitempty"`
 }
 
 // StreamHandle exposes the streaming interface plus associated metadata.

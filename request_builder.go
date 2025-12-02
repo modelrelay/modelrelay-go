@@ -116,6 +116,52 @@ func (b *ProxyRequestBuilder) StopSequences(stop []string) *ProxyRequestBuilder 
 	return b
 }
 
+// Tools sets the tool list.
+func (b *ProxyRequestBuilder) Tools(tools []llm.Tool) *ProxyRequestBuilder {
+	b.req.Tools = tools
+	return b
+}
+
+// Tool appends a single tool.
+func (b *ProxyRequestBuilder) Tool(tool llm.Tool) *ProxyRequestBuilder {
+	b.req.Tools = append(b.req.Tools, tool)
+	return b
+}
+
+// FunctionTool appends a function tool with the given name, description, and parameters.
+func (b *ProxyRequestBuilder) FunctionTool(name, description string, parameters []byte) *ProxyRequestBuilder {
+	b.req.Tools = append(b.req.Tools, llm.Tool{
+		Type: llm.ToolTypeFunction,
+		Function: &llm.FunctionTool{
+			Name:        name,
+			Description: description,
+			Parameters:  parameters,
+		},
+	})
+	return b
+}
+
+// ToolChoice sets the tool choice.
+func (b *ProxyRequestBuilder) ToolChoice(choice llm.ToolChoice) *ProxyRequestBuilder {
+	b.req.ToolChoice = &choice
+	return b
+}
+
+// ToolChoiceAuto sets tool_choice to auto.
+func (b *ProxyRequestBuilder) ToolChoiceAuto() *ProxyRequestBuilder {
+	return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceAuto})
+}
+
+// ToolChoiceRequired sets tool_choice to required.
+func (b *ProxyRequestBuilder) ToolChoiceRequired() *ProxyRequestBuilder {
+	return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceRequired})
+}
+
+// ToolChoiceNone sets tool_choice to none.
+func (b *ProxyRequestBuilder) ToolChoiceNone() *ProxyRequestBuilder {
+	return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceNone})
+}
+
 // Build validates and returns the request.
 func (b *ProxyRequestBuilder) Build() (ProxyRequest, error) {
 	if b.req.Model.IsEmpty() {
@@ -219,6 +265,52 @@ func (b *ChatBuilder) Stop(stop ...string) *ChatBuilder {
 func (b *ChatBuilder) StopSequences(stop ...string) *ChatBuilder {
 	b.req.StopSequences = append([]string(nil), stop...)
 	return b
+}
+
+// Tools sets the tool list.
+func (b *ChatBuilder) Tools(tools []llm.Tool) *ChatBuilder {
+	b.req.Tools = tools
+	return b
+}
+
+// Tool appends a single tool.
+func (b *ChatBuilder) Tool(tool llm.Tool) *ChatBuilder {
+	b.req.Tools = append(b.req.Tools, tool)
+	return b
+}
+
+// FunctionTool appends a function tool with the given name, description, and parameters.
+func (b *ChatBuilder) FunctionTool(name, description string, parameters []byte) *ChatBuilder {
+	b.req.Tools = append(b.req.Tools, llm.Tool{
+		Type: llm.ToolTypeFunction,
+		Function: &llm.FunctionTool{
+			Name:        name,
+			Description: description,
+			Parameters:  parameters,
+		},
+	})
+	return b
+}
+
+// ToolChoice sets the tool choice.
+func (b *ChatBuilder) ToolChoice(choice llm.ToolChoice) *ChatBuilder {
+	b.req.ToolChoice = &choice
+	return b
+}
+
+// ToolChoiceAuto sets tool_choice to auto.
+func (b *ChatBuilder) ToolChoiceAuto() *ChatBuilder {
+	return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceAuto})
+}
+
+// ToolChoiceRequired sets tool_choice to required.
+func (b *ChatBuilder) ToolChoiceRequired() *ChatBuilder {
+	return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceRequired})
+}
+
+// ToolChoiceNone sets tool_choice to none.
+func (b *ChatBuilder) ToolChoiceNone() *ChatBuilder {
+	return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceNone})
 }
 
 // RequestID sets the X-ModelRelay-Chat-Request-Id header for the request.
