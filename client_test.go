@@ -46,13 +46,11 @@ func TestBearerTokenDuplication(t *testing.T) {
 			t.Fatalf("NewClient failed: %v", err)
 		}
 		req, _ := client.newJSONRequest(context.Background(), "GET", "/foo", nil)
-		_, _, err = client.send(req, nil, nil)
-		if err != nil {
-			// We expect the server (in this test) to catch the double Bearer and fail the test assertion
-			// But since the server just logs t.Error, the client.send might succeed with 200 OK unless the server returns 401.
-			// In my test server above, I check headers and t.Error.
-			// So if this case causes a double bearer, the test will fail.
-		}
+		_, _, _ = client.send(req, nil, nil)
+		// We expect the server (in this test) to catch the double Bearer and fail the test assertion
+		// But since the server just logs t.Error, the client.send might succeed with 200 OK unless the server returns 401.
+		// In my test server above, I check headers and t.Error.
+		// So if this case causes a double bearer, the test will fail.
 	})
 }
 

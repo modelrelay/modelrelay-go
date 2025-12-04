@@ -54,11 +54,11 @@ func main() {
 	if *requestID != "" {
 		proxyOpts = append(proxyOpts, sdk.WithRequestID(*requestID))
 	}
-	proxyOpts = append(proxyOpts, sdk.WithHeader("X-Debug", "cli-run"))
-	proxyOpts = append(proxyOpts, sdk.WithMetadataEntry("prompt_length", fmt.Sprintf("%d", len(prompt))))
+	proxyOpts = append(proxyOpts,
+		sdk.WithHeader("X-Debug", "cli-run"),
+		sdk.WithMetadataEntry("prompt_length", fmt.Sprintf("%d", len(prompt))))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
 
 	stream, err := client.LLM.ProxyStream(ctx, sdk.ProxyRequest{
 		Model:     sdk.ParseModelID(*model),
@@ -70,15 +70,23 @@ func main() {
 		Metadata: map[string]string{"source": "cli"},
 	}, proxyOpts...)
 	if err != nil {
+		cancel()
 		log.Fatalf("proxy stream: %v", err)
 	}
-	defer stream.Close()
+	defer cancel()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = stream.Close() }()
 
 	fmt.Printf("Streaming response for request %s...\n", stream.RequestID)
 	for {
 		event, ok, err := stream.Next()
 		if err != nil {
-			log.Fatalf("stream error: %v", err)
+			//nolint:errcheck // best-effort cleanup before exit
+			_ = stream.Close()
+			cancel()
+			fmt.Fprintf(os.Stderr, "stream error: %v\n", err)
+			//nolint:gocritic // os.Exit required for CLI error handling
+			os.Exit(1)
 		}
 		if !ok {
 			break
@@ -92,8 +100,8 @@ func main() {
 }
 
 func readStdin() string {
-	stat, _ := os.Stdin.Stat()
-	if stat.Mode()&os.ModeCharDevice != 0 {
+	stat, err := os.Stdin.Stat()
+	if err != nil || stat.Mode()&os.ModeCharDevice != 0 {
 		return ""
 	}
 	scanner := bufio.NewScanner(os.Stdin)

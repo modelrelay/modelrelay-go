@@ -63,7 +63,8 @@ func (c *TiersClient) List(ctx context.Context) ([]Tier, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 	var payload tierListResponse
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return nil, err
@@ -88,7 +89,8 @@ func (c *TiersClient) Get(ctx context.Context, tierID uuid.UUID) (Tier, error) {
 	if err != nil {
 		return Tier{}, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 	var payload tierResponse
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return Tier{}, err

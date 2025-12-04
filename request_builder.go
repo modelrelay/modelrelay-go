@@ -42,8 +42,8 @@ func (b *ProxyRequestBuilder) Model(model ModelID) *ProxyRequestBuilder {
 }
 
 // MaxTokens sets the max tokens limit.
-func (b *ProxyRequestBuilder) MaxTokens(max int64) *ProxyRequestBuilder {
-	b.req.MaxTokens = max
+func (b *ProxyRequestBuilder) MaxTokens(maxTokens int64) *ProxyRequestBuilder {
+	b.req.MaxTokens = maxTokens
 	return b
 }
 
@@ -199,8 +199,8 @@ func (b *ChatBuilder) Model(model ModelID) *ChatBuilder {
 }
 
 // MaxTokens sets the max tokens limit.
-func (b *ChatBuilder) MaxTokens(max int64) *ChatBuilder {
-	b.req.MaxTokens = max
+func (b *ChatBuilder) MaxTokens(maxTokens int64) *ChatBuilder {
+	b.req.MaxTokens = maxTokens
 	return b
 }
 

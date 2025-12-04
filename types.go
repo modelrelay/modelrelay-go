@@ -128,15 +128,15 @@ func WithHeader(key, value string) ProxyOption {
 }
 
 // WithHeaders attaches multiple headers to the underlying HTTP request.
-func WithHeaders(headers map[string]string) ProxyOption {
+func WithHeaders(hdrs map[string]string) ProxyOption {
 	return func(opts *proxyCallOptions) {
-		if len(headers) == 0 {
+		if len(hdrs) == 0 {
 			return
 		}
 		if opts.headers == nil {
 			opts.headers = make(http.Header)
 		}
-		for key, value := range headers {
+		for key, value := range hdrs {
 			k := strings.TrimSpace(key)
 			v := strings.TrimSpace(value)
 			if k == "" || v == "" {
@@ -207,14 +207,14 @@ func WithTimeout(timeout time.Duration) ProxyOption {
 // WithRetry overrides the retry policy for this call.
 func WithRetry(cfg RetryConfig) ProxyOption {
 	return func(opts *proxyCallOptions) {
-		copy := cfg
-		if copy.BaseBackoff == 0 {
-			copy.BaseBackoff = defaultRetryConfig().BaseBackoff
+		retryCfg := cfg
+		if retryCfg.BaseBackoff == 0 {
+			retryCfg.BaseBackoff = defaultRetryConfig().BaseBackoff
 		}
-		if copy.MaxBackoff == 0 {
-			copy.MaxBackoff = defaultRetryConfig().MaxBackoff
+		if retryCfg.MaxBackoff == 0 {
+			retryCfg.MaxBackoff = defaultRetryConfig().MaxBackoff
 		}
-		opts.retry = &copy
+		opts.retry = &retryCfg
 	}
 }
 

@@ -73,7 +73,7 @@ func TestRefreshErrorPropagation(t *testing.T) {
 		t.Fatalf("expected error")
 	}
 	var apiErr Error
-	if !(errors.As(err, &apiErr) && apiErr.Status == http.StatusUnauthorized) {
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusUnauthorized {
 		t.Fatalf("expected Error, got %v", err)
 	}
 }

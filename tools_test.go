@@ -25,8 +25,8 @@ func TestToolRegistry(t *testing.T) {
 
 	t.Run("RegisteredTools", func(t *testing.T) {
 		registry := NewToolRegistry().
-			Register("tool_a", func(args map[string]any, call llm.ToolCall) (any, error) { return nil, nil }).
-			Register("tool_b", func(args map[string]any, call llm.ToolCall) (any, error) { return nil, nil })
+			Register("tool_a", func(args map[string]any, call llm.ToolCall) (any, error) { return "", nil }).
+			Register("tool_b", func(args map[string]any, call llm.ToolCall) (any, error) { return "", nil })
 
 		tools := registry.RegisteredTools()
 		if len(tools) != 2 {
@@ -36,7 +36,7 @@ func TestToolRegistry(t *testing.T) {
 
 	t.Run("Unregister", func(t *testing.T) {
 		registry := NewToolRegistry().
-			Register("my_tool", func(args map[string]any, call llm.ToolCall) (any, error) { return nil, nil })
+			Register("my_tool", func(args map[string]any, call llm.ToolCall) (any, error) { return "", nil })
 
 		if !registry.Unregister("my_tool") {
 			t.Error("expected Unregister to return true")
@@ -82,7 +82,7 @@ func TestToolRegistry(t *testing.T) {
 
 	t.Run("Execute unknown tool", func(t *testing.T) {
 		registry := NewToolRegistry().
-			Register("known_tool", func(args map[string]any, call llm.ToolCall) (any, error) { return nil, nil })
+			Register("known_tool", func(args map[string]any, call llm.ToolCall) (any, error) { return "", nil })
 
 		call := llm.ToolCall{
 			ID:       "call_456",
@@ -104,7 +104,7 @@ func TestToolRegistry(t *testing.T) {
 
 	t.Run("Execute with malformed JSON sets IsRetryable", func(t *testing.T) {
 		registry := NewToolRegistry().
-			Register("my_tool", func(args map[string]any, call llm.ToolCall) (any, error) { return nil, nil })
+			Register("my_tool", func(args map[string]any, call llm.ToolCall) (any, error) { return "", nil })
 
 		call := llm.ToolCall{
 			ID:       "call_bad",

@@ -52,11 +52,12 @@ func (r RetryConfig) backoffDelay(attempt int) time.Duration {
 	}
 	exp := attempt - 2
 	base := float64(r.BaseBackoff) * math.Pow(2, float64(exp))
-	cap := float64(r.MaxBackoff)
-	if base > cap {
-		base = cap
+	maxBackoff := float64(r.MaxBackoff)
+	if base > maxBackoff {
+		base = maxBackoff
 	}
 	// jitter 0.5x..1.5x
+	//nolint:gosec // math/rand is acceptable for backoff jitter
 	jitter := 0.5 + rand.Float64()
 	d := time.Duration(base * jitter)
 	if d > r.MaxBackoff {

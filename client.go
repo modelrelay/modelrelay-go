@@ -23,6 +23,7 @@ const (
 )
 
 // Config wires authentication, base URL, headers/metadata defaults, and telemetry for the API client.
+//
 // Deprecated: Use NewClientWithKey or NewClientWithToken with functional options instead.
 type Config struct {
 	BaseURL         string
@@ -58,8 +59,8 @@ type clientOptions struct {
 }
 
 // WithBaseURL sets a custom API base URL.
-func WithBaseURL(url string) Option {
-	return func(o *clientOptions) { o.baseURL = url }
+func WithBaseURL(baseURL string) Option {
+	return func(o *clientOptions) { o.baseURL = baseURL }
 }
 
 // WithHTTPClient sets a custom HTTP client for requests.
@@ -231,6 +232,7 @@ func newClientFromOptions(apiKey, accessToken string, opts clientOptions) (*Clie
 }
 
 // NewClient validates the configuration and returns a ready-to-use Client.
+//
 // Deprecated: Use NewClientWithKey or NewClientWithToken instead for clearer
 // API key requirements and compile-time safety.
 func NewClient(cfg Config) (*Client, error) {
@@ -338,9 +340,14 @@ func resolveTimeout(override *time.Duration, def time.Duration) time.Duration {
 }
 
 func newHTTPClient(connectTimeout, requestTimeout time.Duration) *http.Client {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.DialContext = (&net.Dialer{Timeout: connectTimeout}).DialContext
-	return &http.Client{Transport: transport, Timeout: 0}
+	transport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		// Fallback to default transport if type assertion fails
+		return &http.Client{Timeout: 0}
+	}
+	cloned := transport.Clone()
+	cloned.DialContext = (&net.Dialer{Timeout: connectTimeout}).DialContext
+	return &http.Client{Transport: cloned, Timeout: 0}
 }
 
 func deriveDefaultClientHeader() string {
@@ -466,12 +473,14 @@ func (c *Client) sendWithRetry(req *http.Request, cfg RetryConfig) (*http.Respon
 			if err != nil {
 				return nil, copyRetryMeta(meta), TransportError{Message: reason, Cause: err, Retry: copyRetryMeta(meta)}
 			}
-			defer resp.Body.Close()
+			//nolint:errcheck,gocritic // best-effort cleanup on error in retry loop
+			defer func() { _ = resp.Body.Close() }()
 			return nil, copyRetryMeta(meta), decodeAPIError(resp, copyRetryMeta(meta))
 		}
 
 		if resp != nil {
-			resp.Body.Close()
+			//nolint:errcheck // best-effort cleanup before retry
+			_ = resp.Body.Close()
 		}
 		backoff := cfg.backoffDelay(attempt)
 		meta.LastBackoff = backoff
@@ -523,6 +532,7 @@ func shouldRetry(req *http.Request, resp *http.Response, err error, cfg RetryCon
 			return false, 0, err.Error()
 		}
 		if ne, ok := err.(net.Error); ok {
+			//nolint:staticcheck // Temporary() is deprecated but still useful for detecting transient errors
 			if ne.Timeout() || ne.Temporary() {
 				return true, 0, err.Error()
 			}

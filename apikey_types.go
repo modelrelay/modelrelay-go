@@ -1,3 +1,4 @@
+// Package sdk provides the ModelRelay Go SDK for interacting with the ModelRelay API.
 package sdk
 
 import "time"

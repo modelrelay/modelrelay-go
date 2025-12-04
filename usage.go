@@ -23,7 +23,8 @@ func (u *UsageClient) Summary(ctx context.Context) (usage.Summary, error) {
 	if err != nil {
 		return usage.Summary{}, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 	var payload struct {
 		Summary usage.Summary `json:"summary"`
 	}
@@ -43,7 +44,8 @@ func (u *UsageClient) DailyUsageByKey(ctx context.Context) ([]usage.UsagePoint, 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 	var payload struct {
 		Points []usage.UsagePoint `json:"points"`
 	}

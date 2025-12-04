@@ -1,3 +1,4 @@
+// Package auth provides authentication helpers for the ModelRelay SDK.
 package auth
 
 import (
@@ -110,7 +111,8 @@ func (c *Client) post(ctx context.Context, path string, payload any) (TokenRespo
 	if err != nil {
 		return TokenResponse{}, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

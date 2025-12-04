@@ -44,7 +44,8 @@ func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options 
 		c.client.telemetry.log(ctx, LogLevelError, "proxy_message_failed", map[string]any{"error": err.Error(), "retries": retryMeta})
 		return nil, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 	var respPayload ProxyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&respPayload); err != nil {
 		return nil, err
@@ -76,6 +77,7 @@ func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options .
 		httpReq.Header.Set("Accept", "text/event-stream")
 	}
 	applyProxyHeaders(httpReq, callOpts)
+	//nolint:bodyclose // resp.Body is transferred to stream and will be closed by stream.Close()
 	resp, _, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
 	if err != nil {
 		return nil, err
@@ -192,6 +194,7 @@ func newSSEStream(ctx context.Context, body io.ReadCloser, telemetry TelemetryHo
 	go func() {
 		select {
 		case <-ctx.Done():
+			//nolint:errcheck // best-effort cleanup in goroutine
 			_ = stream.Close()
 		case <-stream.done:
 			return
@@ -208,7 +211,8 @@ func (s *sseStream) Next() (StreamEvent, bool, error) {
 		eventName, data, err := s.readEvent()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				s.Close()
+				//nolint:errcheck // best-effort cleanup on EOF
+				_ = s.Close()
 				return StreamEvent{}, false, nil
 			}
 			return StreamEvent{}, false, err
@@ -233,6 +237,7 @@ func (s *sseStream) Close() error {
 		s.mu.Unlock()
 		close(s.done)
 		if cwe, ok := s.body.(interface{ CloseWithError(error) error }); ok {
+			//nolint:errcheck // best-effort cleanup
 			_ = cwe.CloseWithError(context.Canceled)
 		}
 		err = s.body.Close()
@@ -291,6 +296,7 @@ func newNDJSONStream(ctx context.Context, body io.ReadCloser, telemetry Telemetr
 	go func() {
 		select {
 		case <-ctx.Done():
+			//nolint:errcheck // best-effort cleanup in goroutine
 			_ = stream.Close()
 		case <-stream.done:
 			return
@@ -307,7 +313,8 @@ func (s *ndjsonStream) Next() (StreamEvent, bool, error) {
 		line, err := s.reader.ReadBytes('\n')
 		if err != nil {
 			if errors.Is(err, io.EOF) && len(line) == 0 {
-				s.Close()
+				//nolint:errcheck // best-effort cleanup on EOF
+				_ = s.Close()
 				return StreamEvent{}, false, nil
 			}
 			if errors.Is(err, context.Canceled) {
@@ -341,6 +348,7 @@ func (s *ndjsonStream) Close() error {
 		s.mu.Unlock()
 		close(s.done)
 		if cwe, ok := s.body.(interface{ CloseWithError(error) error }); ok {
+			//nolint:errcheck // best-effort cleanup
 			_ = cwe.CloseWithError(context.Canceled)
 		}
 		err = s.body.Close()
@@ -391,6 +399,7 @@ func buildStreamEvent(name string, data []byte) StreamEvent {
 		Usage      *Usage `json:"usage"`
 	}
 	if len(data) > 0 {
+		//nolint:errcheck // best-effort metadata extraction
 		_ = json.Unmarshal(data, &meta)
 	}
 	event.ResponseID = meta.ResponseID

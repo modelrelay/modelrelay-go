@@ -287,13 +287,13 @@ func applyFieldTags(schema *JSONSchema, field reflect.StructField) {
 
 	// Minimum/Maximum for numbers
 	if minTag := field.Tag.Get("minimum"); minTag != "" {
-		if min, ok := parseFloat(minTag); ok {
-			schema.Minimum = &min
+		if minVal, ok := parseFloat(minTag); ok {
+			schema.Minimum = &minVal
 		}
 	}
 	if maxTag := field.Tag.Get("maximum"); maxTag != "" {
-		if max, ok := parseFloat(maxTag); ok {
-			schema.Maximum = &max
+		if maxVal, ok := parseFloat(maxTag); ok {
+			schema.Maximum = &maxVal
 		}
 	}
 
@@ -340,6 +340,8 @@ func parseValueForType(s string, t reflect.Type) any {
 		if b, ok := parseBool(s); ok {
 			return b
 		}
+	default:
+		// For other types, return string as-is
 	}
 	// Default to string for string types or unparseable values
 	return s
@@ -929,8 +931,12 @@ func (r *ToolRegistry) ResultsToMessages(results []ToolExecutionResult) []llm.Pr
 			case string:
 				content = v
 			default:
-				data, _ := json.Marshal(res.Result)
-				content = string(data)
+				data, err := json.Marshal(res.Result)
+				if err != nil {
+					content = "Error: failed to marshal tool result"
+				} else {
+					content = string(data)
+				}
 			}
 		}
 		messages[i] = llm.ProxyMessage{

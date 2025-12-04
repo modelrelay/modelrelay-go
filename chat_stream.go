@@ -1,3 +1,4 @@
+// Package sdk provides the ModelRelay Go SDK for interacting with the ModelRelay API.
 package sdk
 
 import (
@@ -67,7 +68,8 @@ func newChatStream(handle *StreamHandle) *ChatStream {
 // (no internal buffering beyond the current SSE frame) and respects context
 // cancellation. The stream is closed when the call returns.
 func (s *ChatStream) Collect(ctx context.Context) (*ProxyResponse, error) {
-	defer s.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = s.Close() }()
 
 	var builder strings.Builder
 	var usage *Usage
@@ -202,6 +204,8 @@ func mapChatStreamChunk(event StreamEvent) ChatStreamChunk {
 			}
 			return chunk
 		}
+	default:
+		// Handle unknown, tool use, ping, and custom events
 	}
 
 	// Fallback to dynamic parsing for unknown/varied formats

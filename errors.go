@@ -70,7 +70,10 @@ func (e APIError) Error() string {
 }
 
 func decodeAPIError(resp *http.Response, retry *RetryMetadata) error {
-	data, _ := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return APIError{Status: resp.StatusCode, Message: "failed to read response body", Retry: retry}
+	}
 	apiErr := APIError{Status: resp.StatusCode}
 	apiErr.Retry = retry
 	if len(data) == 0 {

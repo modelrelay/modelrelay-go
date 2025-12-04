@@ -51,7 +51,8 @@ func (a *AuthClient) FrontendToken(ctx context.Context, req FrontendTokenRequest
 	if err != nil {
 		return FrontendToken{}, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 	var payload FrontendToken
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return FrontendToken{}, err

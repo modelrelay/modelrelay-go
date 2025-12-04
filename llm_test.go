@@ -615,8 +615,8 @@ func TestStreamParsesLLMProxySSE(t *testing.T) {
 		Model:      "openai/gpt-test",
 		StopReason: "end_turn",
 	}
-	if err := writer.Write(event); err != nil {
-		t.Fatalf("write event: %v", err)
+	if writeErr := writer.Write(event); writeErr != nil {
+		t.Fatalf("write event: %v", writeErr)
 	}
 
 	stream := newSSEStream(context.Background(), io.NopCloser(bytes.NewReader(rec.Body.Bytes())), TelemetryHooks{})

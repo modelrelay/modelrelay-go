@@ -105,7 +105,8 @@ func (c *CustomersClient) List(ctx context.Context) ([]Customer, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 	var payload customerListResponse
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return nil, err
@@ -138,7 +139,8 @@ func (c *CustomersClient) Create(ctx context.Context, req CustomerCreateRequest)
 	if err != nil {
 		return Customer{}, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 	var payload customerResponse
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return Customer{}, err
@@ -163,7 +165,8 @@ func (c *CustomersClient) Get(ctx context.Context, customerID uuid.UUID) (Custom
 	if err != nil {
 		return Customer{}, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 	var payload customerResponse
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return Customer{}, err
@@ -198,7 +201,8 @@ func (c *CustomersClient) Upsert(ctx context.Context, req CustomerUpsertRequest)
 	if err != nil {
 		return Customer{}, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 	var payload customerResponse
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return Customer{}, err
@@ -223,7 +227,8 @@ func (c *CustomersClient) Delete(ctx context.Context, customerID uuid.UUID) erro
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup, no meaningful error to return
+	_ = resp.Body.Close()
 	return nil
 }
 
@@ -247,7 +252,8 @@ func (c *CustomersClient) CreateCheckoutSession(ctx context.Context, customerID 
 	if err != nil {
 		return CheckoutSession{}, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 	var payload CheckoutSession
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return CheckoutSession{}, err
@@ -272,7 +278,8 @@ func (c *CustomersClient) GetSubscription(ctx context.Context, customerID uuid.U
 	if err != nil {
 		return SubscriptionStatus{}, err
 	}
-	defer resp.Body.Close()
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
 	var payload SubscriptionStatus
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return SubscriptionStatus{}, err
