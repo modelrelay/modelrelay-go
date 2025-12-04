@@ -27,10 +27,8 @@ type ProxyRequest struct {
 }
 
 // Validate returns an error when required fields are missing.
+// Note: model is optional - if not provided, the server uses the tier's default model.
 func (r ProxyRequest) Validate() error {
-	if r.Model.IsEmpty() {
-		return fmt.Errorf("model is required")
-	}
 	if len(r.Messages) == 0 {
 		return fmt.Errorf("at least one message is required")
 	}

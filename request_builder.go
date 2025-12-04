@@ -163,10 +163,8 @@ func (b *ProxyRequestBuilder) ToolChoiceNone() *ProxyRequestBuilder {
 }
 
 // Build validates and returns the request.
+// Note: model is optional - if not provided, the server uses the tier's default model.
 func (b *ProxyRequestBuilder) Build() (ProxyRequest, error) {
-	if b.req.Model.IsEmpty() {
-		return ProxyRequest{}, fmt.Errorf("model is required")
-	}
 	if len(b.req.Messages) == 0 {
 		return ProxyRequest{}, fmt.Errorf("at least one message is required")
 	}
@@ -184,6 +182,12 @@ type ChatBuilder struct {
 // Chat seeds a ChatBuilder with the given model identifier.
 func (c *LLMClient) Chat(model ModelID) *ChatBuilder {
 	return &ChatBuilder{client: c, req: ProxyRequest{Model: model}}
+}
+
+// ChatDefault seeds a ChatBuilder without specifying a model.
+// The server will use the tier's default model.
+func (c *LLMClient) ChatDefault() *ChatBuilder {
+	return &ChatBuilder{client: c, req: ProxyRequest{}}
 }
 
 // Provider sets the provider identifier.
