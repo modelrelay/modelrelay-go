@@ -5,11 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/mail"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// isValidEmail checks if the given string is a valid email address.
+func isValidEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
+}
 
 // CustomerMetadata holds arbitrary customer metadata.
 type CustomerMetadata map[string]any
@@ -21,7 +28,7 @@ type Customer struct {
 	TierID               uuid.UUID        `json:"tier_id"`
 	TierCode             string           `json:"tier_code,omitempty"`
 	ExternalID           string           `json:"external_id"`
-	Email                string           `json:"email,omitempty"`
+	Email                string           `json:"email"`
 	Metadata             CustomerMetadata `json:"metadata,omitempty"`
 	StripeCustomerID     string           `json:"stripe_customer_id,omitempty"`
 	StripeSubscriptionID string           `json:"stripe_subscription_id,omitempty"`
@@ -36,7 +43,7 @@ type Customer struct {
 type CustomerCreateRequest struct {
 	TierID     string           `json:"tier_id"`
 	ExternalID string           `json:"external_id"`
-	Email      string           `json:"email,omitempty"`
+	Email      string           `json:"email"`
 	Metadata   CustomerMetadata `json:"metadata,omitempty"`
 }
 
@@ -44,7 +51,7 @@ type CustomerCreateRequest struct {
 type CustomerUpsertRequest struct {
 	TierID     string           `json:"tier_id"`
 	ExternalID string           `json:"external_id"`
-	Email      string           `json:"email,omitempty"`
+	Email      string           `json:"email"`
 	Metadata   CustomerMetadata `json:"metadata,omitempty"`
 }
 
@@ -117,6 +124,12 @@ func (c *CustomersClient) Create(ctx context.Context, req CustomerCreateRequest)
 	if strings.TrimSpace(req.ExternalID) == "" {
 		return Customer{}, fmt.Errorf("sdk: external_id required")
 	}
+	if strings.TrimSpace(req.Email) == "" {
+		return Customer{}, fmt.Errorf("sdk: email required")
+	}
+	if !isValidEmail(req.Email) {
+		return Customer{}, fmt.Errorf("sdk: invalid email format")
+	}
 	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/customers", req)
 	if err != nil {
 		return Customer{}, err
@@ -170,6 +183,12 @@ func (c *CustomersClient) Upsert(ctx context.Context, req CustomerUpsertRequest)
 	}
 	if strings.TrimSpace(req.ExternalID) == "" {
 		return Customer{}, fmt.Errorf("sdk: external_id required")
+	}
+	if strings.TrimSpace(req.Email) == "" {
+		return Customer{}, fmt.Errorf("sdk: email required")
+	}
+	if !isValidEmail(req.Email) {
+		return Customer{}, fmt.Errorf("sdk: invalid email format")
 	}
 	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPut, "/customers", req)
 	if err != nil {
