@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modelrelay/modelrelay/platform/headers"
 	llm "github.com/modelrelay/modelrelay/providers"
 	"github.com/modelrelay/modelrelay/providers/sse"
 )
@@ -23,7 +24,7 @@ func TestProxyMessage(t *testing.T) {
 		if r.URL.Path != "/llm/proxy" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
-		if got := r.Header.Get(requestIDHeader); got != "req-123" {
+		if got := r.Header.Get(headers.ChatRequestID); got != "req-123" {
 			t.Fatalf("expected request id header got %s", got)
 		}
 		var reqPayload map[string]any
@@ -38,7 +39,7 @@ func TestProxyMessage(t *testing.T) {
 			t.Fatalf("missing metadata: %+v", reqPayload)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set(requestIDHeader, "resp-req-123")
+		w.Header().Set(headers.ChatRequestID, "resp-req-123")
 		json.NewEncoder(w).Encode(llm.ProxyResponse{ID: "resp_123", Provider: "openai", Model: "demo", Content: []string{"hi"}, Usage: llm.Usage{}})
 	}))
 	defer srv.Close()
@@ -67,11 +68,11 @@ func TestProxyMessage(t *testing.T) {
 
 func TestProxyStream(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get(requestIDHeader) != "stream-req" {
+		if r.Header.Get(headers.ChatRequestID) != "stream-req" {
 			t.Fatalf("missing request id header")
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set(requestIDHeader, "resp-stream")
+		w.Header().Set(headers.ChatRequestID, "resp-stream")
 		flusher, _ := w.(http.Flusher)
 		w.Write([]byte("event: message_start\ndata: {\"response_id\":\"resp_1\",\"model\":\"demo\"}\n\n"))
 		flusher.Flush()
@@ -128,7 +129,7 @@ func TestProxyStreamNDJSON(t *testing.T) {
 			t.Fatalf("expected ndjson accept header, got %s", r.Header.Get("Accept"))
 		}
 		w.Header().Set("Content-Type", "application/x-ndjson")
-		w.Header().Set(requestIDHeader, "resp-ndjson")
+		w.Header().Set(headers.ChatRequestID, "resp-ndjson")
 		lines := []string{
 			`{"event":"message_start","response_id":"resp_json","model":"demo"}`,
 			`{"event":"message_delta","data":{"foo":"bar"}}`,
@@ -266,7 +267,7 @@ func TestProxyOptionsMergeDefaults(t *testing.T) {
 				t.Fatalf("unexpected metadata %+v", payload.Metadata)
 			}
 			w.Header().Set("Content-Type", "text/event-stream")
-			w.Header().Set(requestIDHeader, "resp-stream-merge")
+			w.Header().Set(headers.ChatRequestID, "resp-stream-merge")
 			flusher, _ := w.(http.Flusher)
 			fmt.Fprintf(w, "event: message_start\ndata: {\"response_id\":\"resp-123\",\"model\":\"demo\"}\n\n")
 			flusher.Flush()
@@ -320,7 +321,7 @@ func TestProxyOptionsMergeDefaults(t *testing.T) {
 
 func TestChatBuilderBlocking(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got := r.Header.Get(requestIDHeader); got != "builder-req" {
+		if got := r.Header.Get(headers.ChatRequestID); got != "builder-req" {
 			t.Fatalf("expected request id header, got %s", got)
 		}
 		if got := r.Header.Get("X-Debug"); got != "true" {
@@ -346,7 +347,7 @@ func TestChatBuilderBlocking(t *testing.T) {
 			t.Fatalf("unexpected metadata %+v", payload.Metadata)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set(requestIDHeader, "resp-builder")
+		w.Header().Set(headers.ChatRequestID, "resp-builder")
 		json.NewEncoder(w).Encode(llm.ProxyResponse{ID: "resp_abc", Provider: "openai", Model: "demo", Content: []string{"ok"}, StopReason: "end_turn", Usage: llm.Usage{TotalTokens: 3}})
 	}))
 	defer srv.Close()
@@ -381,7 +382,7 @@ func TestChatBuilderBlocking(t *testing.T) {
 func TestChatStreamAdapter(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set(requestIDHeader, "resp-chat-stream")
+		w.Header().Set(headers.ChatRequestID, "resp-chat-stream")
 		flusher, _ := w.(http.Flusher)
 		fmt.Fprintf(w, "event: message_start\ndata: {\"response_id\":\"resp_1\",\"model\":\"demo\"}\n\n")
 		flusher.Flush()
@@ -457,7 +458,7 @@ func TestChatStreamAdapter(t *testing.T) {
 func TestChatStreamAdapterPopulatesMetadataFromMessage(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set(requestIDHeader, "resp-msg-metadata")
+		w.Header().Set(headers.ChatRequestID, "resp-msg-metadata")
 		flusher, _ := w.(http.Flusher)
 		fmt.Fprintf(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_nested\",\"model\":\"openai/gpt-5.1\"}}\n\n")
 		flusher.Flush()
@@ -510,7 +511,7 @@ func TestChatStreamAdapterPopulatesMetadataFromMessage(t *testing.T) {
 func TestChatStreamCollectAggregates(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set(requestIDHeader, "resp-collect")
+		w.Header().Set(headers.ChatRequestID, "resp-collect")
 		flusher, _ := w.(http.Flusher)
 		fmt.Fprintf(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"resp_1\",\"model\":\"openai/gpt-5.1\"}}\n\n")
 		flusher.Flush()

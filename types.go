@@ -7,11 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modelrelay/modelrelay/platform/headers"
 	llm "github.com/modelrelay/modelrelay/providers"
-)
-
-const (
-	requestIDHeader = "X-ModelRelay-Chat-Request-Id"
 )
 
 // ProxyRequest mirrors the SaaS /llm/proxy JSON contract using typed enums.
@@ -113,7 +110,7 @@ func WithRequestID(requestID string) ProxyOption {
 		if opts.headers == nil {
 			opts.headers = make(http.Header)
 		}
-		opts.headers.Set(requestIDHeader, clean)
+		opts.headers.Set(headers.ChatRequestID, clean)
 	}
 }
 

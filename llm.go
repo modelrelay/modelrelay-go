@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/modelrelay/modelrelay/platform/headers"
 	llm "github.com/modelrelay/modelrelay/providers"
 )
 
@@ -420,7 +421,7 @@ func requestIDFromHeaders(h http.Header) string {
 	if h == nil {
 		return ""
 	}
-	if id := h.Get(requestIDHeader); id != "" {
+	if id := h.Get(headers.ChatRequestID); id != "" {
 		return id
 	}
 	return ""
