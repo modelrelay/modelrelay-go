@@ -628,6 +628,103 @@ func containsHelper(s, substr string) bool {
 	return false
 }
 
+// ============================================================================
+// Message Factory Function Tests
+// ============================================================================
+
+func TestNewUserMessage(t *testing.T) {
+	msg := NewUserMessage("Hello, world!")
+	if msg.Role != "user" {
+		t.Errorf("expected role 'user', got '%s'", msg.Role)
+	}
+	if msg.Content != "Hello, world!" {
+		t.Errorf("expected content 'Hello, world!', got '%s'", msg.Content)
+	}
+}
+
+func TestNewAssistantMessage(t *testing.T) {
+	msg := NewAssistantMessage("I can help with that.")
+	if msg.Role != "assistant" {
+		t.Errorf("expected role 'assistant', got '%s'", msg.Role)
+	}
+	if msg.Content != "I can help with that." {
+		t.Errorf("expected content 'I can help with that.', got '%s'", msg.Content)
+	}
+}
+
+func TestNewSystemMessage(t *testing.T) {
+	msg := NewSystemMessage("You are a helpful assistant.")
+	if msg.Role != "system" {
+		t.Errorf("expected role 'system', got '%s'", msg.Role)
+	}
+	if msg.Content != "You are a helpful assistant." {
+		t.Errorf("expected content 'You are a helpful assistant.', got '%s'", msg.Content)
+	}
+}
+
+// ============================================================================
+// ToolCall Factory Function Tests
+// ============================================================================
+
+func TestNewToolCall(t *testing.T) {
+	tc := NewToolCall("call_123", "get_weather", `{"location":"NYC"}`)
+	if tc.ID != "call_123" {
+		t.Errorf("expected ID 'call_123', got '%s'", tc.ID)
+	}
+	if tc.Type != llm.ToolTypeFunction {
+		t.Errorf("expected type '%s', got '%s'", llm.ToolTypeFunction, tc.Type)
+	}
+	if tc.Function == nil {
+		t.Fatal("expected function to be set")
+	}
+	if tc.Function.Name != "get_weather" {
+		t.Errorf("expected function name 'get_weather', got '%s'", tc.Function.Name)
+	}
+	if tc.Function.Arguments != `{"location":"NYC"}` {
+		t.Errorf("expected arguments, got '%s'", tc.Function.Arguments)
+	}
+}
+
+func TestNewFunctionCall(t *testing.T) {
+	fc := NewFunctionCall("get_weather", `{"location":"NYC"}`)
+	if fc.Name != "get_weather" {
+		t.Errorf("expected name 'get_weather', got '%s'", fc.Name)
+	}
+	if fc.Arguments != `{"location":"NYC"}` {
+		t.Errorf("expected arguments, got '%s'", fc.Arguments)
+	}
+}
+
+// ============================================================================
+// Usage Factory Function Tests
+// ============================================================================
+
+func TestNewUsage(t *testing.T) {
+	t.Run("with explicit total", func(t *testing.T) {
+		u := NewUsage(100, 50, 150)
+		if u.InputTokens != 100 {
+			t.Errorf("expected input 100, got %d", u.InputTokens)
+		}
+		if u.OutputTokens != 50 {
+			t.Errorf("expected output 50, got %d", u.OutputTokens)
+		}
+		if u.TotalTokens != 150 {
+			t.Errorf("expected total 150, got %d", u.TotalTokens)
+		}
+	})
+
+	t.Run("auto-calculates total when zero", func(t *testing.T) {
+		u := NewUsage(100, 50, 0)
+		if u.TotalTokens != 150 {
+			t.Errorf("expected auto-calculated total 150, got %d", u.TotalTokens)
+		}
+	})
+}
+
+// ============================================================================
+// Tool Result Message Tests
+// ============================================================================
+
 // Ensure ProxyMessage has proper JSON marshaling for test comparison
 func TestToolResultMessage(t *testing.T) {
 	msg, err := ToolResultMessage("call_123", "sunny")

@@ -9,6 +9,60 @@ import (
 )
 
 // ============================================================================
+// Message Factory Functions
+// ============================================================================
+
+// NewUserMessage creates a user message.
+func NewUserMessage(content string) llm.ProxyMessage {
+	return llm.ProxyMessage{Role: "user", Content: content}
+}
+
+// NewAssistantMessage creates an assistant message.
+func NewAssistantMessage(content string) llm.ProxyMessage {
+	return llm.ProxyMessage{Role: "assistant", Content: content}
+}
+
+// NewSystemMessage creates a system message.
+func NewSystemMessage(content string) llm.ProxyMessage {
+	return llm.ProxyMessage{Role: "system", Content: content}
+}
+
+// ============================================================================
+// ToolCall Factory Functions
+// ============================================================================
+
+// NewToolCall creates a tool call with the given ID, function name, and arguments.
+func NewToolCall(id, name, args string) llm.ToolCall {
+	return llm.ToolCall{
+		ID:       id,
+		Type:     llm.ToolTypeFunction,
+		Function: NewFunctionCall(name, args),
+	}
+}
+
+// NewFunctionCall creates a function call with the given name and arguments.
+func NewFunctionCall(name, args string) *llm.FunctionCall {
+	return &llm.FunctionCall{Name: name, Arguments: args}
+}
+
+// ============================================================================
+// Usage Factory Function
+// ============================================================================
+
+// NewUsage creates a Usage with the given token counts.
+// If total is 0, it will be calculated as input + output.
+func NewUsage(input, output, total int64) llm.Usage {
+	if total == 0 {
+		total = input + output
+	}
+	return llm.Usage{
+		InputTokens:  input,
+		OutputTokens: output,
+		TotalTokens:  total,
+	}
+}
+
+// ============================================================================
 // Schema Inference from Go Types
 // ============================================================================
 
