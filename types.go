@@ -27,10 +27,13 @@ type ProxyRequest struct {
 }
 
 // Validate returns an error when required fields are missing.
-// Note: model is optional - if not provided, the server uses the tier's default model.
 func (r ProxyRequest) Validate() error {
 	if len(r.Messages) == 0 {
 		return fmt.Errorf("at least one message is required")
+	}
+	// Model is optional, but when provided it must be a known SDK model.
+	if !r.Model.IsEmpty() && !r.Model.IsKnown() {
+		return ConfigError{Reason: fmt.Sprintf("unsupported model id %q", r.Model)}
 	}
 	if rf := r.ResponseFormat; rf != nil && rf.Type == llm.ResponseFormatTypeJSONSchema {
 		if rf.JSONSchema == nil || strings.TrimSpace(rf.JSONSchema.Name) == "" || len(rf.JSONSchema.Schema) == 0 {

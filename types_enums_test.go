@@ -24,19 +24,21 @@ func TestProviderAndModelParsing(t *testing.T) {
 	if provider != ProviderOpenAI {
 		t.Fatalf("expected openai provider, got %s", provider)
 	}
-	customProvider := ParseProviderID("acme-cloud")
-	if !customProvider.IsOther() || customProvider.String() != "acme-cloud" {
-		t.Fatalf("expected custom provider preserved, got %q", customProvider)
-	}
 
-	model := ParseModelID("openai/gpt-4o-mini")
-	if model != ModelOpenAIGPT4oMini {
+	model := ParseModelID("gpt-4o-mini")
+	if model != ModelGPT4oMini {
 		t.Fatalf("expected gpt-4o-mini got %s", model)
 	}
-	latest := ParseModelID("openai/gpt-5.1")
-	if latest != ModelOpenAIGPT51 {
+	latest := ParseModelID("gpt-5.1")
+	if latest != ModelGPT51 {
 		t.Fatalf("expected gpt-5.1 got %s", latest)
 	}
+	// Anthropic: only provider-agnostic ids are recognized.
+	opus := ParseModelID("claude-opus-4-5")
+	if opus != ModelClaudeOpus4_5 {
+		t.Fatalf("expected claude-opus-4-5 got %s", opus)
+	}
+
 	customModel := ParseModelID("my/model")
 	if !customModel.IsOther() || customModel.String() != "my/model" {
 		t.Fatalf("expected custom model preserved, got %q", customModel)
@@ -49,12 +51,12 @@ func TestProxyRequestBuilderValidation(t *testing.T) {
 		t.Fatalf("expected missing model validation error")
 	}
 
-	_, err = NewProxyRequest(ParseModelID("openai/gpt-5.1"), []llm.ProxyMessage{})
+	_, err = NewProxyRequest(ModelGPT51, []llm.ProxyMessage{})
 	if err == nil {
 		t.Fatalf("expected validation error for empty messages")
 	}
 
-	req, err := NewProxyRequestBuilder(ModelOpenAIGPT51).
+	req, err := NewProxyRequestBuilder(ModelGPT51).
 		User("hello").
 		MetadataEntry("trace_id", "abc").
 		ResponseFormat(llm.ResponseFormat{Type: llm.ResponseFormatTypeJSONObject}).

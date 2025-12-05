@@ -63,7 +63,7 @@ custom IDs safely:
 ```go
 req := sdk.ProxyRequest{
     Provider: sdk.ProviderOpenAI,
-    Model:    sdk.ModelOpenAIGPT51,
+    Model:    sdk.ModelGPT51,
     Messages: []llm.ProxyMessage{{Role: "user", Content: "hi"}},
 }
 resp, _ := client.LLM.ProxyMessage(ctx, req)
@@ -104,7 +104,7 @@ schema := json.RawMessage(`{"type":"object","properties":{"headline":{"type":"st
 strict := true
 req := sdk.ProxyRequest{
     Provider: sdk.ProviderOpenAI,
-    Model:    sdk.ModelOpenAIGPT4oMini,
+    Model:    sdk.ModelGPT4oMini,
     Messages: []llm.ProxyMessage{{Role: "user", Content: "Summarize ModelRelay"}},
     ResponseFormat: &llm.ResponseFormat{
         Type: llm.ResponseFormatTypeJSONSchema,
@@ -129,7 +129,7 @@ calls while keeping access to the underlying SSE events when needed:
 
 ```go
 // Blocking request with stop sequences for fence suppression
-resp, err := client.LLM.Chat(sdk.ModelOpenAIGPT51).
+resp, err := client.LLM.Chat(sdk.ModelGPT51).
     Provider(sdk.ProviderOpenAI).
     System("You are a concise assistant.").
     User("Explain retrieval-augmented generation in one sentence").
@@ -140,7 +140,7 @@ resp, err := client.LLM.Chat(sdk.ModelOpenAIGPT51).
 
 // Streaming adapter emits text deltas and the final usage/stop_reason,
 // while chunk.Raw exposes the original StreamEvent payload.
-stream, _ := client.LLM.Chat(sdk.ModelOpenAIGPT51).
+stream, _ := client.LLM.Chat(sdk.ModelGPT51).
     User("Tell me a joke about Go SDKs").
     MaxTokens(64).
     RequestID("req-stream-1").
@@ -162,7 +162,7 @@ for {
 }
 
 // Prefer aggregated output from the streaming endpoint? Use Collect.
-resp, err := client.LLM.Chat(sdk.ModelOpenAIGPT51).
+resp, err := client.LLM.Chat(sdk.ModelGPT51).
     User("Summarize RAG in 1 sentence").
     RequestID("req-collect-1").
     Collect(ctx)

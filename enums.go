@@ -140,7 +140,7 @@ func (p *ProviderID) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	*p = ParseProviderID(raw)
+	*p = ProviderID(raw)
 	return nil
 }
 
@@ -148,16 +148,24 @@ func (p *ProviderID) UnmarshalJSON(data []byte) error {
 type ModelID string
 
 const (
-	ModelOpenAIGPT4o                   ModelID = "openai/gpt-4o"
-	ModelOpenAIGPT4oMini               ModelID = "openai/gpt-4o-mini"
-	ModelOpenAIGPT51                   ModelID = "openai/gpt-5.1"
-	ModelAnthropicClaude35HaikuLatest  ModelID = "anthropic/claude-3-5-haiku-latest"
-	ModelAnthropicClaude35SonnetLatest ModelID = "anthropic/claude-3-5-sonnet-latest"
-	ModelAnthropicClaudeOpus45         ModelID = "anthropic/claude-opus-4-5-20251101"
-	ModelAnthropicClaude35Haiku        ModelID = "anthropic/claude-3.5-haiku"
+	// OpenAI models (provider-agnostic identifiers)
+	ModelGPT4o     ModelID = "gpt-4o"
+	ModelGPT4oMini ModelID = "gpt-4o-mini"
+	ModelGPT51     ModelID = "gpt-5.1"
+
+	// Anthropic models (provider-agnostic identifiers)
+	ModelClaude3_5HaikuLatest  ModelID = "claude-3-5-haiku-latest"
+	ModelClaude3_5SonnetLatest ModelID = "claude-3-5-sonnet-latest"
+	// Claude Opus 4.5 (short identifier; older dated ids are treated as legacy).
+	ModelClaudeOpus4_5 ModelID = "claude-opus-4-5"
+	ModelClaude3_5Haiku ModelID = "claude-3.5-haiku"
+
+	// xAI / Grok models
 	ModelGrok2                         ModelID = "grok-2"
 	ModelGrok4_1FastNonReasoning       ModelID = "grok-4-1-fast-non-reasoning"
 	ModelGrok4_1FastReasoning          ModelID = "grok-4-1-fast-reasoning"
+
+	// Internal echo model used for testing.
 	ModelEcho1                         ModelID = "echo-1"
 )
 
@@ -167,20 +175,25 @@ func ParseModelID(val string) ModelID {
 	switch strings.ToLower(trimmed) {
 	case "":
 		return ""
-	case "openai/gpt-4o":
-		return ModelOpenAIGPT4o
-	case "openai/gpt-4o-mini":
-		return ModelOpenAIGPT4oMini
-	case "openai/gpt-5.1":
-		return ModelOpenAIGPT51
-	case "anthropic/claude-3-5-haiku-latest":
-		return ModelAnthropicClaude35HaikuLatest
-	case "anthropic/claude-3-5-sonnet-latest":
-		return ModelAnthropicClaude35SonnetLatest
-	case "anthropic/claude-opus-4-5-20251101":
-		return ModelAnthropicClaudeOpus45
-	case "anthropic/claude-3.5-haiku":
-		return ModelAnthropicClaude35Haiku
+	// OpenAI – provider-agnostic identifiers only.
+	case "gpt-4o":
+		return ModelGPT4o
+	case "gpt-4o-mini":
+		return ModelGPT4oMini
+	case "gpt-5.1":
+		return ModelGPT51
+
+	// Anthropic – provider-agnostic identifiers only.
+	case "claude-3-5-haiku-latest":
+		return ModelClaude3_5HaikuLatest
+	case "claude-3-5-sonnet-latest":
+		return ModelClaude3_5SonnetLatest
+	case "claude-opus-4-5":
+		return ModelClaudeOpus4_5
+	case "claude-3.5-haiku":
+		return ModelClaude3_5Haiku
+
+	// xAI / Grok – already provider-agnostic.
 	case "grok-2":
 		return ModelGrok2
 	case "grok-4-1-fast-non-reasoning":
@@ -197,8 +210,8 @@ func ParseModelID(val string) ModelID {
 // IsOther reports whether the model is not one of the built-in constants.
 func (m ModelID) IsOther() bool {
 	switch m {
-	case ModelOpenAIGPT4o, ModelOpenAIGPT4oMini, ModelOpenAIGPT51, ModelAnthropicClaude35HaikuLatest,
-		ModelAnthropicClaude35SonnetLatest, ModelAnthropicClaudeOpus45, ModelAnthropicClaude35Haiku,
+	case ModelGPT4o, ModelGPT4oMini, ModelGPT51, ModelClaude3_5HaikuLatest,
+		ModelClaude3_5SonnetLatest, ModelClaudeOpus4_5, ModelClaude3_5Haiku,
 		ModelGrok2, ModelGrok4_1FastNonReasoning, ModelGrok4_1FastReasoning, ModelEcho1:
 		return false
 	default:
@@ -213,6 +226,22 @@ func (m ModelID) IsEmpty() bool {
 
 func (m ModelID) String() string {
 	return string(m)
+}
+
+// IsKnown reports whether the model is one of the built-in SDK constants.
+// Callers that need to support custom models should construct ModelID directly
+// instead of relying on ParseModelID.
+func (m ModelID) IsKnown() bool {
+	switch m {
+	case "", // empty => let server apply tier defaults
+		ModelGPT4o, ModelGPT4oMini, ModelGPT51,
+		ModelClaude3_5HaikuLatest, ModelClaude3_5SonnetLatest, ModelClaudeOpus4_5, ModelClaude3_5Haiku,
+		ModelGrok2, ModelGrok4_1FastNonReasoning, ModelGrok4_1FastReasoning,
+		ModelEcho1:
+		return true
+	default:
+		return false
+	}
 }
 
 func (m ModelID) MarshalJSON() ([]byte, error) {
