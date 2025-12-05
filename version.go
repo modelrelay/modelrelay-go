@@ -1,5 +1,5 @@
 package sdk
 
 // Version is the published SDK version.
-// Minor bump: provider-agnostic model identifiers, no provider-prefixed fallbacks.
-const Version = "0.14.0"
+// Minor bump: add Google provider + Gemini 3 Pro model identifiers.
+const Version = "0.15.0"

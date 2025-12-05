@@ -89,6 +89,7 @@ type ProviderID string
 const (
 	ProviderOpenAI    ProviderID = "openai"
 	ProviderAnthropic ProviderID = "anthropic"
+	ProviderGoogle    ProviderID = "google"
 	ProviderXAI       ProviderID = "xai"
 	ProviderEcho      ProviderID = "echo"
 )
@@ -103,6 +104,8 @@ func ParseProviderID(val string) ProviderID {
 		return ProviderOpenAI
 	case "anthropic":
 		return ProviderAnthropic
+	case "google":
+		return ProviderGoogle
 	case "xai":
 		return ProviderXAI
 	case "echo":
@@ -115,7 +118,7 @@ func ParseProviderID(val string) ProviderID {
 // IsOther reports whether the provider is not one of the built-in constants.
 func (p ProviderID) IsOther() bool {
 	switch p {
-	case ProviderOpenAI, ProviderAnthropic, ProviderXAI, ProviderEcho:
+	case ProviderOpenAI, ProviderAnthropic, ProviderGoogle, ProviderXAI, ProviderEcho:
 		return false
 	default:
 		return strings.TrimSpace(string(p)) != ""
@@ -157,16 +160,19 @@ const (
 	ModelClaude3_5HaikuLatest  ModelID = "claude-3-5-haiku-latest"
 	ModelClaude3_5SonnetLatest ModelID = "claude-3-5-sonnet-latest"
 	// Claude Opus 4.5 (short identifier; older dated ids are treated as legacy).
-	ModelClaudeOpus4_5 ModelID = "claude-opus-4-5"
+	ModelClaudeOpus4_5  ModelID = "claude-opus-4-5"
 	ModelClaude3_5Haiku ModelID = "claude-3.5-haiku"
 
 	// xAI / Grok models
-	ModelGrok2                         ModelID = "grok-2"
-	ModelGrok4_1FastNonReasoning       ModelID = "grok-4-1-fast-non-reasoning"
-	ModelGrok4_1FastReasoning          ModelID = "grok-4-1-fast-reasoning"
+	ModelGrok2                   ModelID = "grok-2"
+	ModelGrok4_1FastNonReasoning ModelID = "grok-4-1-fast-non-reasoning"
+	ModelGrok4_1FastReasoning    ModelID = "grok-4-1-fast-reasoning"
+
+	// Google AI Studio / Gemini models
+	ModelGemini3ProPreview ModelID = "gemini-3-pro-preview"
 
 	// Internal echo model used for testing.
-	ModelEcho1                         ModelID = "echo-1"
+	ModelEcho1 ModelID = "echo-1"
 )
 
 // ParseModelID normalizes well-known models and preserves custom identifiers.
@@ -193,6 +199,10 @@ func ParseModelID(val string) ModelID {
 	case "claude-3.5-haiku":
 		return ModelClaude3_5Haiku
 
+	// Google AI Studio / Gemini.
+	case "gemini-3-pro-preview":
+		return ModelGemini3ProPreview
+
 	// xAI / Grok – already provider-agnostic.
 	case "grok-2":
 		return ModelGrok2
@@ -212,7 +222,8 @@ func (m ModelID) IsOther() bool {
 	switch m {
 	case ModelGPT4o, ModelGPT4oMini, ModelGPT51, ModelClaude3_5HaikuLatest,
 		ModelClaude3_5SonnetLatest, ModelClaudeOpus4_5, ModelClaude3_5Haiku,
-		ModelGrok2, ModelGrok4_1FastNonReasoning, ModelGrok4_1FastReasoning, ModelEcho1:
+		ModelGrok2, ModelGrok4_1FastNonReasoning, ModelGrok4_1FastReasoning,
+		ModelGemini3ProPreview, ModelEcho1:
 		return false
 	default:
 		return strings.TrimSpace(string(m)) != ""
@@ -237,6 +248,7 @@ func (m ModelID) IsKnown() bool {
 		ModelGPT4o, ModelGPT4oMini, ModelGPT51,
 		ModelClaude3_5HaikuLatest, ModelClaude3_5SonnetLatest, ModelClaudeOpus4_5, ModelClaude3_5Haiku,
 		ModelGrok2, ModelGrok4_1FastNonReasoning, ModelGrok4_1FastReasoning,
+		ModelGemini3ProPreview,
 		ModelEcho1:
 		return true
 	default:
