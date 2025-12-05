@@ -42,6 +42,22 @@ func (e TransportError) Error() string {
 
 func (e TransportError) Unwrap() error { return e.Cause }
 
+// API error codes returned by the server.
+// These constants can be used for programmatic error handling.
+const (
+	ErrCodeNotFound         = "NOT_FOUND"
+	ErrCodeValidation       = "VALIDATION_ERROR"
+	ErrCodeRateLimit        = "RATE_LIMIT"
+	ErrCodeUnauthorized     = "UNAUTHORIZED"
+	ErrCodeForbidden        = "FORBIDDEN"
+	ErrCodeConflict         = "CONFLICT"
+	ErrCodeInternal         = "INTERNAL_ERROR"
+	ErrCodeUnavailable      = "SERVICE_UNAVAILABLE"
+	ErrCodeInvalidInput     = "INVALID_INPUT"
+	ErrCodePaymentRequired  = "PAYMENT_REQUIRED"
+	ErrCodeMethodNotAllowed = "METHOD_NOT_ALLOWED"
+)
+
 // APIError captures structured SaaS error metadata.
 type APIError struct {
 	Status    int
@@ -68,6 +84,26 @@ func (e APIError) Error() string {
 	}
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
 }
+
+// IsNotFound returns true if the error is a not found error.
+func (e APIError) IsNotFound() bool { return e.Code == ErrCodeNotFound }
+
+// IsValidation returns true if the error is a validation error.
+func (e APIError) IsValidation() bool {
+	return e.Code == ErrCodeValidation || e.Code == ErrCodeInvalidInput
+}
+
+// IsRateLimit returns true if the error is a rate limit error.
+func (e APIError) IsRateLimit() bool { return e.Code == ErrCodeRateLimit }
+
+// IsUnauthorized returns true if the error is an unauthorized error.
+func (e APIError) IsUnauthorized() bool { return e.Code == ErrCodeUnauthorized }
+
+// IsForbidden returns true if the error is a forbidden error.
+func (e APIError) IsForbidden() bool { return e.Code == ErrCodeForbidden }
+
+// IsUnavailable returns true if the error is a service unavailable error.
+func (e APIError) IsUnavailable() bool { return e.Code == ErrCodeUnavailable }
 
 func decodeAPIError(resp *http.Response, retry *RetryMetadata) error {
 	data, err := io.ReadAll(resp.Body)
