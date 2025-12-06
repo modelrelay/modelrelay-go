@@ -450,14 +450,15 @@ func MustFunctionTool(name, description string, schema any) llm.Tool {
 	return tool
 }
 
-// NewWebSearchTool creates a web search tool with optional domain filters.
-func NewWebSearchTool(allowedDomains, excludedDomains []string, maxUses *int) llm.Tool {
+// NewWebTool creates a web tool with optional domain filters and mode.
+func NewWebTool(mode llm.WebToolMode, allowedDomains, excludedDomains []string, maxUses *int) llm.Tool {
 	return llm.Tool{
-		Type: llm.ToolTypeWebSearch,
-		WebSearch: &llm.WebSearchConfig{
+		Type: llm.ToolTypeWeb,
+		Web: &llm.WebToolConfig{
 			AllowedDomains:  allowedDomains,
 			ExcludedDomains: excludedDomains,
 			MaxUses:         maxUses,
+			Mode:            mode,
 		},
 	}
 }
