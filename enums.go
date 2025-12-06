@@ -87,11 +87,11 @@ func (s *StopReason) UnmarshalJSON(data []byte) error {
 type ProviderID string
 
 const (
-	ProviderOpenAI    ProviderID = "openai"
-	ProviderAnthropic ProviderID = "anthropic"
-	ProviderGoogle    ProviderID = "google"
-	ProviderXAI       ProviderID = "xai"
-	ProviderEcho      ProviderID = "echo"
+	ProviderOpenAI         ProviderID = "openai"
+	ProviderAnthropic      ProviderID = "anthropic"
+	ProviderGoogleAIStudio ProviderID = "google-ai-studio"
+	ProviderXAI            ProviderID = "xai"
+	ProviderEcho           ProviderID = "echo"
 )
 
 // ParseProviderID normalizes known providers and preserves custom identifiers.
@@ -104,8 +104,8 @@ func ParseProviderID(val string) ProviderID {
 		return ProviderOpenAI
 	case "anthropic":
 		return ProviderAnthropic
-	case "google":
-		return ProviderGoogle
+	case "google-ai-studio":
+		return ProviderGoogleAIStudio
 	case "xai":
 		return ProviderXAI
 	case "echo":
@@ -118,7 +118,7 @@ func ParseProviderID(val string) ProviderID {
 // IsOther reports whether the provider is not one of the built-in constants.
 func (p ProviderID) IsOther() bool {
 	switch p {
-	case ProviderOpenAI, ProviderAnthropic, ProviderGoogle, ProviderXAI, ProviderEcho:
+	case ProviderOpenAI, ProviderAnthropic, ProviderGoogleAIStudio, ProviderXAI, ProviderEcho:
 		return false
 	default:
 		return strings.TrimSpace(string(p)) != ""
