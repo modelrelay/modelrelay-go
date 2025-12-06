@@ -11,9 +11,8 @@ import (
 	llm "github.com/modelrelay/modelrelay/providers"
 )
 
-// ProxyRequest mirrors the SaaS /llm/proxy JSON contract using typed enums.
+// ProxyRequest mirrors the SaaS /llm/proxy JSON contract.
 type ProxyRequest struct {
-	Provider       ProviderID
 	Model          ModelID
 	MaxTokens      int64
 	Temperature    *float64
@@ -28,12 +27,11 @@ type ProxyRequest struct {
 
 // Validate returns an error when required fields are missing.
 func (r ProxyRequest) Validate() error {
+	if r.Model.IsEmpty() {
+		return fmt.Errorf("model is required")
+	}
 	if len(r.Messages) == 0 {
 		return fmt.Errorf("at least one message is required")
-	}
-	// Model is optional, but when provided it must be a known SDK model.
-	if !r.Model.IsEmpty() && !r.Model.IsKnown() {
-		return ConfigError{Reason: fmt.Sprintf("unsupported model id %q", r.Model)}
 	}
 	if rf := r.ResponseFormat; rf != nil && rf.Type == llm.ResponseFormatTypeJSONSchema {
 		if rf.JSONSchema == nil || strings.TrimSpace(rf.JSONSchema.Name) == "" || len(rf.JSONSchema.Schema) == 0 {
@@ -46,7 +44,6 @@ func (r ProxyRequest) Validate() error {
 // ProxyResponse wraps the server response and surfaces the echoed request ID.
 type ProxyResponse struct {
 	ID         string         `json:"id"`
-	Provider   ProviderID     `json:"provider"`
 	Content    []string       `json:"content"`
 	StopReason StopReason     `json:"stop_reason,omitempty"`
 	Model      ModelID        `json:"model"`

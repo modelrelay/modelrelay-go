@@ -20,27 +20,12 @@ func TestStopReasonParsingAndOther(t *testing.T) {
 }
 
 func TestProviderAndModelParsing(t *testing.T) {
-	provider := ParseProviderID("openai")
-	if provider != ProviderOpenAI {
-		t.Fatalf("expected openai provider, got %s", provider)
-	}
-
-	model := ParseModelID("gpt-4o-mini")
-	if model != ModelGPT4oMini {
+	model := NewModelID(" gpt-4o-mini ")
+	if model.String() != "gpt-4o-mini" {
 		t.Fatalf("expected gpt-4o-mini got %s", model)
 	}
-	latest := ParseModelID("gpt-5.1")
-	if latest != ModelGPT51 {
-		t.Fatalf("expected gpt-5.1 got %s", latest)
-	}
-	// Anthropic: only provider-agnostic ids are recognized.
-	opus := ParseModelID("claude-opus-4-5")
-	if opus != ModelClaudeOpus4_5 {
-		t.Fatalf("expected claude-opus-4-5 got %s", opus)
-	}
-
-	customModel := ParseModelID("my/model")
-	if !customModel.IsOther() || customModel.String() != "my/model" {
+	customModel := NewModelID("my/model")
+	if customModel.String() != "my/model" {
 		t.Fatalf("expected custom model preserved, got %q", customModel)
 	}
 }
@@ -51,20 +36,20 @@ func TestProxyRequestBuilderValidation(t *testing.T) {
 		t.Fatalf("expected missing model validation error")
 	}
 
-	_, err = NewProxyRequest(ModelGPT51, []llm.ProxyMessage{})
+	_, err = NewProxyRequest(NewModelID("gpt-5.1"), []llm.ProxyMessage{})
 	if err == nil {
 		t.Fatalf("expected validation error for empty messages")
 	}
 
-	req, err := NewProxyRequestBuilder(ModelGPT51).
+	req, err := NewProxyRequestBuilder(NewModelID("gpt-5.1")).
 		User("hello").
 		MetadataEntry("trace_id", "abc").
-		ResponseFormat(llm.ResponseFormat{Type: llm.ResponseFormatTypeJSONSchema}).
+		ResponseFormat(llm.ResponseFormat{Type: llm.ResponseFormatTypeJSONObject}).
 		Build()
 	if err != nil {
 		t.Fatalf("unexpected builder error: %v", err)
 	}
-	if len(req.Messages) != 1 || req.Metadata["trace_id"] != "abc" || req.ResponseFormat == nil || req.ResponseFormat.Type != llm.ResponseFormatTypeJSONSchema {
+	if len(req.Messages) != 1 || req.Metadata["trace_id"] != "abc" || req.ResponseFormat == nil || req.ResponseFormat.Type != llm.ResponseFormatTypeJSONObject {
 		t.Fatalf("builder failed: %+v", req)
 	}
 }

@@ -170,7 +170,7 @@ func mapChatStreamChunk(event StreamEvent) ChatStreamChunk {
 				chunk.ResponseID = start.Message.ID
 			}
 			if chunk.Model.IsEmpty() && start.Message != nil {
-				chunk.Model = ParseModelID(start.Message.Model)
+				chunk.Model = NewModelID(start.Message.Model)
 			}
 			return chunk
 		}
@@ -199,7 +199,7 @@ func mapChatStreamChunk(event StreamEvent) ChatStreamChunk {
 					chunk.ResponseID = stop.Message.ID
 				}
 				if chunk.Model.IsEmpty() {
-					chunk.Model = ParseModelID(stop.Message.Model)
+					chunk.Model = NewModelID(stop.Message.Model)
 				}
 			}
 			return chunk
@@ -217,7 +217,7 @@ func mapChatStreamChunk(event StreamEvent) ChatStreamChunk {
 			"message.id", "response.id")
 	}
 	if chunk.Model.IsEmpty() {
-		chunk.Model = ParseModelID(firstString(payload,
+		chunk.Model = NewModelID(firstString(payload,
 			"model", "message.model", "response.model"))
 	}
 	if chunk.StopReason == "" {

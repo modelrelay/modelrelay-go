@@ -95,7 +95,6 @@ func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options .
 }
 
 type proxyRequestPayload struct {
-	Provider       string              `json:"provider,omitempty"`
 	Model          string              `json:"model"`
 	MaxTokens      int64               `json:"max_tokens"`
 	Temperature    *float64            `json:"temperature,omitempty"`
@@ -114,7 +113,6 @@ func newProxyRequestPayload(req ProxyRequest) (proxyRequestPayload, error) {
 	}
 
 	payload := proxyRequestPayload{
-		Provider:       req.Provider.String(),
 		Model:          req.Model.String(),
 		MaxTokens:      req.MaxTokens,
 		Temperature:    req.Temperature,
@@ -379,7 +377,7 @@ func parseNDJSONEvent(line []byte) (StreamEvent, error) {
 		Name:       envelope.Event,
 		Data:       append([]byte(nil), envelope.Data...),
 		ResponseID: envelope.ResponseID,
-		Model:      ParseModelID(envelope.Model),
+		Model:      NewModelID(envelope.Model),
 		StopReason: ParseStopReason(envelope.StopReason),
 		Usage:      envelope.Usage,
 	}
@@ -403,7 +401,7 @@ func buildStreamEvent(name string, data []byte) StreamEvent {
 		_ = json.Unmarshal(data, &meta)
 	}
 	event.ResponseID = meta.ResponseID
-	event.Model = ParseModelID(meta.Model)
+	event.Model = NewModelID(meta.Model)
 	event.StopReason = ParseStopReason(meta.StopReason)
 	event.Usage = meta.Usage
 	return event

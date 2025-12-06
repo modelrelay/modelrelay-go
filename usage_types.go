@@ -11,7 +11,7 @@ type Usage struct {
 	ReasoningTokens int64 `json:"reasoning_tokens,omitempty"`
 }
 
-// Total returns provider-reported total tokens or a best-effort sum.
+// Total returns backend-reported total tokens or a best-effort sum.
 func (u Usage) Total() int64 {
 	if u.TotalTokens > 0 {
 		return u.TotalTokens

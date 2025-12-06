@@ -54,21 +54,19 @@ See `examples/` for runnable code:
 
 - `examples/cli`: Interactive chat CLI using the streaming proxy.
 
-### Typed models, providers, and stop reasons
+### Typed models and stop reasons
 
-The Go SDK now surfaces typed identifiers for common providers/models and stop
-reasons. Unknown strings are preserved and marked as `Other` so you can pass
-custom IDs safely:
+The Go SDK now surfaces typed identifiers for common stop
+reasons, while models are plain strings wrapped in a `ModelID` type:
 
 ```go
 req := sdk.ProxyRequest{
-    Provider: sdk.ProviderOpenAI,
-    Model:    sdk.ModelGPT51,
+    Model:    sdk.NewModelID("gpt-5.1"),
     Messages: []llm.ProxyMessage{{Role: "user", Content: "hi"}},
 }
 resp, _ := client.LLM.ProxyMessage(ctx, req)
 if resp.StopReason.IsOther() {
-    log.Printf("provider returned custom stop reason %q", resp.StopReason)
+    log.Printf("backend returned custom stop reason %q", resp.StopReason)
 }
 
 // Per-call overrides: metadata takes precedence over config defaults, and
@@ -93,18 +91,17 @@ case errors.As(err, &transportErr):
 ```
 
 `Usage` now includes optional `cached_tokens` / `reasoning_tokens` fields when
-providers emit them, and backfills `total_tokens` if the provider omits it.
+the backend emits them, and backfills `total_tokens` if it is omitted.
 
 ### Structured outputs (`response_format`)
 
-Ask providers to return structured JSON instead of free-form text:
+Ask the backend to return structured JSON instead of free-form text:
 
 ```go
 schema := json.RawMessage(`{"type":"object","properties":{"headline":{"type":"string"}}}`)
 strict := true
 req := sdk.ProxyRequest{
-    Provider: sdk.ProviderOpenAI,
-    Model:    sdk.ModelGPT4oMini,
+    Model:    sdk.NewModelID("gpt-4o-mini"),
     Messages: []llm.ProxyMessage{{Role: "user", Content: "Summarize ModelRelay"}},
     ResponseFormat: &llm.ResponseFormat{
         Type: llm.ResponseFormatTypeJSONSchema,
@@ -115,7 +112,7 @@ resp, _ := client.LLM.ProxyMessage(ctx, req)
 fmt.Println(resp.Content[0]) // JSON string matching your schema
 ```
 
-Providers that don’t support structured outputs are automatically skipped during
+Backends that don’t support structured outputs are automatically skipped during
 routing, and the request falls back to text if `response_format` is omitted.
 
 The CLI in `examples/apikeys` uses the same calls. Provide `MODELRELAY_EMAIL` and
@@ -125,12 +122,13 @@ to create a project key.
 ### Chat builders & streaming adapter
 
 Fluent builders mirror the TS/Rust ergonomics for both blocking and streaming
-calls while keeping access to the underlying SSE events when needed:
+calls while keeping access to the underlying SSE events when needed. Models are
+opaque identifiers; the backend selects the cheapest healthy provider for the
+requested model automatically.
 
 ```go
 // Blocking request with stop sequences for fence suppression
-resp, err := client.LLM.Chat(sdk.ModelGPT51).
-    Provider(sdk.ProviderOpenAI).
+resp, err := client.LLM.Chat(sdk.NewModelID("gpt-5.1")).
     System("You are a concise assistant.").
     User("Explain retrieval-augmented generation in one sentence").
     StopSequences("\n\n```").
@@ -140,7 +138,7 @@ resp, err := client.LLM.Chat(sdk.ModelGPT51).
 
 // Streaming adapter emits text deltas and the final usage/stop_reason,
 // while chunk.Raw exposes the original StreamEvent payload.
-stream, _ := client.LLM.Chat(sdk.ModelGPT51).
+stream, _ := client.LLM.Chat(sdk.NewModelID("gpt-5.1")).
     User("Tell me a joke about Go SDKs").
     MaxTokens(64).
     RequestID("req-stream-1").
@@ -162,7 +160,7 @@ for {
 }
 
 // Prefer aggregated output from the streaming endpoint? Use Collect.
-resp, err := client.LLM.Chat(sdk.ModelGPT51).
+resp, err := client.LLM.Chat(sdk.NewModelID("gpt-5.1")).
     User("Summarize RAG in 1 sentence").
     RequestID("req-collect-1").
     Collect(ctx)

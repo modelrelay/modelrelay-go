@@ -3,18 +3,18 @@ package sdk
 
 import "net/http"
 
-type authProvider interface {
+type authStrategy interface {
 	Apply(req *http.Request)
 }
 
-type authChain []authProvider
+type authChain []authStrategy
 
 func (c authChain) Apply(req *http.Request) {
-	for _, provider := range c {
-		if provider == nil {
+	for _, s := range c {
+		if s == nil {
 			continue
 		}
-		provider.Apply(req)
+		s.Apply(req)
 	}
 }
 

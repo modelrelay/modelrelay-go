@@ -31,7 +31,7 @@ func TestProxyMessage(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&reqPayload); err != nil {
 			t.Fatalf("decode request: %v", err)
 		}
-		if reqPayload["model"] != string(ModelEcho1) {
+		if reqPayload["model"] != "demo" {
 			t.Fatalf("unexpected model %v", reqPayload["model"])
 		}
 		meta, _ := reqPayload["metadata"].(map[string]any)
@@ -40,7 +40,7 @@ func TestProxyMessage(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set(headers.ChatRequestID, "resp-req-123")
-		json.NewEncoder(w).Encode(llm.ProxyResponse{ID: "resp_123", Provider: "openai", Model: string(ModelEcho1), Content: []string{"hi"}, Usage: llm.Usage{}})
+		json.NewEncoder(w).Encode(llm.ProxyResponse{ID: "resp_123", Provider: "openai", Model: "demo", Content: []string{"hi"}, Usage: llm.Usage{}})
 	}))
 	defer srv.Close()
 
@@ -50,7 +50,7 @@ func TestProxyMessage(t *testing.T) {
 	}
 
 	resp, err := client.LLM.ProxyMessage(context.Background(), ProxyRequest{
-		Model:     ModelEcho1,
+		Model:     NewModelID("demo"),
 		MaxTokens: 32,
 		Messages:  []llm.ProxyMessage{{Role: "user", Content: "ping"}},
 		Metadata:  map[string]string{"trace_id": "abc123"},
@@ -90,7 +90,7 @@ func TestProxyStream(t *testing.T) {
 	defer cancel()
 
 	stream, err := client.LLM.ProxyStream(ctx, ProxyRequest{
-		Model:     ModelEcho1,
+		Model:     NewModelID("demo"),
 		MaxTokens: 16,
 		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
 	}, WithRequestID("stream-req"))
@@ -146,7 +146,7 @@ func TestProxyStreamNDJSON(t *testing.T) {
 	}
 
 	stream, err := client.LLM.ProxyStream(context.Background(), ProxyRequest{
-		Model:     ModelEcho1,
+		Model:     NewModelID("demo"),
 		MaxTokens: 16,
 		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
 	}, WithNDJSONStream())
@@ -239,7 +239,7 @@ func TestProxyOptionsMergeDefaults(t *testing.T) {
 		}
 
 		_, err = client.LLM.ProxyMessage(context.Background(), ProxyRequest{
-			Model:    ModelEcho1,
+			Model:    NewModelID("demo"),
 			Messages: []llm.ProxyMessage{{Role: "user", Content: "hi"}},
 			Metadata: map[string]string{"env": "staging", "request": "true"},
 		},
@@ -291,7 +291,7 @@ func TestProxyOptionsMergeDefaults(t *testing.T) {
 		defer cancel()
 
 		stream, err := client.LLM.ProxyStream(ctx, ProxyRequest{
-			Model:    ModelEcho1,
+			Model:    NewModelID("demo"),
 			Messages: []llm.ProxyMessage{{Role: "user", Content: "hello"}},
 			Metadata: map[string]string{"env": "sandbox"},
 		},
@@ -331,8 +331,8 @@ func TestChatBuilderBlocking(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			t.Fatalf("decode payload: %v", err)
 		}
-		if payload.Provider != "openai" || payload.Model != string(ModelEcho1) {
-			t.Fatalf("unexpected provider/model %+v", payload)
+		if payload.Model != "demo" {
+			t.Fatalf("unexpected model %+v", payload)
 		}
 		if payload.MaxTokens != 32 || payload.Temperature == nil || *payload.Temperature != 0.4 {
 			t.Fatalf("unexpected params %+v", payload)
@@ -348,7 +348,7 @@ func TestChatBuilderBlocking(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set(headers.ChatRequestID, "resp-builder")
-		json.NewEncoder(w).Encode(llm.ProxyResponse{ID: "resp_abc", Provider: "openai", Model: string(ModelEcho1), Content: []string{"ok"}, StopReason: "end_turn", Usage: llm.Usage{TotalTokens: 3}})
+		json.NewEncoder(w).Encode(llm.ProxyResponse{ID: "resp_abc", Provider: "openai", Model: "demo", Content: []string{"ok"}, StopReason: "end_turn", Usage: llm.Usage{TotalTokens: 3}})
 	}))
 	defer srv.Close()
 
@@ -357,8 +357,7 @@ func TestChatBuilderBlocking(t *testing.T) {
 		t.Fatalf("new client: %v", err)
 	}
 
-	resp, err := client.LLM.Chat(ModelEcho1).
-		Provider(ParseProviderID("openai")).
+	resp, err := client.LLM.Chat(NewModelID("demo")).
 		MaxTokens(32).
 		Temperature(0.4).
 		System("you are helpful").
@@ -384,13 +383,13 @@ func TestChatStreamAdapter(t *testing.T) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set(headers.ChatRequestID, "resp-chat-stream")
 		flusher, _ := w.(http.Flusher)
-		fmt.Fprintf(w, "event: message_start\ndata: {\"response_id\":\"resp_1\",\"model\":\"echo-1\"}\n\n")
+		fmt.Fprintf(w, "event: message_start\ndata: {\"response_id\":\"resp_1\",\"model\":\"demo\"}\n\n")
 		flusher.Flush()
 		fmt.Fprintf(w, "event: message_delta\ndata: {\"response_id\":\"resp_1\",\"delta\":\"Hel\"}\n\n")
 		flusher.Flush()
 		fmt.Fprintf(w, "event: message_delta\ndata: {\"response_id\":\"resp_1\",\"delta\":{\"text\":\"lo\"}}\n\n")
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_stop\ndata: {\"response_id\":\"resp_1\",\"model\":\"echo-1\",\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2,\"total_tokens\":3}}\n\n")
+		fmt.Fprintf(w, "event: message_stop\ndata: {\"response_id\":\"resp_1\",\"model\":\"demo\",\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2,\"total_tokens\":3}}\n\n")
 		flusher.Flush()
 	}))
 	defer srv.Close()
@@ -403,7 +402,7 @@ func TestChatStreamAdapter(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	stream, err := client.LLM.Chat(ModelEcho1).
+	stream, err := client.LLM.Chat(NewModelID("demo")).
 		User("ping").
 		RequestID("stream-builder").
 		Stream(ctx)
@@ -477,7 +476,7 @@ func TestChatStreamAdapterPopulatesMetadataFromMessage(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	stream, err := client.LLM.Chat(ModelGPT51).User("hi").Stream(ctx)
+	stream, err := client.LLM.Chat(NewModelID("gpt-5.1")).User("hi").Stream(ctx)
 	if err != nil {
 		t.Fatalf("chat stream: %v", err)
 	}
@@ -487,7 +486,7 @@ func TestChatStreamAdapterPopulatesMetadataFromMessage(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("expected start chunk err=%v ok=%v", err, ok)
 	}
-	if chunk.ResponseID != "msg_nested" || chunk.Model != ModelGPT51 {
+	if chunk.ResponseID != "msg_nested" || chunk.Model != NewModelID("gpt-5.1") {
 		t.Fatalf("expected response metadata, got %+v", chunk)
 	}
 
@@ -503,7 +502,7 @@ func TestChatStreamAdapterPopulatesMetadataFromMessage(t *testing.T) {
 	if chunk.StopReason != ParseStopReason("end_turn") || chunk.Usage == nil || chunk.Usage.TotalTokens != 5 {
 		t.Fatalf("unexpected stop chunk %+v", chunk)
 	}
-	if chunk.ResponseID != "msg_nested" || chunk.Model != ModelGPT51 {
+	if chunk.ResponseID != "msg_nested" || chunk.Model != NewModelID("gpt-5.1") {
 		t.Fatalf("expected response metadata on stop, got %+v", chunk)
 	}
 }
@@ -532,7 +531,7 @@ func TestChatStreamCollectAggregates(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	resp, err := client.LLM.Chat(ModelGPT51).User("hi").Collect(ctx)
+	resp, err := client.LLM.Chat(NewModelID("gpt-5.1")).User("hi").Collect(ctx)
 	if err != nil {
 		t.Fatalf("collect: %v", err)
 	}
@@ -545,7 +544,7 @@ func TestChatStreamCollectAggregates(t *testing.T) {
 	if resp.Usage.TotalTokens != 5 {
 		t.Fatalf("unexpected usage %+v", resp.Usage)
 	}
-	if resp.Model != ModelGPT51 || resp.ID != "resp_1" || resp.RequestID != "resp-collect" {
+	if resp.Model != NewModelID("gpt-5.1") || resp.ID != "resp_1" || resp.RequestID != "resp-collect" {
 		t.Fatalf("unexpected metadata %+v", resp)
 	}
 }
@@ -612,7 +611,7 @@ func TestStreamParsesLLMProxySSE(t *testing.T) {
 	event := llm.StreamEvent{
 		Kind:       llm.StreamEventKindMessageStop,
 		ResponseID: "resp_xyz",
-		Model:      "openai/gpt-test",
+		Model:      "gpt-test",
 		StopReason: "end_turn",
 	}
 	if writeErr := writer.Write(event); writeErr != nil {
@@ -630,7 +629,7 @@ func TestStreamParsesLLMProxySSE(t *testing.T) {
 	if got.Kind != llm.StreamEventKindMessageStop {
 		t.Fatalf("unexpected kind %s", got.Kind)
 	}
-	if got.ResponseID != "resp_xyz" || got.Model != ModelID("openai/gpt-test") || got.StopReason != ParseStopReason("end_turn") {
+	if got.ResponseID != "resp_xyz" || got.Model != NewModelID("gpt-test") || got.StopReason != ParseStopReason("end_turn") {
 		t.Fatalf("unexpected event metadata %+v", got)
 	}
 }
@@ -647,7 +646,7 @@ func TestAPIErrorDecoding(t *testing.T) {
 		t.Fatalf("new client: %v", err)
 	}
 
-	_, err = client.LLM.ProxyMessage(context.Background(), ProxyRequest{Model: ModelEcho1, MaxTokens: 1, Messages: []llm.ProxyMessage{{Role: "user", Content: "ping"}}})
+	_, err = client.LLM.ProxyMessage(context.Background(), ProxyRequest{Model: NewModelID("demo"), MaxTokens: 1, Messages: []llm.ProxyMessage{{Role: "user", Content: "ping"}}})
 	if err == nil {
 		t.Fatalf("expected error")
 	}

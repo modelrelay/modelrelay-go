@@ -23,7 +23,7 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 
-	stream, err := client.LLM.Chat(sdk.ModelGPT51).
+	stream, err := client.LLM.Chat(sdk.NewModelID("gpt-5.1")).
 		MaxTokens(64).
 		System("You are a witty assistant.").
 		User("Tell me a short joke").

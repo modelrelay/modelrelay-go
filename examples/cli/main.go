@@ -17,7 +17,7 @@ import (
 
 func main() {
 	baseURL := flag.String("base-url", "", "ModelRelay API base URL override")
-	model := flag.String("model", "openai/gpt-5.1", "LLM model identifier")
+	model := flag.String("model", "gpt-5.1", "LLM model identifier")
 	maxTokens := flag.Int("max-tokens", 256, "Maximum tokens to request")
 	requestID := flag.String("request-id", "", "Optional X-ModelRelay-Chat-Request-Id value")
 	flag.Parse()
@@ -61,7 +61,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 
 	stream, err := client.LLM.ProxyStream(ctx, sdk.ProxyRequest{
-		Model:     sdk.ParseModelID(*model),
+		Model:     sdk.NewModelID(*model),
 		MaxTokens: int64(*maxTokens),
 		Messages: []llm.ProxyMessage{{
 			Role:    "user",

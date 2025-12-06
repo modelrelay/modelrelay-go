@@ -6,7 +6,7 @@ import llm "github.com/modelrelay/modelrelay/providers"
 type StreamEvent struct {
 	Kind          llm.StreamEventKind
 	Name          string
-	Data          []byte // Raw provider data (deprecated: use normalized fields)
+	Data          []byte // Raw backend data (deprecated: use normalized fields)
 	Usage         *Usage
 	ResponseID    string
 	Model         ModelID
