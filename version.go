@@ -1,4 +1,5 @@
 package sdk
 
 // Version is the published SDK version.
-const Version = "0.10.0"
+// Minor bump: relax model validation to allow custom ids.
+const Version = "0.17.0"

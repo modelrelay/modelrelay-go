@@ -33,6 +33,10 @@ func (r ProxyRequest) Validate() error {
 	if len(r.Messages) == 0 {
 		return fmt.Errorf("at least one message is required")
 	}
+	// The SDK does not validate model identifiers beyond non-emptiness.
+	// Callers may pass arbitrary custom ids; the server performs
+	// authoritative validation so new models can be adopted without
+	// requiring an SDK upgrade.
 	if rf := r.ResponseFormat; rf != nil && rf.Type == llm.ResponseFormatTypeJSONSchema {
 		if rf.JSONSchema == nil || strings.TrimSpace(rf.JSONSchema.Name) == "" || len(rf.JSONSchema.Schema) == 0 {
 			return fmt.Errorf("response_format.json_schema.name and schema are required when type=json_schema")
