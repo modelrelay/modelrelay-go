@@ -115,6 +115,65 @@ fmt.Println(resp.Content[0]) // JSON string matching your schema
 Backends that don’t support structured outputs are automatically skipped during
 routing, and the request falls back to text if `response_format` is omitted.
 
+### Structured streaming (NDJSON + response_format)
+
+Use the structured streaming contract for `/llm/proxy` to stream JSON payloads
+that already conform to your schema:
+
+```go
+// Example structured payload – this can be any JSON
+// object your application cares about.
+type RecommendationPayload struct {
+    Items []struct {
+        ID    string `json:"id"`
+        Label string `json:"label"`
+    } `json:"items"`
+}
+
+// Build the same ProxyRequest you would use for blocking structured outputs.
+req := sdk.ProxyRequest{
+    Model:    sdk.NewModelID("grok-4-1-fast"),
+    Messages: []llm.ProxyMessage{llm.NewUserMessage("Recommend items for my user")},
+    ResponseFormat: &llm.ResponseFormat{
+        Type: llm.ResponseFormatTypeJSONSchema,
+        JSONSchema: &llm.JSONSchemaFormat{
+            Name:   "recommendations",
+            Schema: recommendationSchemaJSON, // generated JSON Schema
+        },
+    },
+}
+
+// Stream structured JSON using NDJSON; updates and the final completion are decoded into RecommendationPayload.
+stream, err := sdk.ProxyStreamJSON[RecommendationPayload](ctx, client.LLM, req)
+if err != nil {
+    log.Fatalf("structured stream failed: %v", err)
+}
+defer stream.Close()
+
+for {
+    evt, ok, err := stream.Next()
+    if err != nil || !ok {
+        break
+    }
+    switch evt.Type {
+    case sdk.StructuredRecordTypeUpdate:
+        // Progressive UI: evt.Payload contains a partial but schema-valid payload.
+        renderPartialRecommendations(evt.Payload.Items)
+    case sdk.StructuredRecordTypeCompletion:
+        // Final, authoritative result.
+        renderFinalRecommendations(evt.Payload.Items)
+    }
+}
+
+// Prefer a single blocking result but still want structured streaming semantics?
+// Use Collect to wait for the completion record:
+finalPayload, err := stream.Collect(ctx)
+if err != nil {
+    log.Fatalf("collect failed: %v", err)
+}
+_ = finalPayload.Items
+```
+
 The CLI in `examples/apikeys` uses the same calls. Provide `MODELRELAY_EMAIL` and
 `MODELRELAY_PASSWORD` in the environment to log in, then run `go run ./examples/apikeys`
 to create a project key.

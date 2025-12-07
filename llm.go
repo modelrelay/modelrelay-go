@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -92,6 +93,53 @@ func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options .
 		stream:    stream,
 		RequestID: requestIDFromHeaders(resp.Header),
 	}, nil
+}
+
+// ProxyStreamJSON streams structured JSON responses for requests that use
+// response_format with structured outputs (json_object or json_schema). It
+// negotiates NDJSON per the /llm/proxy structured streaming contract and
+// decodes each update/completion payload into T. The caller is responsible
+// for driving the stream via Next or Collect.
+func ProxyStreamJSON[T any](ctx context.Context, c *LLMClient, req ProxyRequest, options ...ProxyOption) (*StructuredJSONStream[T], error) {
+	if req.ResponseFormat == nil || !req.ResponseFormat.IsStructured() {
+		return nil, ConfigError{Reason: "response_format with type=json_object or json_schema is required for structured streaming"}
+	}
+
+	callOpts := buildProxyCallOptions(options)
+	if callOpts.retry == nil {
+		cfg := c.client.retryCfg
+		cfg.RetryPost = true
+		callOpts.retry = &cfg
+	}
+	req.Metadata = mergeMetadataMaps(c.client.defaultMetadata, req.Metadata, callOpts.metadata)
+	payload, err := newProxyRequestPayload(req)
+	if err != nil {
+		return nil, err
+	}
+	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/llm/proxy", payload)
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Accept", "application/x-ndjson")
+	applyProxyHeaders(httpReq, callOpts)
+
+	//nolint:bodyclose // resp.Body is owned by the StructuredJSONStream
+	resp, retryMeta, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
+	if err != nil {
+		return nil, err
+	}
+	contentType := resp.Header.Get("Content-Type")
+	if !isNDJSONContentType(contentType) {
+		// Best-effort cleanup before returning a typed transport error.
+		//nolint:errcheck // best-effort cleanup on protocol violation
+		_ = resp.Body.Close()
+		return nil, TransportError{
+			Message: fmt.Sprintf("expected NDJSON structured stream, got Content-Type %q", contentType),
+			Retry:   retryMeta,
+		}
+	}
+
+	return newStructuredJSONStream[T](ctx, resp.Body, requestIDFromHeaders(resp.Header), retryMeta), nil
 }
 
 type proxyRequestPayload struct {
@@ -432,4 +480,12 @@ func requestIDFromHeaders(h http.Header) string {
 		return id
 	}
 	return ""
+}
+
+func isNDJSONContentType(value string) bool {
+	if value == "" {
+		return false
+	}
+	v := strings.ToLower(strings.TrimSpace(value))
+	return strings.HasPrefix(v, "application/x-ndjson") || strings.HasPrefix(v, "application/ndjson")
 }

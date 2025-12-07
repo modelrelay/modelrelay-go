@@ -187,6 +187,307 @@ func TestProxyStreamNDJSON(t *testing.T) {
 	}
 }
 
+type structuredPayload struct {
+	Items []struct {
+		ID string `json:"id"`
+	} `json:"items"`
+}
+
+func TestProxyStreamJSON_StructuredHappyPath(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept") != "application/x-ndjson" {
+			t.Fatalf("expected ndjson accept header, got %s", r.Header.Get("Accept"))
+		}
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		w.Header().Set(headers.ChatRequestID, "req-structured")
+		lines := []string{
+			`{"type":"start","request_id":"stream-req-123"}`,
+			`{"type":"update","payload":{"items":[{"id":"one"}]}}`,
+			`{"type":"completion","payload":{"items":[{"id":"one"},{"id":"two"}]}}`,
+		}
+		payload := strings.Join(lines, "\n") + "\n"
+		_, _ = w.Write([]byte(payload))
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	schema := json.RawMessage(`{"type":"object","properties":{"tiers":{"type":"array"}}}`)
+	req := ProxyRequest{
+		Model:     NewModelID("demo"),
+		MaxTokens: 16,
+		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
+		ResponseFormat: &llm.ResponseFormat{
+			Type: llm.ResponseFormatTypeJSONSchema,
+			JSONSchema: &llm.JSONSchemaFormat{
+				Name:   "tiers",
+				Schema: schema,
+			},
+		},
+	}
+
+	stream, err := ProxyStreamJSON[structuredPayload](ctx, client.LLM, req)
+	if err != nil {
+		t.Fatalf("ProxyStreamJSON: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	// First update
+	event, ok, err := stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected first event, err=%v ok=%v", err, ok)
+	}
+	if event.Type != StructuredRecordTypeUpdate {
+		t.Fatalf("expected update record, got %s", event.Type)
+	}
+	if event.Payload == nil || len(event.Payload.Items) != 1 || event.Payload.Items[0].ID != "one" {
+		t.Fatalf("unexpected update payload: %+v", event.Payload)
+	}
+	if event.RequestID != "req-structured" {
+		t.Fatalf("unexpected request id on event: %s", event.RequestID)
+	}
+
+	// Completion
+	event, ok, err = stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected completion event, err=%v ok=%v", err, ok)
+	}
+	if event.Type != StructuredRecordTypeCompletion {
+		t.Fatalf("expected completion record, got %s", event.Type)
+	}
+	if event.Payload == nil || len(event.Payload.Items) != 2 {
+		t.Fatalf("unexpected completion payload: %+v", event.Payload)
+	}
+
+	// Collect from a fresh stream to exercise the helper.
+	stream2, err := ProxyStreamJSON[structuredPayload](ctx, client.LLM, req)
+	if err != nil {
+		t.Fatalf("ProxyStreamJSON second call: %v", err)
+	}
+	t.Cleanup(func() { _ = stream2.Close() })
+
+	payload, err := stream2.Collect(ctx)
+	if err != nil {
+		t.Fatalf("Collect: %v", err)
+	}
+	if len(payload.Items) != 2 {
+		t.Fatalf("expected 2 items from Collect, got %d", len(payload.Items))
+	}
+	if stream2.RequestID() != "req-structured" {
+		t.Fatalf("unexpected stream RequestID %s", stream2.RequestID())
+	}
+}
+
+func TestProxyStreamJSON_ProtocolViolation(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		w.Header().Set(headers.ChatRequestID, "req-bad")
+		// Stream ends without completion or error.
+		_, _ = w.Write([]byte(`{"type":"update","payload":{"items":[{"id":"one"}]}}` + "\n"))
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req := ProxyRequest{
+		Model:     NewModelID("demo"),
+		MaxTokens: 16,
+		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
+		ResponseFormat: &llm.ResponseFormat{
+			Type: llm.ResponseFormatTypeJSONObject,
+		},
+	}
+
+	stream, err := ProxyStreamJSON[structuredPayload](ctx, client.LLM, req)
+	if err != nil {
+		t.Fatalf("ProxyStreamJSON: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	_, err = stream.Collect(ctx)
+	var terr TransportError
+	if err == nil || !errors.As(err, &terr) {
+		t.Fatalf("expected TransportError on protocol violation, got %T %v", err, err)
+	}
+}
+
+func TestProxyStreamJSON_ErrorRecord(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		w.Header().Set(headers.ChatRequestID, "req-error")
+		_, _ = w.Write([]byte(`{"type":"error","code":"SERVICE_UNAVAILABLE","message":"upstream timeout","status":502}` + "\n"))
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req := ProxyRequest{
+		Model:     NewModelID("demo"),
+		MaxTokens: 16,
+		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
+		ResponseFormat: &llm.ResponseFormat{
+			Type: llm.ResponseFormatTypeJSONObject,
+		},
+	}
+
+	stream, err := ProxyStreamJSON[structuredPayload](ctx, client.LLM, req)
+	if err != nil {
+		t.Fatalf("ProxyStreamJSON: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	_, _, err = stream.Next()
+	var apiErr APIError
+	if err == nil || !errors.As(err, &apiErr) {
+		t.Fatalf("expected APIError from error record, got %T %v", err, err)
+	}
+	if apiErr.Status != 502 || apiErr.Code != ErrCodeUnavailable {
+		t.Fatalf("unexpected api error: status=%d code=%s", apiErr.Status, apiErr.Code)
+	}
+	if apiErr.RequestID != "req-error" {
+		t.Fatalf("expected request id on api error, got %s", apiErr.RequestID)
+	}
+}
+
+func TestProxyStreamJSON_RequiresStructuredResponseFormat(t *testing.T) {
+	ctx := context.Background()
+	llmClient := &LLMClient{}
+
+	baseReq := ProxyRequest{
+		Model:     NewModelID("demo"),
+		MaxTokens: 16,
+		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
+	}
+
+	tests := []struct {
+		name string
+		req  ProxyRequest
+	}{
+		{name: "missing response_format", req: baseReq},
+		{name: "non-structured response_format", req: func() ProxyRequest {
+			r := baseReq
+			r.ResponseFormat = &llm.ResponseFormat{Type: llm.ResponseFormatTypeText}
+			return r
+		}()},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ProxyStreamJSON[structuredPayload](ctx, llmClient, tt.req)
+			var cfgErr ConfigError
+			if err == nil || !errors.As(err, &cfgErr) {
+				t.Fatalf("expected ConfigError, got %T %v", err, err)
+			}
+		})
+	}
+}
+
+func TestStructuredJSONStream_IgnoresUnknownTypes(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		w.Header().Set(headers.ChatRequestID, "req-unknown")
+		lines := []string{
+			`{"type":"progress","payload":{"ignored":true}}`,
+			`{"type":"update","payload":{"items":[{"id":"one"}]}}`,
+			`{"type":"completion","payload":{"items":[{"id":"one"},{"id":"two"}]}}`,
+		}
+		_, _ = w.Write([]byte(strings.Join(lines, "\n") + "\n"))
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req := ProxyRequest{
+		Model:     NewModelID("demo"),
+		MaxTokens: 16,
+		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
+		ResponseFormat: &llm.ResponseFormat{
+			Type: llm.ResponseFormatTypeJSONObject,
+		},
+	}
+
+	stream, err := ProxyStreamJSON[structuredPayload](ctx, client.LLM, req)
+	if err != nil {
+		t.Fatalf("ProxyStreamJSON: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	var kinds []StructuredRecordType
+	for {
+		event, ok, err := stream.Next()
+		if err != nil || !ok {
+			break
+		}
+		kinds = append(kinds, event.Type)
+	}
+	if len(kinds) != 2 || kinds[0] != StructuredRecordTypeUpdate || kinds[1] != StructuredRecordTypeCompletion {
+		t.Fatalf("unexpected record kinds: %+v", kinds)
+	}
+}
+
+func TestStructuredJSONStream_InvalidJSONLine(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		w.Header().Set(headers.ChatRequestID, "req-invalid-json")
+		// Invalid JSON line in the stream.
+		_, _ = w.Write([]byte("not-json\n"))
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req := ProxyRequest{
+		Model:     NewModelID("demo"),
+		MaxTokens: 16,
+		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
+		ResponseFormat: &llm.ResponseFormat{
+			Type: llm.ResponseFormatTypeJSONObject,
+		},
+	}
+
+	stream, err := ProxyStreamJSON[structuredPayload](ctx, client.LLM, req)
+	if err != nil {
+		t.Fatalf("ProxyStreamJSON: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	_, _, err = stream.Next()
+	var terr TransportError
+	if err == nil || !errors.As(err, &terr) {
+		t.Fatalf("expected TransportError for invalid JSON, got %T %v", err, err)
+	}
+}
+
 func TestProxyOptionsMergeDefaults(t *testing.T) {
 	configHeaders := http.Header{"X-Debug": []string{"cfg", ""}, "X-App": []string{"go-client"}}
 	configMetadata := map[string]string{"env": "prod", "trace_id": "cfg", "app": "go"}

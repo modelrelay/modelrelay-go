@@ -1,5 +1,5 @@
 package sdk
 
 // Version is the published SDK version.
-// Minor bump: relax model validation to allow custom ids.
-const Version = "0.17.0"
+// Minor bump: add structured streaming helpers for /llm/proxy.
+const Version = "0.18.0"
