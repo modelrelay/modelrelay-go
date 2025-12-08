@@ -45,8 +45,8 @@ type tierResponse struct {
 }
 
 // TierCheckoutRequest contains parameters for creating a tier checkout session.
+// Stripe collects the customer's email during checkout.
 type TierCheckoutRequest struct {
-	Email      string `json:"email"`
 	SuccessURL string `json:"success_url"`
 	CancelURL  string `json:"cancel_url"`
 }
@@ -112,9 +112,10 @@ func (c *TiersClient) Get(ctx context.Context, tierID uuid.UUID) (Tier, error) {
 }
 
 // Checkout creates a Stripe checkout session for a tier (Stripe-first flow).
-// This enables users to subscribe before authenticating. After checkout completes,
-// a customer record is created with the provided email. The customer can later
-// be linked to an identity via CustomersClient.Claim.
+// This enables users to subscribe before authenticating. Stripe collects the
+// customer's email during checkout. After checkout completes, a customer record
+// is created with the email from Stripe. The customer can later be linked to
+// an identity via CustomersClient.Claim.
 //
 // Requires a secret key (mr_sk_*).
 func (c *TiersClient) Checkout(ctx context.Context, tierID uuid.UUID, req TierCheckoutRequest) (TierCheckoutSession, error) {
@@ -126,9 +127,6 @@ func (c *TiersClient) Checkout(ctx context.Context, tierID uuid.UUID, req TierCh
 	}
 	if tierID == uuid.Nil {
 		return TierCheckoutSession{}, fmt.Errorf("sdk: tier_id required")
-	}
-	if req.Email == "" {
-		return TierCheckoutSession{}, fmt.Errorf("sdk: email required")
 	}
 	if req.SuccessURL == "" || req.CancelURL == "" {
 		return TierCheckoutSession{}, fmt.Errorf("sdk: success_url and cancel_url required")

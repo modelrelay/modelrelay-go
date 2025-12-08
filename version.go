@@ -1,5 +1,5 @@
 package sdk
 
 // Version is the published SDK version.
-// Minor bump: add Checkout method to TiersClient for tier-first checkout flow.
-const Version = "0.20.0"
+// Minor bump: remove email field from TierCheckoutRequest (Stripe collects email during checkout).
+const Version = "0.21.0"
