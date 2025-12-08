@@ -360,6 +360,16 @@ func deriveDefaultClientHeader() string {
 	return defaultClientHead
 }
 
+// isSecretKey returns true if the client was configured with a secret key (mr_sk_*).
+func (c *Client) isSecretKey() bool {
+	for _, s := range c.auth {
+		if ak, ok := s.(apiKeyAuth); ok {
+			return ak.isSecretKey()
+		}
+	}
+	return false
+}
+
 func (c *Client) newJSONRequest(ctx context.Context, method, path string, payload any) (*http.Request, error) {
 	var body io.Reader
 	var getBody func() (io.ReadCloser, error)

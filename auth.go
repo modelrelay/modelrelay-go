@@ -1,7 +1,10 @@
 // Package sdk provides the ModelRelay Go SDK for interacting with the ModelRelay API.
 package sdk
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+)
 
 type authStrategy interface {
 	Apply(req *http.Request)
@@ -38,4 +41,9 @@ func (a apiKeyAuth) Apply(req *http.Request) {
 		return
 	}
 	req.Header.Set("X-ModelRelay-Api-Key", a.key)
+}
+
+// isSecretKey returns true if the API key is a secret key (mr_sk_*).
+func (a apiKeyAuth) isSecretKey() bool {
+	return strings.HasPrefix(a.key, "mr_sk_")
 }

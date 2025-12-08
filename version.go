@@ -1,5 +1,5 @@
 package sdk
 
 // Version is the published SDK version.
-// Minor bump: add Claim method to CustomersClient for claiming customers by email.
-const Version = "0.19.0"
+// Minor bump: add Checkout method to TiersClient for tier-first checkout flow.
+const Version = "0.20.0"

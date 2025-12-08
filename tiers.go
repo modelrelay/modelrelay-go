@@ -44,6 +44,19 @@ type tierResponse struct {
 	Tier Tier `json:"tier"`
 }
 
+// TierCheckoutRequest contains parameters for creating a tier checkout session.
+type TierCheckoutRequest struct {
+	Email      string `json:"email"`
+	SuccessURL string `json:"success_url"`
+	CancelURL  string `json:"cancel_url"`
+}
+
+// TierCheckoutSession represents a checkout session created from a tier.
+type TierCheckoutSession struct {
+	SessionID string `json:"session_id"`
+	URL       string `json:"url"`
+}
+
 // TiersClient provides methods to query tiers in a project.
 // Works with both publishable keys (mr_pk_*) and secret keys (mr_sk_*).
 type TiersClient struct {
@@ -96,4 +109,46 @@ func (c *TiersClient) Get(ctx context.Context, tierID uuid.UUID) (Tier, error) {
 		return Tier{}, err
 	}
 	return payload.Tier, nil
+}
+
+// Checkout creates a Stripe checkout session for a tier (Stripe-first flow).
+// This enables users to subscribe before authenticating. After checkout completes,
+// a customer record is created with the provided email. The customer can later
+// be linked to an identity via CustomersClient.Claim.
+//
+// Requires a secret key (mr_sk_*).
+func (c *TiersClient) Checkout(ctx context.Context, tierID uuid.UUID, req TierCheckoutRequest) (TierCheckoutSession, error) {
+	if c == nil || c.client == nil {
+		return TierCheckoutSession{}, fmt.Errorf("sdk: tiers client not initialized")
+	}
+	if !c.client.isSecretKey() {
+		return TierCheckoutSession{}, fmt.Errorf("sdk: checkout requires secret key (mr_sk_*)")
+	}
+	if tierID == uuid.Nil {
+		return TierCheckoutSession{}, fmt.Errorf("sdk: tier_id required")
+	}
+	if req.Email == "" {
+		return TierCheckoutSession{}, fmt.Errorf("sdk: email required")
+	}
+	if req.SuccessURL == "" || req.CancelURL == "" {
+		return TierCheckoutSession{}, fmt.Errorf("sdk: success_url and cancel_url required")
+	}
+
+	path := fmt.Sprintf("/tiers/%s/checkout", tierID.String())
+	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, path, req)
+	if err != nil {
+		return TierCheckoutSession{}, err
+	}
+	resp, _, err := c.client.send(httpReq, nil, nil)
+	if err != nil {
+		return TierCheckoutSession{}, err
+	}
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
+
+	var session TierCheckoutSession
+	if err := json.NewDecoder(resp.Body).Decode(&session); err != nil {
+		return TierCheckoutSession{}, err
+	}
+	return session, nil
 }
