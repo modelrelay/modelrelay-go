@@ -55,6 +55,14 @@ type CustomerUpsertRequest struct {
 	Metadata   CustomerMetadata `json:"metadata,omitempty"`
 }
 
+// CustomerClaimRequest contains the fields to claim a customer by email.
+// Used when a customer subscribes via Stripe Checkout (email only) and later
+// authenticates to the app, needing to link their identity.
+type CustomerClaimRequest struct {
+	Email      string `json:"email"`
+	ExternalID string `json:"external_id"`
+}
+
 // CheckoutSessionRequest contains the URLs for checkout redirect.
 type CheckoutSessionRequest struct {
 	SuccessURL string `json:"success_url"`
@@ -194,6 +202,42 @@ func (c *CustomersClient) Upsert(ctx context.Context, req CustomerUpsertRequest)
 		return Customer{}, fmt.Errorf("sdk: invalid email format")
 	}
 	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPut, "/customers", req)
+	if err != nil {
+		return Customer{}, err
+	}
+	resp, _, err := c.client.send(httpReq, nil, nil)
+	if err != nil {
+		return Customer{}, err
+	}
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
+	var payload customerResponse
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return Customer{}, err
+	}
+	return payload.Customer, nil
+}
+
+// Claim claims a customer by email, setting their external_id.
+// Used when a customer subscribes via Stripe Checkout (email only) and later
+// authenticates to the app, needing to link their identity.
+//
+// Returns an error if the customer is not found (404), already claimed, or the
+// external_id is already in use by another customer (409).
+func (c *CustomersClient) Claim(ctx context.Context, req CustomerClaimRequest) (Customer, error) {
+	if c == nil || c.client == nil {
+		return Customer{}, fmt.Errorf("sdk: customers client not initialized")
+	}
+	if strings.TrimSpace(req.Email) == "" {
+		return Customer{}, fmt.Errorf("sdk: email required")
+	}
+	if !isValidEmail(req.Email) {
+		return Customer{}, fmt.Errorf("sdk: invalid email format")
+	}
+	if strings.TrimSpace(req.ExternalID) == "" {
+		return Customer{}, fmt.Errorf("sdk: external_id required")
+	}
+	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/customers/claim", req)
 	if err != nil {
 		return Customer{}, err
 	}

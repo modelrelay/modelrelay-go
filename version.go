@@ -1,5 +1,5 @@
 package sdk
 
 // Version is the published SDK version.
-// Minor bump: add structured streaming helpers for /llm/proxy.
-const Version = "0.18.0"
+// Minor bump: add Claim method to CustomersClient for claiming customers by email.
+const Version = "0.19.0"
