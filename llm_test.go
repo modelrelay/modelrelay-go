@@ -938,7 +938,7 @@ func TestStreamParsesLLMProxySSE(t *testing.T) {
 func TestAPIErrorDecoding(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		io.WriteString(w, `{"error":{"code":"INVALID","message":"nope","status":401},"request_id":"req_123"}`)
+		io.WriteString(w, `{"error":"unauthorized","code":"INVALID","message":"nope","request_id":"req_123"}`)
 	}))
 	defer srv.Close()
 

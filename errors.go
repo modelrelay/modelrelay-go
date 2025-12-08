@@ -56,6 +56,13 @@ const (
 	ErrCodeInvalidInput     = "INVALID_INPUT"
 	ErrCodePaymentRequired  = "PAYMENT_REQUIRED"
 	ErrCodeMethodNotAllowed = "METHOD_NOT_ALLOWED"
+	// ErrCodeNoTiers indicates no tiers are configured for the project.
+	// To resolve: create at least one tier in your project dashboard.
+	ErrCodeNoTiers = "NO_TIERS"
+	// ErrCodeNoFreeTier indicates no free tier is available for auto-provisioning.
+	// To resolve: either create a free tier for automatic customer creation,
+	// or use the checkout flow to create paying customers first.
+	ErrCodeNoFreeTier = "NO_FREE_TIER"
 )
 
 // APIError captures structured SaaS error metadata.
@@ -105,37 +112,46 @@ func (e APIError) IsForbidden() bool { return e.Code == ErrCodeForbidden }
 // IsUnavailable returns true if the error is a service unavailable error.
 func (e APIError) IsUnavailable() bool { return e.Code == ErrCodeUnavailable }
 
+// IsNoTiers returns true if no tiers are configured for the project.
+// To resolve: create at least one tier in your project dashboard.
+func (e APIError) IsNoTiers() bool { return e.Code == ErrCodeNoTiers }
+
+// IsNoFreeTier returns true if no free tier is available for auto-provisioning.
+// To resolve: either create a free tier or use the checkout flow.
+func (e APIError) IsNoFreeTier() bool { return e.Code == ErrCodeNoFreeTier }
+
+// IsProvisioningError returns true if this is a customer provisioning error.
+// These errors occur when calling FrontendToken with a customer that doesn't exist
+// and automatic provisioning cannot complete.
+func (e APIError) IsProvisioningError() bool { return e.IsNoTiers() || e.IsNoFreeTier() }
+
 func decodeAPIError(resp *http.Response, retry *RetryMetadata) error {
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return APIError{Status: resp.StatusCode, Message: "failed to read response body", Retry: retry}
 	}
-	apiErr := APIError{Status: resp.StatusCode}
-	apiErr.Retry = retry
+	apiErr := APIError{Status: resp.StatusCode, Retry: retry}
 	if len(data) == 0 {
 		apiErr.Message = resp.Status
 		return apiErr
 	}
+
+	// Parse structured error: {"error": "...", "code": "...", "message": "..."}
 	var payload struct {
-		Error struct {
-			Code    string       `json:"code"`
-			Message string       `json:"message"`
-			Status  int          `json:"status"`
-			Fields  []FieldError `json:"fields"`
-		} `json:"error"`
-		RequestID string `json:"request_id"`
+		Error     string       `json:"error"`
+		Code      string       `json:"code"`
+		Message   string       `json:"message"`
+		RequestID string       `json:"request_id"`
+		Fields    []FieldError `json:"fields"`
 	}
 	if err := json.Unmarshal(data, &payload); err != nil {
 		apiErr.Message = string(data)
 		return apiErr
 	}
-	apiErr.Code = payload.Error.Code
-	apiErr.Message = payload.Error.Message
-	if payload.Error.Status != 0 {
-		apiErr.Status = payload.Error.Status
-	}
-	apiErr.Fields = payload.Error.Fields
+	apiErr.Code = payload.Code
+	apiErr.Message = payload.Message
 	apiErr.RequestID = payload.RequestID
+	apiErr.Fields = payload.Fields
 	if apiErr.Message == "" {
 		apiErr.Message = resp.Status
 	}
