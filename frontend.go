@@ -132,15 +132,25 @@ func (r FrontendTokenRequestWithOpts) Validate() error {
 	return nil
 }
 
+// TokenType represents the OAuth2 token type.
+type TokenType string
+
+// TokenTypeBearer is the only valid token type for frontend tokens.
+const TokenTypeBearer TokenType = "Bearer"
+
 // FrontendToken holds the issued bearer token for client-side LLM calls.
 type FrontendToken struct {
-	Token      string    `json:"token"`
-	ExpiresAt  time.Time `json:"expires_at"`
-	ExpiresIn  int       `json:"expires_in"`
-	TokenType  string    `json:"token_type"`
-	KeyID      uuid.UUID `json:"key_id"`
-	SessionID  uuid.UUID `json:"session_id"`
-	TokenScope []string  `json:"token_scope,omitempty"`
+	Token              string    `json:"token"`
+	ExpiresAt          time.Time `json:"expires_at"`
+	ExpiresIn          int       `json:"expires_in"`
+	TokenType          TokenType `json:"token_type"`
+	KeyID              uuid.UUID `json:"key_id"`
+	SessionID          uuid.UUID `json:"session_id"`
+	ProjectID          uuid.UUID `json:"project_id"`
+	CustomerID         uuid.UUID `json:"customer_id"`
+	CustomerExternalID string    `json:"customer_external_id"`
+	// TierCode is the tier code for the customer (e.g., "free", "pro", "enterprise").
+	TierCode string `json:"tier_code"`
 }
 
 // AuthClient wraps authentication-related endpoints.

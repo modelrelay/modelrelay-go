@@ -13,13 +13,16 @@ import (
 
 func TestFrontendToken(t *testing.T) {
 	issued := FrontendToken{
-		Token:      "eyJhbGciOiJI",
-		ExpiresAt:  time.Now().Add(30 * time.Minute).UTC(),
-		ExpiresIn:  1800,
-		TokenType:  "Bearer",
-		KeyID:      uuid.New(),
-		SessionID:  uuid.New(),
-		TokenScope: []string{"frontend"},
+		Token:              "eyJhbGciOiJI",
+		ExpiresAt:          time.Now().Add(30 * time.Minute).UTC(),
+		ExpiresIn:          1800,
+		TokenType:          TokenTypeBearer,
+		KeyID:              uuid.New(),
+		SessionID:          uuid.New(),
+		ProjectID:          uuid.New(),
+		CustomerID:         uuid.New(),
+		CustomerExternalID: "cust_123",
+		TierCode:           "free",
 	}
 
 	mux := http.NewServeMux()
@@ -210,13 +213,16 @@ func TestFrontendTokenRequestBuilders(t *testing.T) {
 
 func TestFrontendTokenAutoProvision(t *testing.T) {
 	issued := FrontendToken{
-		Token:      "eyJhbGciOiJI",
-		ExpiresAt:  time.Now().Add(30 * time.Minute).UTC(),
-		ExpiresIn:  1800,
-		TokenType:  "Bearer",
-		KeyID:      uuid.New(),
-		SessionID:  uuid.New(),
-		TokenScope: []string{"frontend"},
+		Token:              "eyJhbGciOiJI",
+		ExpiresAt:          time.Now().Add(30 * time.Minute).UTC(),
+		ExpiresIn:          1800,
+		TokenType:          TokenTypeBearer,
+		KeyID:              uuid.New(),
+		SessionID:          uuid.New(),
+		ProjectID:          uuid.New(),
+		CustomerID:         uuid.New(),
+		CustomerExternalID: "cust_123",
+		TierCode:           "free",
 	}
 
 	mux := http.NewServeMux()
