@@ -947,7 +947,7 @@ func TestAPIErrorDecoding(t *testing.T) {
 		t.Fatalf("new client: %v", err)
 	}
 
-	_, err = client.LLM.ProxyMessage(context.Background(), ProxyRequest{Model: NewModelID("demo"), MaxTokens: 1, Messages: []llm.ProxyMessage{{Role: "user", Content: "ping"}}})
+	_, err = client.LLM.ProxyMessage(context.Background(), ProxyRequest{Model: NewModelID("demo"), MaxTokens: 1, Messages: []llm.ProxyMessage{{Role: llm.RoleUser, Content: "ping"}}})
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -957,5 +957,315 @@ func TestAPIErrorDecoding(t *testing.T) {
 	}
 	if apiErr.Code != "INVALID" || apiErr.RequestID != "req_123" {
 		t.Fatalf("unexpected api error %+v", apiErr)
+	}
+}
+
+func TestCustomerChatBuilderBlocking(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify customer ID header is set
+		customerID := r.Header.Get(headers.CustomerID)
+		if customerID != "cust-123" {
+			t.Fatalf("expected customer ID header 'cust-123', got %q", customerID)
+		}
+		// Verify no model is required in payload (tier determines it)
+		var payload map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode payload: %v", err)
+		}
+		// Model should be empty or not present for customer-attributed requests
+		if model, ok := payload["model"].(string); ok && model != "" {
+			t.Fatalf("expected no model in customer chat request, got %q", model)
+		}
+		if payload["max_tokens"] != float64(64) {
+			t.Fatalf("unexpected max_tokens: %v", payload["max_tokens"])
+		}
+		msgs, _ := payload["messages"].([]any)
+		if len(msgs) != 2 {
+			t.Fatalf("expected 2 messages, got %d", len(msgs))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(headers.ChatRequestID, "resp-customer")
+		json.NewEncoder(w).Encode(llm.ProxyResponse{
+			ID:       "resp_customer_123",
+			Provider: "openai",
+			Model:    "gpt-4o",
+			Content:  []string{"Hello customer!"},
+			Usage:    llm.Usage{TotalTokens: 10},
+		})
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	resp, err := client.LLM.ChatForCustomer("cust-123").
+		System("You are a helpful assistant.").
+		User("Hello!").
+		MaxTokens(64).
+		RequestID("customer-req").
+		Send(context.Background())
+	if err != nil {
+		t.Fatalf("customer chat send: %v", err)
+	}
+	if resp.ID != "resp_customer_123" {
+		t.Fatalf("unexpected response id: %s", resp.ID)
+	}
+	if resp.RequestID != "resp-customer" {
+		t.Fatalf("unexpected request id: %s", resp.RequestID)
+	}
+}
+
+func TestCustomerChatBuilderStreaming(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify customer ID header is set
+		customerID := r.Header.Get(headers.CustomerID)
+		if customerID != "cust-456" {
+			t.Fatalf("expected customer ID header 'cust-456', got %q", customerID)
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set(headers.ChatRequestID, "resp-customer-stream")
+		flusher, _ := w.(http.Flusher)
+		fmt.Fprintf(w, "event: message_start\ndata: {\"response_id\":\"resp_1\",\"model\":\"gpt-4o\"}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_delta\ndata: {\"response_id\":\"resp_1\",\"delta\":\"Hi!\"}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_stop\ndata: {\"response_id\":\"resp_1\",\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":5,\"output_tokens\":2,\"total_tokens\":7}}\n\n")
+		flusher.Flush()
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stream, err := client.LLM.ChatForCustomer("cust-456").
+		User("Hello!").
+		Stream(ctx)
+	if err != nil {
+		t.Fatalf("customer chat stream: %v", err)
+	}
+	t.Cleanup(func() { stream.Close() })
+
+	if stream.RequestID() != "resp-customer-stream" {
+		t.Fatalf("unexpected request id: %s", stream.RequestID())
+	}
+
+	// Consume events
+	var textDeltas []string
+	var lastErr error
+	for {
+		chunk, ok, err := stream.Next()
+		if err != nil {
+			lastErr = err
+			break
+		}
+		if !ok {
+			break
+		}
+		if chunk.TextDelta != "" {
+			textDeltas = append(textDeltas, chunk.TextDelta)
+		}
+	}
+	if lastErr != nil {
+		t.Fatalf("unexpected error during stream consumption: %v", lastErr)
+	}
+	if len(textDeltas) != 1 || textDeltas[0] != "Hi!" {
+		t.Fatalf("unexpected text deltas: %v", textDeltas)
+	}
+}
+
+func TestCustomerChatBuilderCollect(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		customerID := r.Header.Get(headers.CustomerID)
+		if customerID != "cust-789" {
+			t.Fatalf("expected customer ID header 'cust-789', got %q", customerID)
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set(headers.ChatRequestID, "resp-customer-collect")
+		flusher, _ := w.(http.Flusher)
+		fmt.Fprintf(w, "event: message_start\ndata: {\"response_id\":\"resp_collect\",\"model\":\"gpt-4o\"}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_delta\ndata: {\"response_id\":\"resp_collect\",\"delta\":\"Hello \"}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_delta\ndata: {\"response_id\":\"resp_collect\",\"delta\":\"there!\"}\n\n")
+		flusher.Flush()
+		fmt.Fprintf(w, "event: message_stop\ndata: {\"response_id\":\"resp_collect\",\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":3,\"output_tokens\":4,\"total_tokens\":7}}\n\n")
+		flusher.Flush()
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.LLM.ChatForCustomer("cust-789").
+		User("Hi").
+		Collect(ctx)
+	if err != nil {
+		t.Fatalf("customer chat collect: %v", err)
+	}
+	if len(resp.Content) != 1 || resp.Content[0] != "Hello there!" {
+		t.Fatalf("unexpected content: %v", resp.Content)
+	}
+	if resp.Usage.TotalTokens != 7 {
+		t.Fatalf("unexpected usage: %+v", resp.Usage)
+	}
+	if resp.RequestID != "resp-customer-collect" {
+		t.Fatalf("unexpected request id: %s", resp.RequestID)
+	}
+}
+
+func TestMessageRoleConstants(t *testing.T) {
+	// Verify that MessageRole constants serialize to expected strings
+	if llm.RoleUser != "user" {
+		t.Fatalf("expected RoleUser to be 'user', got %q", llm.RoleUser)
+	}
+	if llm.RoleAssistant != "assistant" {
+		t.Fatalf("expected RoleAssistant to be 'assistant', got %q", llm.RoleAssistant)
+	}
+	if llm.RoleSystem != "system" {
+		t.Fatalf("expected RoleSystem to be 'system', got %q", llm.RoleSystem)
+	}
+	if llm.RoleTool != "tool" {
+		t.Fatalf("expected RoleTool to be 'tool', got %q", llm.RoleTool)
+	}
+}
+
+func TestChatBuilderWithTypedRoles(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload proxyRequestPayload
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode payload: %v", err)
+		}
+		// Verify roles are serialized correctly
+		if len(payload.Messages) != 3 {
+			t.Fatalf("expected 3 messages, got %d", len(payload.Messages))
+		}
+		if payload.Messages[0].Role != llm.RoleSystem {
+			t.Fatalf("expected system role, got %v", payload.Messages[0].Role)
+		}
+		if payload.Messages[1].Role != llm.RoleUser {
+			t.Fatalf("expected user role, got %v", payload.Messages[1].Role)
+		}
+		if payload.Messages[2].Role != llm.RoleAssistant {
+			t.Fatalf("expected assistant role, got %v", payload.Messages[2].Role)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(llm.ProxyResponse{ID: "resp_typed", Provider: "openai", Model: "demo", Content: []string{"ok"}, Usage: llm.Usage{}})
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	_, err = client.LLM.Chat(NewModelID("demo")).
+		Message(llm.RoleSystem, "System prompt").
+		Message(llm.RoleUser, "User message").
+		Message(llm.RoleAssistant, "Assistant response").
+		Send(context.Background())
+	if err != nil {
+		t.Fatalf("chat with typed roles: %v", err)
+	}
+}
+
+func TestCustomerChatBuilderEmptyCustomerID(t *testing.T) {
+	client, err := NewClient(Config{BaseURL: "http://localhost", APIKey: "test"})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	_, err = client.LLM.ChatForCustomer("").
+		User("Hello").
+		Send(context.Background())
+	if err == nil {
+		t.Fatal("expected error for empty customer ID")
+	}
+	if err.Error() != "customer ID is required" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Also test streaming
+	_, err = client.LLM.ChatForCustomer("").
+		User("Hello").
+		Stream(context.Background())
+	if err == nil {
+		t.Fatal("expected error for empty customer ID on stream")
+	}
+	if err.Error() != "customer ID is required" {
+		t.Fatalf("unexpected error on stream: %v", err)
+	}
+}
+
+func TestCustomerChatBuilderNoMessages(t *testing.T) {
+	client, err := NewClient(Config{BaseURL: "http://localhost", APIKey: "test"})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	_, err = client.LLM.ChatForCustomer("cust-123").
+		Send(context.Background())
+	if err == nil {
+		t.Fatal("expected error for no messages")
+	}
+	if err.Error() != "at least one message is required" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Also test streaming
+	_, err = client.LLM.ChatForCustomer("cust-123").
+		Stream(context.Background())
+	if err == nil {
+		t.Fatal("expected error for no messages on stream")
+	}
+	if err.Error() != "at least one message is required" {
+		t.Fatalf("unexpected error on stream: %v", err)
+	}
+}
+
+func TestCustomerChatAPIError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(headers.ChatRequestID, "req-customer-error")
+		w.WriteHeader(http.StatusNotFound)
+		io.WriteString(w, `{"error":"customer_not_found","code":"CUSTOMER_NOT_FOUND","message":"Customer cust-999 not found","request_id":"req-customer-error"}`)
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	_, err = client.LLM.ChatForCustomer("cust-999").
+		User("Hello").
+		Send(context.Background())
+	if err == nil {
+		t.Fatal("expected error for customer not found")
+	}
+
+	var apiErr APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected APIError, got %T: %v", err, err)
+	}
+	if apiErr.Status != http.StatusNotFound {
+		t.Fatalf("unexpected status: %d", apiErr.Status)
+	}
+	if apiErr.Code != "CUSTOMER_NOT_FOUND" {
+		t.Fatalf("unexpected code: %s", apiErr.Code)
+	}
+	if apiErr.RequestID != "req-customer-error" {
+		t.Fatalf("unexpected request id: %s", apiErr.RequestID)
 	}
 }

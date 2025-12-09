@@ -55,6 +55,96 @@ func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options 
 	return &respPayload, nil
 }
 
+// ProxyCustomerMessage performs a blocking completion for customer-attributed requests.
+// Unlike ProxyMessage, this does not require a model because the customer's tier determines it.
+// The customerID is sent via the X-ModelRelay-Customer-Id header.
+func (c *LLMClient) ProxyCustomerMessage(ctx context.Context, customerID string, req ProxyRequest, options ...ProxyOption) (*ProxyResponse, error) {
+	if customerID == "" {
+		return nil, fmt.Errorf("customer ID is required")
+	}
+	// Prepend customer ID option so it's applied first
+	options = append([]ProxyOption{WithCustomerID(customerID)}, options...)
+	callOpts := buildProxyCallOptions(options)
+	if callOpts.retry == nil {
+		cfg := c.client.retryCfg
+		cfg.RetryPost = true
+		callOpts.retry = &cfg
+	}
+	req.Metadata = mergeMetadataMaps(c.client.defaultMetadata, req.Metadata, callOpts.metadata)
+	// Validate without requiring model
+	if len(req.Messages) == 0 {
+		return nil, fmt.Errorf("at least one message is required")
+	}
+	payload := newCustomerProxyRequestPayload(req)
+	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/llm/proxy", payload)
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Accept", "application/json")
+	applyProxyHeaders(httpReq, callOpts)
+	resp, retryMeta, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
+	if err != nil {
+		c.client.telemetry.log(ctx, LogLevelError, "proxy_customer_message_failed", map[string]any{"error": err.Error(), "retries": retryMeta})
+		return nil, err
+	}
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
+	var respPayload ProxyResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respPayload); err != nil {
+		return nil, err
+	}
+	respPayload.RequestID = requestIDFromHeaders(resp.Header)
+	return &respPayload, nil
+}
+
+// ProxyCustomerStream opens a streaming connection for customer-attributed chat completions.
+// Unlike ProxyStream, this does not require a model because the customer's tier determines it.
+// The customerID is sent via the X-ModelRelay-Customer-Id header.
+func (c *LLMClient) ProxyCustomerStream(ctx context.Context, customerID string, req ProxyRequest, options ...ProxyOption) (*StreamHandle, error) {
+	if customerID == "" {
+		return nil, fmt.Errorf("customer ID is required")
+	}
+	// Prepend customer ID option so it's applied first
+	options = append([]ProxyOption{WithCustomerID(customerID)}, options...)
+	callOpts := buildProxyCallOptions(options)
+	if callOpts.retry == nil {
+		cfg := c.client.retryCfg
+		cfg.RetryPost = true
+		callOpts.retry = &cfg
+	}
+	req.Metadata = mergeMetadataMaps(c.client.defaultMetadata, req.Metadata, callOpts.metadata)
+	// Validate without requiring model
+	if len(req.Messages) == 0 {
+		return nil, fmt.Errorf("at least one message is required")
+	}
+	payload := newCustomerProxyRequestPayload(req)
+	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/llm/proxy", payload)
+	if err != nil {
+		return nil, err
+	}
+	if callOpts.stream == StreamFormatNDJSON {
+		httpReq.Header.Set("Accept", "application/x-ndjson")
+	} else {
+		httpReq.Header.Set("Accept", "text/event-stream")
+	}
+	applyProxyHeaders(httpReq, callOpts)
+	//nolint:bodyclose // resp.Body is transferred to stream and will be closed by stream.Close()
+	resp, _, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
+	if err != nil {
+		return nil, err
+	}
+	var stream streamReader
+	if callOpts.stream == StreamFormatNDJSON {
+		stream = newNDJSONStream(ctx, resp.Body, c.client.telemetry)
+	} else {
+		stream = newSSEStream(ctx, resp.Body, c.client.telemetry)
+	}
+	return &StreamHandle{
+		stream:    stream,
+		RequestID: requestIDFromHeaders(resp.Header),
+	}, nil
+}
+
 // ProxyStream opens a streaming connection for chat completions.
 func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options ...ProxyOption) (*StreamHandle, error) {
 	callOpts := buildProxyCallOptions(options)
@@ -183,6 +273,36 @@ func newProxyRequestPayload(req ProxyRequest) (proxyRequestPayload, error) {
 		payload.ToolChoice = req.ToolChoice
 	}
 	return payload, nil
+}
+
+// newCustomerProxyRequestPayload builds a payload for customer-attributed requests.
+// Unlike newProxyRequestPayload, this does NOT call Validate() because model validation
+// would fail - the customer's tier determines the model on the server side.
+// Callers must validate required fields (e.g., messages) before calling this function.
+func newCustomerProxyRequestPayload(req ProxyRequest) proxyRequestPayload {
+	payload := proxyRequestPayload{
+		// Model is intentionally omitted - tier determines it
+		MaxTokens:      req.MaxTokens,
+		Temperature:    req.Temperature,
+		Messages:       req.Messages,
+		ResponseFormat: req.ResponseFormat,
+	}
+	if len(req.Metadata) > 0 {
+		payload.Metadata = req.Metadata
+	}
+	if len(req.Stop) > 0 {
+		payload.Stop = req.Stop
+	}
+	if len(req.StopSequences) > 0 {
+		payload.StopSeqs = req.StopSequences
+	}
+	if len(req.Tools) > 0 {
+		payload.Tools = req.Tools
+	}
+	if req.ToolChoice != nil {
+		payload.ToolChoice = req.ToolChoice
+	}
+	return payload
 }
 
 func mergeMetadataMaps(defaults, req, overrides map[string]string) map[string]string {

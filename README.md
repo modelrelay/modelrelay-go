@@ -54,15 +54,15 @@ See `examples/` for runnable code:
 
 - `examples/cli`: Interactive chat CLI using the streaming proxy.
 
-### Typed models and stop reasons
+### Typed models, stop reasons, and message roles
 
-The Go SDK now surfaces typed identifiers for common stop
-reasons, while models are plain strings wrapped in a `ModelID` type:
+The Go SDK surfaces typed identifiers for common stop
+reasons and message roles. Models are plain strings wrapped in a `ModelID` type:
 
 ```go
 req := sdk.ProxyRequest{
     Model:    sdk.NewModelID("gpt-5.1"),
-    Messages: []llm.ProxyMessage{{Role: "user", Content: "hi"}},
+    Messages: []llm.ProxyMessage{{Role: llm.RoleUser, Content: "hi"}},
 }
 resp, _ := client.LLM.ProxyMessage(ctx, req)
 if resp.StopReason.IsOther() {
@@ -177,6 +177,55 @@ _ = finalPayload.Items
 The CLI in `examples/apikeys` uses the same calls. Provide `MODELRELAY_EMAIL` and
 `MODELRELAY_PASSWORD` in the environment to log in, then run `go run ./examples/apikeys`
 to create a project key.
+
+### Message roles
+
+Use typed constants for message roles instead of strings:
+
+```go
+// Available role constants
+llm.RoleUser      // "user"
+llm.RoleAssistant // "assistant"
+llm.RoleSystem    // "system"
+llm.RoleTool      // "tool"
+
+// Using with builders
+resp, _ := client.LLM.Chat(sdk.NewModelID("gpt-4o")).
+    Message(llm.RoleSystem, "You are helpful.").
+    Message(llm.RoleUser, "Hello!").
+    Send(ctx)
+
+// Or use convenience methods (recommended)
+resp, _ := client.LLM.Chat(sdk.NewModelID("gpt-4o")).
+    System("You are helpful.").
+    User("Hello!").
+    Send(ctx)
+```
+
+### Customer-attributed requests
+
+For customer-attributed requests, the customer's tier determines which model to use.
+Use `ChatForCustomer` instead of `Chat`:
+
+```go
+// Customer-attributed: tier determines model, no model parameter needed
+resp, err := client.LLM.ChatForCustomer("customer-123").
+    System("You are a helpful assistant.").
+    User("Hello!").
+    Send(ctx)
+
+// The customer ID is sent via the X-ModelRelay-Customer-Id header.
+// The backend looks up the customer's tier and routes to the appropriate model.
+
+// Streaming works the same way
+stream, err := client.LLM.ChatForCustomer("customer-123").
+    User("Tell me a joke").
+    Stream(ctx)
+```
+
+This provides compile-time separation between:
+- **Direct/PAYGO requests** (`Chat(model)`) — model is required
+- **Customer-attributed requests** (`ChatForCustomer(customerId)`) — tier determines model
 
 ### Chat builders & streaming adapter
 

@@ -116,6 +116,21 @@ func WithRequestID(requestID string) ProxyOption {
 	}
 }
 
+// WithCustomerID sets the X-ModelRelay-Customer-Id header for customer-attributed requests.
+// When this header is set, the customer's tier determines the model to use.
+func WithCustomerID(customerID string) ProxyOption {
+	return func(opts *proxyCallOptions) {
+		clean := strings.TrimSpace(customerID)
+		if clean == "" {
+			return
+		}
+		if opts.headers == nil {
+			opts.headers = make(http.Header)
+		}
+		opts.headers.Set(headers.CustomerID, clean)
+	}
+}
+
 // WithHeader attaches an arbitrary header to the underlying HTTP request.
 func WithHeader(key, value string) ProxyOption {
 	return func(opts *proxyCallOptions) {

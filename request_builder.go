@@ -48,24 +48,24 @@ func (b *ProxyRequestBuilder) Temperature(temp float64) *ProxyRequestBuilder {
 }
 
 // Message appends a chat message.
-func (b *ProxyRequestBuilder) Message(role, content string) *ProxyRequestBuilder {
+func (b *ProxyRequestBuilder) Message(role llm.MessageRole, content string) *ProxyRequestBuilder {
 	b.req.Messages = append(b.req.Messages, llm.ProxyMessage{Role: role, Content: content})
 	return b
 }
 
 // System appends a system message.
 func (b *ProxyRequestBuilder) System(content string) *ProxyRequestBuilder {
-	return b.Message("system", content)
+	return b.Message(llm.RoleSystem, content)
 }
 
 // User appends a user message.
 func (b *ProxyRequestBuilder) User(content string) *ProxyRequestBuilder {
-	return b.Message("user", content)
+	return b.Message(llm.RoleUser, content)
 }
 
 // Assistant appends an assistant message.
 func (b *ProxyRequestBuilder) Assistant(content string) *ProxyRequestBuilder {
-	return b.Message("assistant", content)
+	return b.Message(llm.RoleAssistant, content)
 }
 
 // ResponseFormat sets the structured output configuration.
@@ -199,24 +199,24 @@ func (b *ChatBuilder) Temperature(temp float64) *ChatBuilder {
 }
 
 // Message appends a chat message.
-func (b *ChatBuilder) Message(role, content string) *ChatBuilder {
+func (b *ChatBuilder) Message(role llm.MessageRole, content string) *ChatBuilder {
 	b.req.Messages = append(b.req.Messages, llm.ProxyMessage{Role: role, Content: content})
 	return b
 }
 
 // System appends a system message.
 func (b *ChatBuilder) System(content string) *ChatBuilder {
-	return b.Message("system", content)
+	return b.Message(llm.RoleSystem, content)
 }
 
 // User appends a user message.
 func (b *ChatBuilder) User(content string) *ChatBuilder {
-	return b.Message("user", content)
+	return b.Message(llm.RoleUser, content)
 }
 
 // Assistant appends an assistant message.
 func (b *ChatBuilder) Assistant(content string) *ChatBuilder {
-	return b.Message("assistant", content)
+	return b.Message(llm.RoleAssistant, content)
 }
 
 // Messages replaces the existing message list.
@@ -372,6 +372,232 @@ func (b *ChatBuilder) Stream(ctx context.Context) (*ChatStream, error) {
 // Collect opens a streaming chat request and aggregates the response, allowing
 // callers to use the streaming endpoint while receiving a blocking-style result.
 func (b *ChatBuilder) Collect(ctx context.Context) (*ProxyResponse, error) {
+	stream, err := b.Stream(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return stream.Collect(ctx)
+}
+
+// CustomerChatBuilder offers a fluent API for customer-attributed chat requests
+// where the tier determines the model. This builder does NOT accept a model parameter
+// because the customer's tier controls which model is used.
+type CustomerChatBuilder struct {
+	client     *LLMClient
+	customerID string
+	req        ProxyRequest
+	options    []ProxyOption
+}
+
+// ChatForCustomer seeds a CustomerChatBuilder for a customer-attributed request.
+// The customer's tier determines the model - no model parameter is needed or allowed.
+// The customerID is sent via the X-ModelRelay-Customer-Id header.
+//
+// Example:
+//
+//	stream, err := client.LLM.ChatForCustomer("user-123").
+//	    MaxTokens(256).
+//	    User("Hello!").
+//	    Stream(ctx)
+func (c *LLMClient) ChatForCustomer(customerID string) *CustomerChatBuilder {
+	return &CustomerChatBuilder{
+		client:     c,
+		customerID: customerID,
+		req:        ProxyRequest{},
+	}
+}
+
+// MaxTokens sets the max tokens limit.
+func (b *CustomerChatBuilder) MaxTokens(maxTokens int64) *CustomerChatBuilder {
+	b.req.MaxTokens = maxTokens
+	return b
+}
+
+// Temperature sets the sampling temperature.
+func (b *CustomerChatBuilder) Temperature(temp float64) *CustomerChatBuilder {
+	b.req.Temperature = &temp
+	return b
+}
+
+// Message appends a chat message.
+func (b *CustomerChatBuilder) Message(role llm.MessageRole, content string) *CustomerChatBuilder {
+	b.req.Messages = append(b.req.Messages, llm.ProxyMessage{Role: role, Content: content})
+	return b
+}
+
+// System appends a system message.
+func (b *CustomerChatBuilder) System(content string) *CustomerChatBuilder {
+	return b.Message(llm.RoleSystem, content)
+}
+
+// User appends a user message.
+func (b *CustomerChatBuilder) User(content string) *CustomerChatBuilder {
+	return b.Message(llm.RoleUser, content)
+}
+
+// Assistant appends an assistant message.
+func (b *CustomerChatBuilder) Assistant(content string) *CustomerChatBuilder {
+	return b.Message(llm.RoleAssistant, content)
+}
+
+// Messages replaces the existing message list.
+func (b *CustomerChatBuilder) Messages(msgs []llm.ProxyMessage) *CustomerChatBuilder {
+	b.req.Messages = msgs
+	return b
+}
+
+// Metadata sets the metadata map.
+func (b *CustomerChatBuilder) Metadata(metadata map[string]string) *CustomerChatBuilder {
+	b.req.Metadata = metadata
+	return b
+}
+
+// MetadataEntry adds a single metadata key/value.
+func (b *CustomerChatBuilder) MetadataEntry(key, value string) *CustomerChatBuilder {
+	if key == "" || value == "" {
+		return b
+	}
+	if b.req.Metadata == nil {
+		b.req.Metadata = make(map[string]string)
+	}
+	b.req.Metadata[key] = value
+	return b
+}
+
+// Stop sets the stop sequences (OpenAI-style stop).
+func (b *CustomerChatBuilder) Stop(stop ...string) *CustomerChatBuilder {
+	b.req.Stop = append([]string(nil), stop...)
+	return b
+}
+
+// StopSequences sets Anthropic-style stop sequences.
+func (b *CustomerChatBuilder) StopSequences(stop ...string) *CustomerChatBuilder {
+	b.req.StopSequences = append([]string(nil), stop...)
+	return b
+}
+
+// Tools sets the tool list.
+func (b *CustomerChatBuilder) Tools(tools []llm.Tool) *CustomerChatBuilder {
+	b.req.Tools = tools
+	return b
+}
+
+// Tool appends a single tool.
+func (b *CustomerChatBuilder) Tool(tool llm.Tool) *CustomerChatBuilder {
+	b.req.Tools = append(b.req.Tools, tool)
+	return b
+}
+
+// FunctionTool appends a function tool with the given name, description, and parameters.
+func (b *CustomerChatBuilder) FunctionTool(name, description string, parameters []byte) *CustomerChatBuilder {
+	b.req.Tools = append(b.req.Tools, llm.Tool{
+		Type: llm.ToolTypeFunction,
+		Function: &llm.FunctionTool{
+			Name:        name,
+			Description: description,
+			Parameters:  parameters,
+		},
+	})
+	return b
+}
+
+// ToolChoice sets the tool choice.
+func (b *CustomerChatBuilder) ToolChoice(choice llm.ToolChoice) *CustomerChatBuilder {
+	b.req.ToolChoice = &choice
+	return b
+}
+
+// ToolChoiceAuto sets tool_choice to auto.
+func (b *CustomerChatBuilder) ToolChoiceAuto() *CustomerChatBuilder {
+	return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceAuto})
+}
+
+// ToolChoiceRequired sets tool_choice to required.
+func (b *CustomerChatBuilder) ToolChoiceRequired() *CustomerChatBuilder {
+	return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceRequired})
+}
+
+// ToolChoiceNone sets tool_choice to none.
+func (b *CustomerChatBuilder) ToolChoiceNone() *CustomerChatBuilder {
+	return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceNone})
+}
+
+// RequestID sets the X-ModelRelay-Chat-Request-Id header for the request.
+func (b *CustomerChatBuilder) RequestID(requestID string) *CustomerChatBuilder {
+	return b.Option(WithRequestID(requestID))
+}
+
+// Header attaches an arbitrary header to the underlying HTTP request.
+func (b *CustomerChatBuilder) Header(key, value string) *CustomerChatBuilder {
+	return b.Option(WithHeader(key, value))
+}
+
+// Headers attaches multiple headers to the underlying HTTP request.
+func (b *CustomerChatBuilder) Headers(headers map[string]string) *CustomerChatBuilder {
+	return b.Option(WithHeaders(headers))
+}
+
+// Timeout overrides the request timeout for this call (0 disables timeout).
+func (b *CustomerChatBuilder) Timeout(timeout time.Duration) *CustomerChatBuilder {
+	return b.Option(WithTimeout(timeout))
+}
+
+// Retry overrides the retry policy for this call.
+func (b *CustomerChatBuilder) Retry(cfg RetryConfig) *CustomerChatBuilder {
+	return b.Option(WithRetry(cfg))
+}
+
+// DisableRetry forces a single attempt for this call.
+func (b *CustomerChatBuilder) DisableRetry() *CustomerChatBuilder {
+	return b.Option(DisableRetry())
+}
+
+// Option appends a raw ProxyOption for advanced scenarios.
+func (b *CustomerChatBuilder) Option(opt ProxyOption) *CustomerChatBuilder {
+	if opt != nil {
+		b.options = append(b.options, opt)
+	}
+	return b
+}
+
+// Build validates and returns the customer ID, request, and accumulated options.
+// Unlike ChatBuilder.Build(), this does NOT require a model because
+// the customer's tier determines the model.
+func (b *CustomerChatBuilder) Build() (string, ProxyRequest, []ProxyOption, error) {
+	if b.customerID == "" {
+		return "", ProxyRequest{}, nil, fmt.Errorf("customer ID is required")
+	}
+	if len(b.req.Messages) == 0 {
+		return "", ProxyRequest{}, nil, fmt.Errorf("at least one message is required")
+	}
+	return b.customerID, b.req, append([]ProxyOption(nil), b.options...), nil
+}
+
+// Send performs a blocking completion and returns the aggregated response.
+func (b *CustomerChatBuilder) Send(ctx context.Context) (*ProxyResponse, error) {
+	customerID, req, opts, err := b.Build()
+	if err != nil {
+		return nil, err
+	}
+	return b.client.ProxyCustomerMessage(ctx, customerID, req, opts...)
+}
+
+// Stream opens a streaming SSE connection for chat completions with a helper adapter.
+func (b *CustomerChatBuilder) Stream(ctx context.Context) (*ChatStream, error) {
+	customerID, req, opts, err := b.Build()
+	if err != nil {
+		return nil, err
+	}
+	handle, err := b.client.ProxyCustomerStream(ctx, customerID, req, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return newChatStream(handle), nil
+}
+
+// Collect opens a streaming chat request and aggregates the response, allowing
+// callers to use the streaming endpoint while receiving a blocking-style result.
+func (b *CustomerChatBuilder) Collect(ctx context.Context) (*ProxyResponse, error) {
 	stream, err := b.Stream(ctx)
 	if err != nil {
 		return nil, err

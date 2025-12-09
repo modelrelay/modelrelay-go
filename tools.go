@@ -14,17 +14,17 @@ import (
 
 // NewUserMessage creates a user message.
 func NewUserMessage(content string) llm.ProxyMessage {
-	return llm.ProxyMessage{Role: "user", Content: content}
+	return llm.ProxyMessage{Role: llm.RoleUser, Content: content}
 }
 
 // NewAssistantMessage creates an assistant message.
 func NewAssistantMessage(content string) llm.ProxyMessage {
-	return llm.ProxyMessage{Role: "assistant", Content: content}
+	return llm.ProxyMessage{Role: llm.RoleAssistant, Content: content}
 }
 
 // NewSystemMessage creates a system message.
 func NewSystemMessage(content string) llm.ProxyMessage {
-	return llm.ProxyMessage{Role: "system", Content: content}
+	return llm.ProxyMessage{Role: llm.RoleSystem, Content: content}
 }
 
 // ============================================================================
@@ -510,7 +510,7 @@ func ToolResultMessage(toolCallID string, result any) (llm.ProxyMessage, error) 
 		content = string(data)
 	}
 	return llm.ProxyMessage{
-		Role:       "tool",
+		Role:       llm.RoleTool,
 		Content:    content,
 		ToolCallID: toolCallID,
 	}, nil
@@ -535,7 +535,7 @@ func RespondToToolCall(call llm.ToolCall, result any) (llm.ProxyMessage, error) 
 // This is used to include the assistant's tool-calling turn in conversation history.
 func AssistantMessageWithToolCalls(content string, toolCalls []llm.ToolCall) llm.ProxyMessage {
 	return llm.ProxyMessage{
-		Role:      "assistant",
+		Role:      llm.RoleAssistant,
 		Content:   content,
 		ToolCalls: toolCalls,
 	}
@@ -941,7 +941,7 @@ func (r *ToolRegistry) ResultsToMessages(results []ToolExecutionResult) []llm.Pr
 			}
 		}
 		messages[i] = llm.ProxyMessage{
-			Role:       "tool",
+			Role:       llm.RoleTool,
 			Content:    content,
 			ToolCallID: res.ToolCallID,
 		}
@@ -1016,7 +1016,7 @@ func CreateRetryMessages(results []ToolExecutionResult) []llm.ProxyMessage {
 	messages := make([]llm.ProxyMessage, len(retryable))
 	for i, r := range retryable {
 		messages[i] = llm.ProxyMessage{
-			Role:       "tool",
+			Role:       llm.RoleTool,
 			Content:    FormatToolErrorForModel(r),
 			ToolCallID: r.ToolCallID,
 		}
