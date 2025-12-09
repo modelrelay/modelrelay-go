@@ -174,6 +174,160 @@ if err != nil {
 _ = finalPayload.Items
 ```
 
+### Type-safe structured outputs with automatic schema inference
+
+For a more ergonomic approach, use `sdk.Structured[T]()` to automatically generate
+JSON schemas from Go struct types and validate responses:
+
+```go
+import (
+    "context"
+    "fmt"
+    "log"
+
+    llm "github.com/modelrelay/modelrelay/providers"
+    "github.com/modelrelay/modelrelay/sdk/go"
+)
+
+// Define your output type with JSON tags
+type Person struct {
+    Name string `json:"name"`
+    Age  int    `json:"age"`
+}
+
+func main() {
+    ctx := context.Background()
+    client, _ := sdk.NewClient(sdk.Config{APIKey: "mr_sk_..."})
+
+    // Structured[T] auto-generates the schema and validates the response
+    result, err := sdk.Structured[Person](ctx, client.LLM, sdk.ProxyRequest{
+        Model:    sdk.NewModelID("claude-sonnet-4-20250514"),
+        Messages: []llm.ProxyMessage{
+            {Role: "user", Content: "Extract: John Doe is 30 years old"},
+        },
+    }, sdk.StructuredOptions{
+        MaxRetries: 2, // Retry on validation failures
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Printf("Name: %s, Age: %d\n", result.Value.Name, result.Value.Age)
+    fmt.Printf("Succeeded on attempt %d\n", result.Attempts)
+}
+```
+
+#### Schema generation from struct tags
+
+The SDK generates JSON schemas from Go types using reflection:
+
+```go
+type Status struct {
+    // Basic fields become required properties
+    Code string `json:"code"`
+
+    // Pointer fields are optional (not in "required" array)
+    Notes *string `json:"notes"`
+
+    // Use description tag for field documentation
+    Email string `json:"email" description:"User's email address"`
+
+    // Enum constraint
+    Priority string `json:"priority" enum:"low,medium,high"`
+
+    // Format constraint (email, uri, date-time, etc.)
+    Website string `json:"website" format:"uri"`
+}
+
+// Nested structs are fully supported
+type Order struct {
+    ID       string   `json:"id"`
+    Customer Person   `json:"customer"` // Nested object
+    Items    []string `json:"items"`    // Array type
+}
+```
+
+#### Handling validation errors
+
+When validation fails, you get detailed error information:
+
+```go
+result, err := sdk.Structured[Person](ctx, client.LLM, req, sdk.StructuredOptions{
+    MaxRetries: 2,
+})
+if err != nil {
+    var exhausted sdk.StructuredExhaustedError
+    if errors.As(err, &exhausted) {
+        // All retries failed
+        fmt.Printf("Failed after %d attempts\n", len(exhausted.AllAttempts))
+        for _, attempt := range exhausted.AllAttempts {
+            fmt.Printf("Attempt %d: %s\n", attempt.Attempt, attempt.RawJSON)
+            for _, issue := range attempt.Error.Issues {
+                if issue.Path != nil {
+                    fmt.Printf("  - %s: %s\n", *issue.Path, issue.Message)
+                } else {
+                    fmt.Printf("  - %s\n", issue.Message)
+                }
+            }
+        }
+    }
+}
+```
+
+#### Custom retry handlers
+
+Customize retry behavior with your own handler:
+
+```go
+type MyRetryHandler struct{}
+
+func (h MyRetryHandler) OnValidationError(
+    attempt int,
+    rawJSON string,
+    err sdk.StructuredErrorDetail,
+    messages []llm.ProxyMessage,
+) []llm.ProxyMessage {
+    if attempt >= 3 {
+        return nil // Stop retrying
+    }
+    // Custom retry message
+    return []llm.ProxyMessage{{
+        Role:    "user",
+        Content: fmt.Sprintf("Invalid response. Issues: %v. Try again.", err.Issues),
+    }}
+}
+
+result, err := sdk.Structured[Person](ctx, client.LLM, req, sdk.StructuredOptions{
+    MaxRetries:   3,
+    RetryHandler: MyRetryHandler{},
+})
+```
+
+#### Streaming structured outputs
+
+For streaming with schema inference (no retries):
+
+```go
+stream, err := sdk.StreamStructured[Person](ctx, client.LLM, sdk.ProxyRequest{
+    Model:    sdk.NewModelID("claude-sonnet-4-20250514"),
+    Messages: []llm.ProxyMessage{{Role: "user", Content: "Extract: Jane, 25"}},
+}, "person")
+if err != nil {
+    log.Fatal(err)
+}
+defer stream.Close()
+
+for {
+    evt, ok, err := stream.Next()
+    if err != nil || !ok {
+        break
+    }
+    if evt.Type == sdk.StructuredRecordTypeCompletion {
+        fmt.Printf("Final: %+v\n", evt.Payload)
+    }
+}
+```
+
 The CLI in `examples/apikeys` uses the same calls. Provide `MODELRELAY_EMAIL` and
 `MODELRELAY_PASSWORD` in the environment to log in, then run `go run ./examples/apikeys`
 to create a project key.

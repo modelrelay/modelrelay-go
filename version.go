@@ -1,6 +1,10 @@
 package sdk
 
 // Version is the published SDK version.
+// 0.28.1: Fix StructuredDecodeError surfacing for first-attempt decode failures,
+// fix validation path prefix issue (#. prefix), add integration tests.
+// 0.28.0: Add ergonomic structured output API with reflection-based schema generation.
+// Structured[T]() and StreamStructured[T]() for type-safe structured outputs with validation retries.
 // 0.27.0: Breaking - Replace stringly-typed scope in JWT claims with typed fields (ProjectID,
 // CustomerID, CustomerExternal). Claims now has explicit fields instead of Scope []string.
 // 0.26.0: Breaking - Add ChatForCustomer(customerID) for customer-attributed requests where tier
@@ -8,4 +12,4 @@ package sdk
 // 0.24.0: Add package-level error helpers: IsEmailRequired, IsNoFreeTier, IsNoTiers, IsProvisioningError.
 // 0.23.0: Breaking - FrontendTokenRequest requires customer_id, add EMAIL_REQUIRED error code,
 // Rich Hickey-style design with separate types for auto-provisioning.
-const Version = "0.27.0"
+const Version = "0.28.1"
