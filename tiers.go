@@ -20,18 +20,20 @@ const (
 
 // Tier represents a pricing tier in a ModelRelay project.
 type Tier struct {
-	ID               uuid.UUID     `json:"id"`
-	ProjectID        uuid.UUID     `json:"project_id"`
-	TierCode         string        `json:"tier_code"`
-	DisplayName      string        `json:"display_name"`
-	SpendLimitCents  int64         `json:"spend_limit_cents"` // Monthly spend limit in cents (e.g., 2000 = $20.00)
-	StripePriceID    string        `json:"stripe_price_id,omitempty"`
-	PriceAmountCents int64         `json:"price_amount_cents,omitempty"`
-	PriceCurrency    string        `json:"price_currency,omitempty"`
-	PriceInterval    PriceInterval `json:"price_interval,omitempty"`
-	TrialDays        int32         `json:"trial_days,omitempty"`
-	CreatedAt        time.Time     `json:"created_at"`
-	UpdatedAt        time.Time     `json:"updated_at"`
+	ID                         uuid.UUID     `json:"id"`
+	ProjectID                  uuid.UUID     `json:"project_id"`
+	TierCode                   string        `json:"tier_code"`
+	DisplayName                string        `json:"display_name"`
+	SpendLimitCents            int64         `json:"spend_limit_cents"`             // Monthly spend limit in cents (e.g., 2000 = $20.00)
+	InputPricePerMillionCents  int64         `json:"input_price_per_million_cents"` // Input token price in cents per million (e.g., 300 = $3.00/1M)
+	OutputPricePerMillionCents int64         `json:"output_price_per_million_cents"`
+	StripePriceID              string        `json:"stripe_price_id,omitempty"`
+	PriceAmountCents           int64         `json:"price_amount_cents,omitempty"`
+	PriceCurrency              string        `json:"price_currency,omitempty"`
+	PriceInterval              PriceInterval `json:"price_interval,omitempty"`
+	TrialDays                  int32         `json:"trial_days,omitempty"`
+	CreatedAt                  time.Time     `json:"created_at"`
+	UpdatedAt                  time.Time     `json:"updated_at"`
 }
 
 // tierListResponse wraps the tier list response.
