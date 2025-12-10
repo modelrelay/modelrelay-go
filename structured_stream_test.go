@@ -1,8 +1,10 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"testing"
 )
 
@@ -61,6 +63,131 @@ func TestStructuredJSONStream_ReadFailureReturnsTransportError(t *testing.T) {
 	}
 	if !errors.Is(terr2, sentinelErr) {
 		t.Fatalf("expected TransportError from Collect to wrap sentinel error, got Cause=%v", terr2.Cause)
+	}
+}
+
+// ndjsonReadCloser wraps a string buffer for testing NDJSON parsing.
+type ndjsonReadCloser struct {
+	*bytes.Reader
+}
+
+func (n *ndjsonReadCloser) Close() error { return nil }
+
+func newNDJSONReadCloser(data string) io.ReadCloser {
+	return &ndjsonReadCloser{Reader: bytes.NewReader([]byte(data))}
+}
+
+func TestStructuredJSONStream_CompleteFieldsParsing(t *testing.T) {
+	ctx := context.Background()
+
+	type Article struct {
+		Title string `json:"title"`
+		Body  string `json:"body"`
+	}
+
+	// Simulate a stream with update (partial fields) and completion (all fields)
+	ndjson := `{"type":"start","request_id":"req-1","provider":"test","model":"test-model"}
+{"type":"update","payload":{"title":"Hello"},"complete_fields":["title"]}
+{"type":"update","payload":{"title":"Hello","body":"World"},"complete_fields":["title","body"]}
+{"type":"completion","payload":{"title":"Hello","body":"World"},"complete_fields":["title","body"]}
+`
+	stream := newStructuredJSONStream[Article](ctx, newNDJSONReadCloser(ndjson), "req-1", nil)
+	defer stream.Close()
+
+	// First event: update with only title complete
+	event1, ok, err := stream.Next()
+	if err != nil {
+		t.Fatalf("unexpected error on first Next: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok=true on first Next")
+	}
+	if event1.Type != StructuredRecordTypeUpdate {
+		t.Errorf("expected update, got %s", event1.Type)
+	}
+	if !event1.CompleteFields["title"] {
+		t.Error("expected 'title' in CompleteFields for first update")
+	}
+	if event1.CompleteFields["body"] {
+		t.Error("expected 'body' NOT in CompleteFields for first update")
+	}
+
+	// Second event: update with both fields complete
+	event2, ok, err := stream.Next()
+	if err != nil {
+		t.Fatalf("unexpected error on second Next: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok=true on second Next")
+	}
+	if !event2.CompleteFields["title"] {
+		t.Error("expected 'title' in CompleteFields for second update")
+	}
+	if !event2.CompleteFields["body"] {
+		t.Error("expected 'body' in CompleteFields for second update")
+	}
+
+	// Third event: completion
+	event3, ok, err := stream.Next()
+	if err != nil {
+		t.Fatalf("unexpected error on third Next: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok=true on third Next")
+	}
+	if event3.Type != StructuredRecordTypeCompletion {
+		t.Errorf("expected completion, got %s", event3.Type)
+	}
+	if !event3.CompleteFields["title"] || !event3.CompleteFields["body"] {
+		t.Error("expected both 'title' and 'body' in CompleteFields for completion")
+	}
+
+	// Stream should be done
+	_, ok, err = stream.Next()
+	if err != nil {
+		t.Fatalf("unexpected error after completion: %v", err)
+	}
+	if ok {
+		t.Fatal("expected ok=false after completion")
+	}
+}
+
+func TestStructuredJSONStream_CompleteFieldsFiltersEmptyStrings(t *testing.T) {
+	ctx := context.Background()
+
+	type Simple struct {
+		Name string `json:"name"`
+	}
+
+	// Include empty strings and whitespace-only strings in complete_fields
+	ndjson := `{"type":"update","payload":{"name":"Test"},"complete_fields":["name", "", "  ", "other"]}
+{"type":"completion","payload":{"name":"Test"},"complete_fields":["name"]}
+`
+	stream := newStructuredJSONStream[Simple](ctx, newNDJSONReadCloser(ndjson), "req-2", nil)
+	defer stream.Close()
+
+	event, ok, err := stream.Next()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok=true")
+	}
+
+	// Should have name and other, but not empty strings
+	if !event.CompleteFields["name"] {
+		t.Error("expected 'name' in CompleteFields")
+	}
+	if !event.CompleteFields["other"] {
+		t.Error("expected 'other' in CompleteFields")
+	}
+	// Empty strings should have been filtered
+	if event.CompleteFields[""] {
+		t.Error("expected empty string NOT in CompleteFields")
+	}
+	// The length should be 2 (name, other) - not including empty or whitespace
+	if len(event.CompleteFields) != 2 {
+		t.Errorf("expected 2 fields in CompleteFields, got %d: %v", len(event.CompleteFields), event.CompleteFields)
 	}
 }
 

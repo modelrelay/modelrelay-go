@@ -30,6 +30,10 @@ type StructuredJSONEvent[T any] struct {
 	Type      StructuredRecordType
 	Payload   *T
 	RequestID string
+	// CompleteFields contains the set of field paths that are complete
+	// (have their closing delimiters). Use dot notation for nested fields
+	// (e.g., "metadata.author"). Check with CompleteFields["fieldName"].
+	CompleteFields map[string]bool
 }
 
 // StructuredJSONStream drives decoding of NDJSON structured-output streams
@@ -104,11 +108,12 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 		}
 
 		var raw struct {
-			Type    string          `json:"type"`
-			Payload json.RawMessage `json:"payload,omitempty"`
-			Code    string          `json:"code,omitempty"`
-			Message string          `json:"message,omitempty"`
-			Status  int             `json:"status,omitempty"`
+			Type           string          `json:"type"`
+			Payload        json.RawMessage `json:"payload,omitempty"`
+			CompleteFields []string        `json:"complete_fields,omitempty"`
+			Code           string          `json:"code,omitempty"`
+			Message        string          `json:"message,omitempty"`
+			Status         int             `json:"status,omitempty"`
 		}
 		if err := json.Unmarshal(line, &raw); err != nil {
 			return StructuredJSONEvent[T]{}, false, s.transportError("invalid structured stream record", err)
@@ -131,10 +136,20 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 				//nolint:errcheck // best-effort cleanup after completion
 				_ = s.Close()
 			}
+			// Convert complete_fields array to map for O(1) lookups.
+			// Skip empty strings and trim whitespace for robustness.
+			completeFields := make(map[string]bool, len(raw.CompleteFields))
+			for _, field := range raw.CompleteFields {
+				field = strings.TrimSpace(field)
+				if field != "" {
+					completeFields[field] = true
+				}
+			}
 			return StructuredJSONEvent[T]{
-				Type:      recordType,
-				Payload:   &payload,
-				RequestID: s.requestID,
+				Type:           recordType,
+				Payload:        &payload,
+				RequestID:      s.requestID,
+				CompleteFields: completeFields,
 			}, true, nil
 		case StructuredRecordTypeError:
 			s.markTerminal()

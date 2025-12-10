@@ -40,6 +40,44 @@ result, _ := sdk.Structured[Person](ctx, client.LLM, sdk.ProxyRequest{
 fmt.Printf("Name: %s, Age: %d\n", result.Value.Name, result.Value.Age)
 ```
 
+## Streaming Structured Outputs
+
+Build progressive UIs that render fields as they complete:
+
+```go
+type Article struct {
+    Title   string `json:"title"`
+    Summary string `json:"summary"`
+    Body    string `json:"body"`
+}
+
+stream, _ := sdk.StreamStructured[Article](ctx, client.LLM, sdk.ProxyRequest{
+    Model:    sdk.NewModelID("claude-sonnet-4-20250514"),
+    Messages: []llm.ProxyMessage{{Role: "user", Content: "Write an article about Go"}},
+})
+defer stream.Close()
+
+for {
+    event, ok, _ := stream.Next()
+    if !ok {
+        break
+    }
+
+    // Render fields as soon as they're complete
+    if event.CompleteFields["title"] {
+        renderTitle(*event.Payload.Title)  // Safe to display
+    }
+    if event.CompleteFields["summary"] {
+        renderSummary(*event.Payload.Summary)
+    }
+
+    // Show streaming preview of incomplete fields
+    if !event.CompleteFields["body"] && event.Payload.Body != nil {
+        renderBodyPreview(*event.Payload.Body + "▋")
+    }
+}
+```
+
 ## Customer-Attributed Requests
 
 For metered billing, use `ChatForCustomer` — the customer's tier determines the model:
