@@ -186,13 +186,13 @@ func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options .
 }
 
 // ProxyStreamJSON streams structured JSON responses for requests that use
-// response_format with structured outputs (json_object or json_schema). It
-// negotiates NDJSON per the /llm/proxy structured streaming contract and
-// decodes each update/completion payload into T. The caller is responsible
-// for driving the stream via Next or Collect.
+// response_format with type=json_schema. It negotiates NDJSON per the
+// /llm/proxy structured streaming contract and decodes each update/completion
+// payload into T. The caller is responsible for driving the stream via Next or
+// Collect.
 func ProxyStreamJSON[T any](ctx context.Context, c *LLMClient, req ProxyRequest, options ...ProxyOption) (*StructuredJSONStream[T], error) {
 	if req.ResponseFormat == nil || !req.ResponseFormat.IsStructured() {
-		return nil, ConfigError{Reason: "response_format with type=json_object or json_schema is required for structured streaming"}
+		return nil, ConfigError{Reason: "response_format with type=json_schema is required for structured streaming"}
 	}
 
 	callOpts := buildProxyCallOptions(options)

@@ -1,6 +1,8 @@
 package sdk
 
 // Version is the published SDK version.
+// 0.30.0: Breaking - Remove response_format.type=json_object support. Only json_schema is supported
+// for structured outputs. json_object was deprecated and had inconsistent provider behavior.
 // 0.29.0: Add CompleteFields to StructuredJSONEvent for progressive UI rendering.
 // Enables clients to know which fields are complete during streaming.
 // 0.28.1: Fix StructuredDecodeError surfacing for first-attempt decode failures,
@@ -14,4 +16,4 @@ package sdk
 // 0.24.0: Add package-level error helpers: IsEmailRequired, IsNoFreeTier, IsNoTiers, IsProvisioningError.
 // 0.23.0: Breaking - FrontendTokenRequest requires customer_id, add EMAIL_REQUIRED error code,
 // Rich Hickey-style design with separate types for auto-provisioning.
-const Version = "0.29.0"
+const Version = "0.30.0"

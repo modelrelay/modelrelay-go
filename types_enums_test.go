@@ -44,12 +44,18 @@ func TestProxyRequestBuilderValidation(t *testing.T) {
 	req, err := NewProxyRequestBuilder(NewModelID("gpt-5.1")).
 		User("hello").
 		MetadataEntry("trace_id", "abc").
-		ResponseFormat(llm.ResponseFormat{Type: llm.ResponseFormatTypeJSONObject}).
+		ResponseFormat(llm.ResponseFormat{
+			Type: llm.ResponseFormatTypeJSONSchema,
+			JSONSchema: &llm.JSONSchemaFormat{
+				Name:   "test",
+				Schema: []byte(`{"type":"object"}`),
+			},
+		}).
 		Build()
 	if err != nil {
 		t.Fatalf("unexpected builder error: %v", err)
 	}
-	if len(req.Messages) != 1 || req.Metadata["trace_id"] != "abc" || req.ResponseFormat == nil || req.ResponseFormat.Type != llm.ResponseFormatTypeJSONObject {
+	if len(req.Messages) != 1 || req.Metadata["trace_id"] != "abc" || req.ResponseFormat == nil || req.ResponseFormat.Type != llm.ResponseFormatTypeJSONSchema {
 		t.Fatalf("builder failed: %+v", req)
 	}
 }

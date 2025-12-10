@@ -306,7 +306,11 @@ func TestProxyStreamJSON_ProtocolViolation(t *testing.T) {
 		MaxTokens: 16,
 		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
 		ResponseFormat: &llm.ResponseFormat{
-			Type: llm.ResponseFormatTypeJSONObject,
+			Type: llm.ResponseFormatTypeJSONSchema,
+			JSONSchema: &llm.JSONSchemaFormat{
+				Name:   "test",
+				Schema: []byte(`{"type":"object"}`),
+			},
 		},
 	}
 
@@ -344,7 +348,11 @@ func TestProxyStreamJSON_ErrorRecord(t *testing.T) {
 		MaxTokens: 16,
 		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
 		ResponseFormat: &llm.ResponseFormat{
-			Type: llm.ResponseFormatTypeJSONObject,
+			Type: llm.ResponseFormatTypeJSONSchema,
+			JSONSchema: &llm.JSONSchemaFormat{
+				Name:   "test",
+				Schema: []byte(`{"type":"object"}`),
+			},
 		},
 	}
 
@@ -426,7 +434,11 @@ func TestStructuredJSONStream_IgnoresUnknownTypes(t *testing.T) {
 		MaxTokens: 16,
 		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
 		ResponseFormat: &llm.ResponseFormat{
-			Type: llm.ResponseFormatTypeJSONObject,
+			Type: llm.ResponseFormatTypeJSONSchema,
+			JSONSchema: &llm.JSONSchemaFormat{
+				Name:   "test",
+				Schema: []byte(`{"type":"object"}`),
+			},
 		},
 	}
 
@@ -471,7 +483,11 @@ func TestStructuredJSONStream_InvalidJSONLine(t *testing.T) {
 		MaxTokens: 16,
 		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
 		ResponseFormat: &llm.ResponseFormat{
-			Type: llm.ResponseFormatTypeJSONObject,
+			Type: llm.ResponseFormatTypeJSONSchema,
+			JSONSchema: &llm.JSONSchemaFormat{
+				Name:   "test",
+				Schema: []byte(`{"type":"object"}`),
+			},
 		},
 	}
 
