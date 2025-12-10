@@ -1,13 +1,10 @@
 package sdk
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,7 +13,6 @@ import (
 
 	"github.com/modelrelay/modelrelay/platform/headers"
 	llm "github.com/modelrelay/modelrelay/providers"
-	"github.com/modelrelay/modelrelay/providers/sse"
 )
 
 func TestProxyMessage(t *testing.T) {
@@ -71,12 +67,15 @@ func TestProxyStream(t *testing.T) {
 		if r.Header.Get(headers.ChatRequestID) != "stream-req" {
 			t.Fatalf("missing request id header")
 		}
-		w.Header().Set("Content-Type", "text/event-stream")
+		// Output unified NDJSON format
+		w.Header().Set("Content-Type", "application/x-ndjson")
 		w.Header().Set(headers.ChatRequestID, "resp-stream")
 		flusher, _ := w.(http.Flusher)
-		w.Write([]byte("event: message_start\ndata: {\"response_id\":\"resp_1\",\"model\":\"demo\"}\n\n"))
+		w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
 		flusher.Flush()
-		w.Write([]byte("event: message_stop\ndata: {\"response_id\":\"resp_1\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2,\"total_tokens\":3}}\n\n"))
+		w.Write([]byte(`{"type":"update","payload":{"content":"Hello"}}` + "\n"))
+		flusher.Flush()
+		w.Write([]byte(`{"type":"completion","payload":{"content":"Hello world"},"usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}` + "\n"))
 		flusher.Flush()
 	}))
 	defer srv.Close()
@@ -107,11 +106,21 @@ func TestProxyStream(t *testing.T) {
 		t.Fatalf("unexpected kind %s", event.Kind)
 	}
 	event, ok, err = stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected delta event got err=%v ok=%v", err, ok)
+	}
+	if event.Kind != llm.StreamEventKindMessageDelta {
+		t.Fatalf("expected delta kind, got %s", event.Kind)
+	}
+	event, ok, err = stream.Next()
 	if err != nil {
-		t.Fatalf("second event error: %v", err)
+		t.Fatalf("completion event error: %v", err)
 	}
 	if !ok {
-		t.Fatalf("expected stop event")
+		t.Fatalf("expected completion event")
+	}
+	if event.Kind != llm.StreamEventKindMessageStop {
+		t.Fatalf("expected stop kind, got %s", event.Kind)
 	}
 	if event.Usage == nil || event.Usage.TotalTokens != 3 {
 		t.Fatalf("missing usage: %+v", event)
@@ -131,9 +140,9 @@ func TestProxyStreamNDJSON(t *testing.T) {
 		w.Header().Set("Content-Type", "application/x-ndjson")
 		w.Header().Set(headers.ChatRequestID, "resp-ndjson")
 		lines := []string{
-			`{"event":"message_start","response_id":"resp_json","model":"demo"}`,
-			`{"event":"message_delta","data":{"foo":"bar"}}`,
-			`{"event":"message_stop","response_id":"resp_json","usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}`,
+			`{"type":"start","request_id":"resp_json","model":"demo"}`,
+			`{"type":"update","payload":{"content":"bar"}}`,
+			`{"type":"completion","payload":{"content":"bar complete"},"usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}`,
 		}
 		payload := strings.Join(lines, "\n") + "\n"
 		w.Write([]byte(payload))
@@ -149,7 +158,7 @@ func TestProxyStreamNDJSON(t *testing.T) {
 		Model:     NewModelID("demo"),
 		MaxTokens: 16,
 		Messages:  []llm.ProxyMessage{{Role: "user", Content: "hi"}},
-	}, WithNDJSONStream())
+	})
 	if err != nil {
 		t.Fatalf("proxy stream: %v", err)
 	}
@@ -169,8 +178,8 @@ func TestProxyStreamNDJSON(t *testing.T) {
 	if event.Kind != llm.StreamEventKindMessageDelta {
 		t.Fatalf("expected message_delta, got %s", event.Kind)
 	}
-	if string(event.Data) != `{"foo":"bar"}` {
-		t.Fatalf("unexpected delta data %s", event.Data)
+	if event.TextDelta != "bar" {
+		t.Fatalf("unexpected text delta %s", event.TextDelta)
 	}
 	event, ok, err = stream.Next()
 	if err != nil || !ok {
@@ -583,12 +592,12 @@ func TestProxyOptionsMergeDefaults(t *testing.T) {
 			if payload.Metadata["env"] != "sandbox" || payload.Metadata["trace_id"] != "stream" {
 				t.Fatalf("unexpected metadata %+v", payload.Metadata)
 			}
-			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Content-Type", "application/x-ndjson")
 			w.Header().Set(headers.ChatRequestID, "resp-stream-merge")
 			flusher, _ := w.(http.Flusher)
-			fmt.Fprintf(w, "event: message_start\ndata: {\"response_id\":\"resp-123\",\"model\":\"demo\"}\n\n")
+			w.Write([]byte(`{"type":"start","request_id":"resp-123","model":"demo"}` + "\n"))
 			flusher.Flush()
-			fmt.Fprintf(w, "event: message_stop\ndata: {\"response_id\":\"resp-123\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1,\"total_tokens\":2}}\n\n")
+			w.Write([]byte(`{"type":"completion","payload":{"content":"done"},"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}` + "\n"))
 			flusher.Flush()
 		}))
 		defer srv.Close()
@@ -697,16 +706,16 @@ func TestChatBuilderBlocking(t *testing.T) {
 
 func TestChatStreamAdapter(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Content-Type", "application/x-ndjson")
 		w.Header().Set(headers.ChatRequestID, "resp-chat-stream")
 		flusher, _ := w.(http.Flusher)
-		fmt.Fprintf(w, "event: message_start\ndata: {\"response_id\":\"resp_1\",\"model\":\"demo\"}\n\n")
+		w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_delta\ndata: {\"response_id\":\"resp_1\",\"delta\":\"Hel\"}\n\n")
+		w.Write([]byte(`{"type":"update","payload":{"content":"Hel"}}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_delta\ndata: {\"response_id\":\"resp_1\",\"delta\":{\"text\":\"lo\"}}\n\n")
+		w.Write([]byte(`{"type":"update","payload":{"content":"Hello"}}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_stop\ndata: {\"response_id\":\"resp_1\",\"model\":\"demo\",\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2,\"total_tokens\":3}}\n\n")
+		w.Write([]byte(`{"type":"completion","payload":{"content":"Hello"},"stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}` + "\n"))
 		flusher.Flush()
 	}))
 	defer srv.Close()
@@ -752,8 +761,8 @@ func TestChatStreamAdapter(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("expected second delta err=%v ok=%v", err, ok)
 	}
-	if chunk.TextDelta != "lo" {
-		t.Fatalf("expected nested text delta, got %+v", chunk)
+	if chunk.TextDelta != "Hello" {
+		t.Fatalf("expected accumulated text, got %+v", chunk)
 	}
 
 	chunk, ok, err = stream.Next()
@@ -773,14 +782,14 @@ func TestChatStreamAdapter(t *testing.T) {
 
 func TestChatStreamAdapterPopulatesMetadataFromMessage(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Content-Type", "application/x-ndjson")
 		w.Header().Set(headers.ChatRequestID, "resp-msg-metadata")
 		flusher, _ := w.(http.Flusher)
-		fmt.Fprintf(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_nested\",\"model\":\"gpt-5.1\"}}\n\n")
+		w.Write([]byte(`{"type":"start","request_id":"msg_nested","model":"gpt-5.1"}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"text\":\"hi\"},\"message\":{\"id\":\"msg_nested\",\"model\":\"gpt-5.1\"}}\n\n")
+		w.Write([]byte(`{"type":"update","payload":{"content":"hi"}}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_stop\ndata: {\"type\":\"message_stop\",\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":2,\"output_tokens\":3,\"total_tokens\":5},\"message\":{\"id\":\"msg_nested\",\"model\":\"gpt-5.1\"}}\n\n")
+		w.Write([]byte(`{"type":"completion","payload":{"content":"hi"},"stop_reason":"end_turn","usage":{"input_tokens":2,"output_tokens":3,"total_tokens":5}}` + "\n"))
 		flusher.Flush()
 	}))
 	defer srv.Close()
@@ -826,16 +835,16 @@ func TestChatStreamAdapterPopulatesMetadataFromMessage(t *testing.T) {
 
 func TestChatStreamCollectAggregates(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Content-Type", "application/x-ndjson")
 		w.Header().Set(headers.ChatRequestID, "resp-collect")
 		flusher, _ := w.(http.Flusher)
-		fmt.Fprintf(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"resp_1\",\"model\":\"gpt-5.1\"}}\n\n")
+		w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"gpt-5.1"}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"text\":\"Hel\"},\"message\":{\"id\":\"resp_1\",\"model\":\"gpt-5.1\"}}\n\n")
+		w.Write([]byte(`{"type":"update","payload":{"content":"Hel"}}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"text\":\"lo\"}}\n\n")
+		w.Write([]byte(`{"type":"update","payload":{"content":"Hello"}}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_stop\ndata: {\"type\":\"message_stop\",\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":2,\"output_tokens\":3,\"total_tokens\":5},\"message\":{\"id\":\"resp_1\",\"model\":\"gpt-5.1\"}}\n\n")
+		w.Write([]byte(`{"type":"completion","payload":{"content":"Hello"},"stop_reason":"end_turn","usage":{"input_tokens":2,"output_tokens":3,"total_tokens":5}}` + "\n"))
 		flusher.Flush()
 	}))
 	defer srv.Close()
@@ -866,34 +875,6 @@ func TestChatStreamCollectAggregates(t *testing.T) {
 	}
 }
 
-func TestSSEStreamCancelsOnContext(t *testing.T) {
-	clientConn, serverConn := net.Pipe()
-	ctx, cancel := context.WithCancel(context.Background())
-	stream := newSSEStream(ctx, clientConn, TelemetryHooks{})
-
-	type result struct {
-		ok  bool
-		err error
-	}
-	done := make(chan result, 1)
-	go func() {
-		_, ok, err := stream.Next()
-		done <- result{ok: ok, err: err}
-	}()
-
-	time.Sleep(20 * time.Millisecond)
-	cancel()
-	_ = serverConn.Close()
-	select {
-	case res := <-done:
-		if res.ok {
-			t.Fatalf("expected stream to end after cancel")
-		}
-	case <-time.After(200 * time.Millisecond):
-		t.Fatalf("stream did not cancel promptly")
-	}
-}
-
 func TestUsageSummary(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/llm/usage" {
@@ -918,36 +899,164 @@ func TestUsageSummary(t *testing.T) {
 	}
 }
 
-func TestStreamParsesLLMProxySSE(t *testing.T) {
-	rec := httptest.NewRecorder()
-	writer, err := sse.NewHTTPWriter(rec)
-	if err != nil {
-		t.Fatalf("new http writer: %v", err)
-	}
-	// Use normalized fields directly on StreamEvent (preferred approach)
-	event := llm.StreamEvent{
-		Kind:       llm.StreamEventKindMessageStop,
-		ResponseID: "resp_xyz",
-		Model:      "gpt-test",
-		StopReason: "end_turn",
-	}
-	if writeErr := writer.Write(event); writeErr != nil {
-		t.Fatalf("write event: %v", writeErr)
-	}
+func TestStreamParsesNDJSONFormat(t *testing.T) {
+	// Test parsing the unified NDJSON streaming format with record types
+	ndjsonContent := `{"type":"start","request_id":"req-123","provider":"test","model":"gpt-test"}
+{"type":"update","payload":{"content":"Hello"}}
+{"type":"completion","payload":{"content":"Hello World"},"complete_fields":["content"]}
+`
+	stream := newNDJSONStream(context.Background(), io.NopCloser(strings.NewReader(ndjsonContent)), TelemetryHooks{})
+	defer stream.Close()
 
-	stream := newSSEStream(context.Background(), io.NopCloser(bytes.NewReader(rec.Body.Bytes())), TelemetryHooks{})
+	// First event: start
 	got, ok, err := stream.Next()
 	if err != nil {
-		t.Fatalf("next: %v", err)
+		t.Fatalf("next start: %v", err)
 	}
 	if !ok {
-		t.Fatalf("expected event")
+		t.Fatalf("expected start event")
+	}
+	if got.Kind != llm.StreamEventKindMessageStart {
+		t.Fatalf("expected message_start, got %s", got.Kind)
+	}
+
+	// Second event: update
+	got, ok, err = stream.Next()
+	if err != nil {
+		t.Fatalf("next update: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected update event")
+	}
+	if got.Kind != llm.StreamEventKindMessageDelta {
+		t.Fatalf("expected message_delta, got %s", got.Kind)
+	}
+
+	// Third event: completion
+	got, ok, err = stream.Next()
+	if err != nil {
+		t.Fatalf("next completion: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected completion event")
 	}
 	if got.Kind != llm.StreamEventKindMessageStop {
-		t.Fatalf("unexpected kind %s", got.Kind)
+		t.Fatalf("expected message_stop, got %s", got.Kind)
 	}
-	if got.ResponseID != "resp_xyz" || got.Model != NewModelID("gpt-test") || got.StopReason != ParseStopReason("end_turn") {
-		t.Fatalf("unexpected event metadata %+v", got)
+
+	// Stream should be exhausted
+	_, ok, err = stream.Next()
+	if err != nil {
+		t.Fatalf("next eof: %v", err)
+	}
+	if ok {
+		t.Fatalf("expected stream to be exhausted")
+	}
+}
+
+func TestStreamParsesToolUseEvents(t *testing.T) {
+	// Test parsing tool_use_start, tool_use_delta, and tool_use_stop events
+	ndjsonContent := `{"type":"start","request_id":"req-tools","model":"gpt-4"}
+{"type":"tool_use_start","tool_call_delta":{"index":0,"id":"call_1","type":"function","function":{"name":"get_weather"}}}
+{"type":"tool_use_delta","tool_call_delta":{"index":0,"function":{"arguments":"{\"location\":"}}}
+{"type":"tool_use_stop","tool_calls":[{"id":"call_1","type":"function","function":{"name":"get_weather","arguments":"{\"location\":\"NYC\"}"}}]}
+{"type":"completion","payload":{"content":"Done"},"stop_reason":"tool_calls"}
+`
+	stream := newNDJSONStream(context.Background(), io.NopCloser(strings.NewReader(ndjsonContent)), TelemetryHooks{})
+	defer stream.Close()
+
+	// First event: start
+	got, ok, err := stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected start event, err=%v ok=%v", err, ok)
+	}
+	if got.Kind != llm.StreamEventKindMessageStart {
+		t.Fatalf("expected message_start, got %s", got.Kind)
+	}
+
+	// Second event: tool_use_start
+	got, ok, err = stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected tool_use_start event, err=%v ok=%v", err, ok)
+	}
+	if got.Kind != llm.StreamEventKindToolUseStart {
+		t.Fatalf("expected tool_use_start, got %s", got.Kind)
+	}
+	if got.ToolCallDelta == nil {
+		t.Fatalf("expected tool_call_delta to be populated")
+	}
+	if got.ToolCallDelta.Index != 0 {
+		t.Fatalf("expected index 0, got %d", got.ToolCallDelta.Index)
+	}
+	if got.ToolCallDelta.ID != "call_1" {
+		t.Fatalf("expected id call_1, got %s", got.ToolCallDelta.ID)
+	}
+	if got.ToolCallDelta.Function == nil || got.ToolCallDelta.Function.Name != "get_weather" {
+		t.Fatalf("expected function name get_weather, got %+v", got.ToolCallDelta.Function)
+	}
+
+	// Third event: tool_use_delta
+	got, ok, err = stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected tool_use_delta event, err=%v ok=%v", err, ok)
+	}
+	if got.Kind != llm.StreamEventKindToolUseDelta {
+		t.Fatalf("expected tool_use_delta, got %s", got.Kind)
+	}
+	if got.ToolCallDelta == nil {
+		t.Fatalf("expected tool_call_delta to be populated for delta")
+	}
+
+	// Fourth event: tool_use_stop
+	got, ok, err = stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected tool_use_stop event, err=%v ok=%v", err, ok)
+	}
+	if got.Kind != llm.StreamEventKindToolUseStop {
+		t.Fatalf("expected tool_use_stop, got %s", got.Kind)
+	}
+	if len(got.ToolCalls) != 1 {
+		t.Fatalf("expected 1 tool call, got %d", len(got.ToolCalls))
+	}
+	if got.ToolCalls[0].ID != "call_1" {
+		t.Fatalf("expected tool call id call_1, got %s", got.ToolCalls[0].ID)
+	}
+	if got.ToolCalls[0].Function.Name != "get_weather" {
+		t.Fatalf("expected function name get_weather, got %s", got.ToolCalls[0].Function.Name)
+	}
+	if got.ToolCalls[0].Function.Arguments != `{"location":"NYC"}` {
+		t.Fatalf("expected arguments, got %s", got.ToolCalls[0].Function.Arguments)
+	}
+
+	// Fifth event: completion
+	got, ok, err = stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected completion event, err=%v ok=%v", err, ok)
+	}
+	if got.Kind != llm.StreamEventKindMessageStop {
+		t.Fatalf("expected message_stop, got %s", got.Kind)
+	}
+}
+
+func TestStreamParsesSingleToolCall(t *testing.T) {
+	// Test parsing tool_use_stop with a single tool_call (not array)
+	ndjsonContent := `{"type":"tool_use_stop","tool_call":{"id":"call_1","type":"function","function":{"name":"get_weather","arguments":"{}"}}}
+`
+	stream := newNDJSONStream(context.Background(), io.NopCloser(strings.NewReader(ndjsonContent)), TelemetryHooks{})
+	defer stream.Close()
+
+	got, ok, err := stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected tool_use_stop event, err=%v ok=%v", err, ok)
+	}
+	if got.Kind != llm.StreamEventKindToolUseStop {
+		t.Fatalf("expected tool_use_stop, got %s", got.Kind)
+	}
+	if len(got.ToolCalls) != 1 {
+		t.Fatalf("expected 1 tool call from single tool_call field, got %d", len(got.ToolCalls))
+	}
+	if got.ToolCalls[0].ID != "call_1" {
+		t.Fatalf("expected tool call id call_1, got %s", got.ToolCalls[0].ID)
 	}
 }
 
@@ -1040,14 +1149,14 @@ func TestCustomerChatBuilderStreaming(t *testing.T) {
 		if customerID != "cust-456" {
 			t.Fatalf("expected customer ID header 'cust-456', got %q", customerID)
 		}
-		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Content-Type", "application/x-ndjson")
 		w.Header().Set(headers.ChatRequestID, "resp-customer-stream")
 		flusher, _ := w.(http.Flusher)
-		fmt.Fprintf(w, "event: message_start\ndata: {\"response_id\":\"resp_1\",\"model\":\"gpt-4o\"}\n\n")
+		w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"gpt-4o"}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_delta\ndata: {\"response_id\":\"resp_1\",\"delta\":\"Hi!\"}\n\n")
+		w.Write([]byte(`{"type":"update","payload":{"content":"Hi!"}}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_stop\ndata: {\"response_id\":\"resp_1\",\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":5,\"output_tokens\":2,\"total_tokens\":7}}\n\n")
+		w.Write([]byte(`{"type":"completion","payload":{"content":"Hi!"},"stop_reason":"end_turn","usage":{"input_tokens":5,"output_tokens":2,"total_tokens":7}}` + "\n"))
 		flusher.Flush()
 	}))
 	defer srv.Close()
@@ -1072,8 +1181,8 @@ func TestCustomerChatBuilderStreaming(t *testing.T) {
 		t.Fatalf("unexpected request id: %s", stream.RequestID())
 	}
 
-	// Consume events
-	var textDeltas []string
+	// Consume events - in unified format, both update and completion events have content
+	var lastContent string
 	var lastErr error
 	for {
 		chunk, ok, err := stream.Next()
@@ -1085,14 +1194,14 @@ func TestCustomerChatBuilderStreaming(t *testing.T) {
 			break
 		}
 		if chunk.TextDelta != "" {
-			textDeltas = append(textDeltas, chunk.TextDelta)
+			lastContent = chunk.TextDelta
 		}
 	}
 	if lastErr != nil {
 		t.Fatalf("unexpected error during stream consumption: %v", lastErr)
 	}
-	if len(textDeltas) != 1 || textDeltas[0] != "Hi!" {
-		t.Fatalf("unexpected text deltas: %v", textDeltas)
+	if lastContent != "Hi!" {
+		t.Fatalf("unexpected final content: %v", lastContent)
 	}
 }
 
@@ -1102,16 +1211,16 @@ func TestCustomerChatBuilderCollect(t *testing.T) {
 		if customerID != "cust-789" {
 			t.Fatalf("expected customer ID header 'cust-789', got %q", customerID)
 		}
-		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Content-Type", "application/x-ndjson")
 		w.Header().Set(headers.ChatRequestID, "resp-customer-collect")
 		flusher, _ := w.(http.Flusher)
-		fmt.Fprintf(w, "event: message_start\ndata: {\"response_id\":\"resp_collect\",\"model\":\"gpt-4o\"}\n\n")
+		w.Write([]byte(`{"type":"start","request_id":"resp_collect","model":"gpt-4o"}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_delta\ndata: {\"response_id\":\"resp_collect\",\"delta\":\"Hello \"}\n\n")
+		w.Write([]byte(`{"type":"update","payload":{"content":"Hello "}}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_delta\ndata: {\"response_id\":\"resp_collect\",\"delta\":\"there!\"}\n\n")
+		w.Write([]byte(`{"type":"update","payload":{"content":"Hello there!"}}` + "\n"))
 		flusher.Flush()
-		fmt.Fprintf(w, "event: message_stop\ndata: {\"response_id\":\"resp_collect\",\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":3,\"output_tokens\":4,\"total_tokens\":7}}\n\n")
+		w.Write([]byte(`{"type":"completion","payload":{"content":"Hello there!"},"stop_reason":"end_turn","usage":{"input_tokens":3,"output_tokens":4,"total_tokens":7}}` + "\n"))
 		flusher.Flush()
 	}))
 	defer srv.Close()

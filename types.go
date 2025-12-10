@@ -91,16 +91,7 @@ type proxyCallOptions struct {
 	metadata map[string]string
 	timeout  *time.Duration
 	retry    *RetryConfig
-	stream   StreamFormat
 }
-
-// StreamFormat controls streaming response framing.
-type StreamFormat string
-
-const (
-	StreamFormatSSE    StreamFormat = "sse"
-	StreamFormatNDJSON StreamFormat = "ndjson"
-)
 
 // WithRequestID sets the X-ModelRelay-Chat-Request-Id header for the request.
 func WithRequestID(requestID string) ProxyOption {
@@ -162,23 +153,6 @@ func WithHeaders(hdrs map[string]string) ProxyOption {
 			opts.headers.Add(k, v)
 		}
 	}
-}
-
-// WithStreamFormat sets the streaming response format (SSE default, NDJSON optional).
-func WithStreamFormat(format StreamFormat) ProxyOption {
-	return func(opts *proxyCallOptions) {
-		switch format {
-		case StreamFormatNDJSON:
-			opts.stream = StreamFormatNDJSON
-		default:
-			opts.stream = StreamFormatSSE
-		}
-	}
-}
-
-// WithNDJSONStream selects newline-delimited JSON streaming instead of SSE.
-func WithNDJSONStream() ProxyOption {
-	return WithStreamFormat(StreamFormatNDJSON)
 }
 
 // WithMetadataEntry adds a single metadata key/value to the request payload.

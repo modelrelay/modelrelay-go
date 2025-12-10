@@ -122,23 +122,15 @@ func (c *LLMClient) ProxyCustomerStream(ctx context.Context, customerID string, 
 	if err != nil {
 		return nil, err
 	}
-	if callOpts.stream == StreamFormatNDJSON {
-		httpReq.Header.Set("Accept", "application/x-ndjson")
-	} else {
-		httpReq.Header.Set("Accept", "text/event-stream")
-	}
+	// All streaming uses unified NDJSON format
+	httpReq.Header.Set("Accept", "application/x-ndjson")
 	applyProxyHeaders(httpReq, callOpts)
 	//nolint:bodyclose // resp.Body is transferred to stream and will be closed by stream.Close()
 	resp, _, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
 	if err != nil {
 		return nil, err
 	}
-	var stream streamReader
-	if callOpts.stream == StreamFormatNDJSON {
-		stream = newNDJSONStream(ctx, resp.Body, c.client.telemetry)
-	} else {
-		stream = newSSEStream(ctx, resp.Body, c.client.telemetry)
-	}
+	stream := newNDJSONStream(ctx, resp.Body, c.client.telemetry)
 	return &StreamHandle{
 		stream:    stream,
 		RequestID: requestIDFromHeaders(resp.Header),
@@ -162,23 +154,15 @@ func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options .
 	if err != nil {
 		return nil, err
 	}
-	if callOpts.stream == StreamFormatNDJSON {
-		httpReq.Header.Set("Accept", "application/x-ndjson")
-	} else {
-		httpReq.Header.Set("Accept", "text/event-stream")
-	}
+	// All streaming uses unified NDJSON format
+	httpReq.Header.Set("Accept", "application/x-ndjson")
 	applyProxyHeaders(httpReq, callOpts)
 	//nolint:bodyclose // resp.Body is transferred to stream and will be closed by stream.Close()
 	resp, _, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
 	if err != nil {
 		return nil, err
 	}
-	var stream streamReader
-	if callOpts.stream == StreamFormatNDJSON {
-		stream = newNDJSONStream(ctx, resp.Body, c.client.telemetry)
-	} else {
-		stream = newSSEStream(ctx, resp.Body, c.client.telemetry)
-	}
+	stream := newNDJSONStream(ctx, resp.Body, c.client.telemetry)
 	return &StreamHandle{
 		stream:    stream,
 		RequestID: requestIDFromHeaders(resp.Header),
@@ -327,17 +311,6 @@ func addMetadata(dst map[string]string, src map[string]string) {
 	}
 }
 
-type sseStream struct {
-	ctx       context.Context
-	reader    *bufio.Reader
-	body      io.ReadCloser
-	telemetry TelemetryHooks
-	closed    bool
-	closeOnce sync.Once
-	mu        sync.Mutex
-	done      chan struct{}
-}
-
 type ndjsonStream struct {
 	ctx       context.Context
 	reader    *bufio.Reader
@@ -347,108 +320,10 @@ type ndjsonStream struct {
 	closeOnce sync.Once
 	mu        sync.Mutex
 	done      chan struct{}
-}
 
-func newSSEStream(ctx context.Context, body io.ReadCloser, telemetry TelemetryHooks) *sseStream {
-	stream := &sseStream{
-		ctx:       ctx,
-		reader:    bufio.NewReader(body),
-		body:      body,
-		telemetry: telemetry,
-		done:      make(chan struct{}),
-	}
-	go func() {
-		select {
-		case <-ctx.Done():
-			//nolint:errcheck // best-effort cleanup in goroutine
-			_ = stream.Close()
-		case <-stream.done:
-			return
-		}
-	}()
-	return stream
-}
-
-func (s *sseStream) Next() (StreamEvent, bool, error) {
-	if s.isClosed() {
-		return StreamEvent{}, false, nil
-	}
-	for {
-		eventName, data, err := s.readEvent()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				//nolint:errcheck // best-effort cleanup on EOF
-				_ = s.Close()
-				return StreamEvent{}, false, nil
-			}
-			return StreamEvent{}, false, err
-		}
-		if eventName == "" && len(data) == 0 {
-			continue
-		}
-		event := buildStreamEvent(eventName, data)
-		if s.telemetry.OnStreamEvent != nil {
-			s.telemetry.OnStreamEvent(s.ctx, event)
-		}
-		s.telemetry.metric(s.ctx, "sdk_stream_events_total", 1, map[string]string{"event": event.EventName()})
-		return event, true, nil
-	}
-}
-
-func (s *sseStream) Close() error {
-	var err error
-	s.closeOnce.Do(func() {
-		s.mu.Lock()
-		s.closed = true
-		s.mu.Unlock()
-		close(s.done)
-		if cwe, ok := s.body.(interface{ CloseWithError(error) error }); ok {
-			//nolint:errcheck // best-effort cleanup
-			_ = cwe.CloseWithError(context.Canceled)
-		}
-		err = s.body.Close()
-	})
-	return err
-}
-
-func (s *sseStream) isClosed() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.closed
-}
-
-func (s *sseStream) readEvent() (string, []byte, error) {
-	var eventName string
-	var dataBuilder strings.Builder
-	for {
-		line, err := s.reader.ReadString('\n')
-		if err != nil {
-			if errors.Is(err, io.EOF) && line == "" {
-				return "", nil, io.EOF
-			}
-			if errors.Is(err, io.EOF) {
-				line = strings.TrimRight(line, "\r\n")
-				if line == "" {
-					return eventName, []byte(dataBuilder.String()), nil
-				}
-			}
-		}
-		line = strings.TrimRight(line, "\r\n")
-		if line == "" {
-			return eventName, []byte(dataBuilder.String()), nil
-		}
-		switch {
-		case strings.HasPrefix(line, ":"):
-			continue
-		case strings.HasPrefix(line, "event:"):
-			eventName = strings.TrimSpace(line[len("event:"):])
-		case strings.HasPrefix(line, "data:"):
-			if dataBuilder.Len() > 0 {
-				dataBuilder.WriteByte('\n')
-			}
-			dataBuilder.WriteString(strings.TrimSpace(line[len("data:"):]))
-		}
-	}
+	// Metadata from start record propagated to subsequent events
+	startRequestID string
+	startModel     string
 }
 
 func newNDJSONStream(ctx context.Context, body io.ReadCloser, telemetry TelemetryHooks) *ndjsonStream {
@@ -498,6 +373,25 @@ func (s *ndjsonStream) Next() (StreamEvent, bool, error) {
 		if perr != nil {
 			return StreamEvent{}, false, perr
 		}
+
+		// Capture metadata from start record
+		if event.Kind == llm.StreamEventKindMessageStart {
+			if event.ResponseID != "" {
+				s.startRequestID = event.ResponseID
+			}
+			if !event.Model.IsEmpty() {
+				s.startModel = event.Model.String()
+			}
+		}
+
+		// Propagate metadata from start record to subsequent events
+		if event.ResponseID == "" && s.startRequestID != "" {
+			event.ResponseID = s.startRequestID
+		}
+		if event.Model.IsEmpty() && s.startModel != "" {
+			event.Model = NewModelID(s.startModel)
+		}
+
 		if s.telemetry.OnStreamEvent != nil {
 			s.telemetry.OnStreamEvent(s.ctx, event)
 		}
@@ -529,67 +423,91 @@ func (s *ndjsonStream) isClosed() bool {
 }
 
 func parseNDJSONEvent(line []byte) (StreamEvent, error) {
+	// Unified NDJSON format with record types (start, update, completion, error, tool_use_*)
 	var envelope struct {
-		Event      string          `json:"event"`
-		Data       json.RawMessage `json:"data"`
-		ResponseID string          `json:"response_id"`
-		Model      string          `json:"model"`
-		StopReason string          `json:"stop_reason"`
-		Usage      *Usage          `json:"usage"`
+		// Unified format fields
+		Type           string          `json:"type"`
+		Payload        json.RawMessage `json:"payload,omitempty"`
+		CompleteFields []string        `json:"complete_fields,omitempty"`
+		Code           string          `json:"code,omitempty"`
+		Message        string          `json:"message,omitempty"`
+		Status         int             `json:"status,omitempty"`
+		RequestID      string          `json:"request_id,omitempty"`
+		Provider       string          `json:"provider,omitempty"`
+		Model          string          `json:"model,omitempty"`
+		StopReason     string          `json:"stop_reason,omitempty"`
+		Usage          *Usage          `json:"usage,omitempty"`
+		// Tool use fields
+		ToolCallDelta *llm.ToolCallDelta `json:"tool_call_delta,omitempty"`
+		ToolCalls     []llm.ToolCall     `json:"tool_calls,omitempty"`
+		ToolCall      *llm.ToolCall      `json:"tool_call,omitempty"` // Single tool call (alternative to array)
 	}
 	if err := json.Unmarshal(line, &envelope); err != nil {
 		return StreamEvent{}, err
 	}
-	event := StreamEvent{
-		Kind:       streamEventKind(envelope.Event),
-		Name:       envelope.Event,
-		Data:       append([]byte(nil), envelope.Data...),
-		ResponseID: envelope.ResponseID,
-		Model:      NewModelID(envelope.Model),
-		StopReason: ParseStopReason(envelope.StopReason),
-		Usage:      envelope.Usage,
-	}
-	return event, nil
-}
 
-func buildStreamEvent(name string, data []byte) StreamEvent {
-	event := StreamEvent{
-		Kind: streamEventKind(name),
-		Name: name,
-		Data: append([]byte(nil), data...),
-	}
-	var meta struct {
-		ResponseID string `json:"response_id"`
-		Model      string `json:"model"`
-		StopReason string `json:"stop_reason"`
-		Usage      *Usage `json:"usage"`
-	}
-	if len(data) > 0 {
-		//nolint:errcheck // best-effort metadata extraction
-		_ = json.Unmarshal(data, &meta)
-	}
-	event.ResponseID = meta.ResponseID
-	event.Model = NewModelID(meta.Model)
-	event.StopReason = ParseStopReason(meta.StopReason)
-	event.Usage = meta.Usage
-	return event
-}
-
-func streamEventKind(name string) llm.StreamEventKind {
-	switch name {
-	case string(llm.StreamEventKindMessageStart):
-		return llm.StreamEventKindMessageStart
-	case string(llm.StreamEventKindMessageDelta):
-		return llm.StreamEventKindMessageDelta
-	case string(llm.StreamEventKindMessageStop):
-		return llm.StreamEventKindMessageStop
-	case string(llm.StreamEventKindPing):
-		return llm.StreamEventKindPing
-	case string(llm.StreamEventKindCustom):
-		return llm.StreamEventKindCustom
+	// Map unified record types to event kinds
+	var kind llm.StreamEventKind
+	switch envelope.Type {
+	case "start":
+		kind = llm.StreamEventKindMessageStart
+	case "update":
+		kind = llm.StreamEventKindMessageDelta
+	case "completion":
+		kind = llm.StreamEventKindMessageStop
+	case "error":
+		kind = llm.StreamEventKindCustom // Error records are handled specially
+	case "keepalive":
+		kind = llm.StreamEventKindPing
+	case "tool_use_start":
+		kind = llm.StreamEventKindToolUseStart
+	case "tool_use_delta":
+		kind = llm.StreamEventKindToolUseDelta
+	case "tool_use_stop":
+		kind = llm.StreamEventKindToolUseStop
 	default:
-		return llm.StreamEventKindCustom
+		kind = llm.StreamEventKindCustom
 	}
+
+	// Extract content from payload if available
+	var textDelta string
+	if len(envelope.Payload) > 0 {
+		var content struct {
+			Content string `json:"content"`
+		}
+		if json.Unmarshal(envelope.Payload, &content) == nil && content.Content != "" {
+			textDelta = content.Content
+		}
+	}
+
+	// Handle tool_calls array or single tool_call
+	toolCalls := envelope.ToolCalls
+	if envelope.ToolCall != nil && len(toolCalls) == 0 {
+		toolCalls = []llm.ToolCall{*envelope.ToolCall}
+	}
+
+	event := StreamEvent{
+		Kind:           kind,
+		Name:           envelope.Type,
+		Data:           append([]byte(nil), envelope.Payload...),
+		ResponseID:     envelope.RequestID,
+		Model:          NewModelID(envelope.Model),
+		TextDelta:      textDelta,
+		CompleteFields: envelope.CompleteFields,
+		StopReason:     ParseStopReason(envelope.StopReason),
+		Usage:          envelope.Usage,
+		ToolCallDelta:  envelope.ToolCallDelta,
+		ToolCalls:      toolCalls,
+	}
+
+	// Handle error records
+	if envelope.Type == "error" {
+		event.ErrorCode = envelope.Code
+		event.ErrorMessage = envelope.Message
+		event.ErrorStatus = envelope.Status
+	}
+
+	return event, nil
 }
 
 func requestIDFromHeaders(h http.Header) string {
