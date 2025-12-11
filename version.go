@@ -24,4 +24,6 @@ package sdk
 // 0.24.0: Add package-level error helpers: IsEmailRequired, IsNoFreeTier, IsNoTiers, IsProvisioningError.
 // 0.23.0: Breaking - FrontendTokenRequest requires customer_id, add EMAIL_REQUIRED error code,
 // Rich Hickey-style design with separate types for auto-provisioning.
-const Version = "0.34.0"
+// 0.35.0: CustomersClient.Claim now works with publishable keys (mr_pk_*) for user self-service.
+// Enables CLI tools and frontends to link Stripe subscriptions to user identities.
+const Version = "0.35.0"

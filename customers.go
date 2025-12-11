@@ -95,7 +95,8 @@ type customerResponse struct {
 }
 
 // CustomersClient provides methods to manage customers in a project.
-// Requires a secret key (mr_sk_*) for authentication.
+// Most operations require a secret key (mr_sk_*) for authentication.
+// Exception: Claim works with both publishable and secret keys.
 type CustomersClient struct {
 	client *Client
 }
@@ -221,6 +222,10 @@ func (c *CustomersClient) Upsert(ctx context.Context, req CustomerUpsertRequest)
 // Claim claims a customer by email, setting their external_id.
 // Used when a customer subscribes via Stripe Checkout (email only) and later
 // authenticates to the app, needing to link their identity.
+//
+// This is a user self-service operation that works with publishable keys,
+// allowing CLI tools and frontends to link subscriptions to user identities.
+// Works with both publishable keys (mr_pk_*) and secret keys (mr_sk_*).
 //
 // Returns an error if the customer is not found (404), already claimed, or the
 // external_id is already in use by another customer (409).
