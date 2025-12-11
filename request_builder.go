@@ -80,24 +80,6 @@ func (b *ProxyRequestBuilder) Messages(msgs []llm.ProxyMessage) *ProxyRequestBui
 	return b
 }
 
-// Metadata sets the metadata map.
-func (b *ProxyRequestBuilder) Metadata(metadata map[string]string) *ProxyRequestBuilder {
-	b.req.Metadata = metadata
-	return b
-}
-
-// MetadataEntry adds a single metadata key/value.
-func (b *ProxyRequestBuilder) MetadataEntry(key, value string) *ProxyRequestBuilder {
-	if key == "" || value == "" {
-		return b
-	}
-	if b.req.Metadata == nil {
-		b.req.Metadata = make(map[string]string)
-	}
-	b.req.Metadata[key] = value
-	return b
-}
-
 // Stop sets the stop sequences (OpenAI-style stop).
 func (b *ProxyRequestBuilder) Stop(stop []string) *ProxyRequestBuilder {
 	b.req.Stop = stop
@@ -222,24 +204,6 @@ func (b *ChatBuilder) Assistant(content string) *ChatBuilder {
 // Messages replaces the existing message list.
 func (b *ChatBuilder) Messages(msgs []llm.ProxyMessage) *ChatBuilder {
 	b.req.Messages = msgs
-	return b
-}
-
-// Metadata sets the metadata map.
-func (b *ChatBuilder) Metadata(metadata map[string]string) *ChatBuilder {
-	b.req.Metadata = metadata
-	return b
-}
-
-// MetadataEntry adds a single metadata key/value.
-func (b *ChatBuilder) MetadataEntry(key, value string) *ChatBuilder {
-	if key == "" || value == "" {
-		return b
-	}
-	if b.req.Metadata == nil {
-		b.req.Metadata = make(map[string]string)
-	}
-	b.req.Metadata[key] = value
 	return b
 }
 
@@ -443,24 +407,6 @@ func (b *CustomerChatBuilder) Assistant(content string) *CustomerChatBuilder {
 // Messages replaces the existing message list.
 func (b *CustomerChatBuilder) Messages(msgs []llm.ProxyMessage) *CustomerChatBuilder {
 	b.req.Messages = msgs
-	return b
-}
-
-// Metadata sets the metadata map.
-func (b *CustomerChatBuilder) Metadata(metadata map[string]string) *CustomerChatBuilder {
-	b.req.Metadata = metadata
-	return b
-}
-
-// MetadataEntry adds a single metadata key/value.
-func (b *CustomerChatBuilder) MetadataEntry(key, value string) *CustomerChatBuilder {
-	if key == "" || value == "" {
-		return b
-	}
-	if b.req.Metadata == nil {
-		b.req.Metadata = make(map[string]string)
-	}
-	b.req.Metadata[key] = value
 	return b
 }
 

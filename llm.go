@@ -29,7 +29,6 @@ func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options 
 		cfg.RetryPost = true
 		callOpts.retry = &cfg
 	}
-	req.Metadata = mergeMetadataMaps(c.client.defaultMetadata, req.Metadata, callOpts.metadata)
 	reqPayload, err := newProxyRequestPayload(req)
 	if err != nil {
 		return nil, err
@@ -70,7 +69,6 @@ func (c *LLMClient) ProxyCustomerMessage(ctx context.Context, customerID string,
 		cfg.RetryPost = true
 		callOpts.retry = &cfg
 	}
-	req.Metadata = mergeMetadataMaps(c.client.defaultMetadata, req.Metadata, callOpts.metadata)
 	// Validate without requiring model
 	if len(req.Messages) == 0 {
 		return nil, fmt.Errorf("at least one message is required")
@@ -112,7 +110,6 @@ func (c *LLMClient) ProxyCustomerStream(ctx context.Context, customerID string, 
 		cfg.RetryPost = true
 		callOpts.retry = &cfg
 	}
-	req.Metadata = mergeMetadataMaps(c.client.defaultMetadata, req.Metadata, callOpts.metadata)
 	// Validate without requiring model
 	if len(req.Messages) == 0 {
 		return nil, fmt.Errorf("at least one message is required")
@@ -145,7 +142,6 @@ func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options .
 		cfg.RetryPost = true
 		callOpts.retry = &cfg
 	}
-	req.Metadata = mergeMetadataMaps(c.client.defaultMetadata, req.Metadata, callOpts.metadata)
 	payload, err := newProxyRequestPayload(req)
 	if err != nil {
 		return nil, err
@@ -185,7 +181,6 @@ func ProxyStreamJSON[T any](ctx context.Context, c *LLMClient, req ProxyRequest,
 		cfg.RetryPost = true
 		callOpts.retry = &cfg
 	}
-	req.Metadata = mergeMetadataMaps(c.client.defaultMetadata, req.Metadata, callOpts.metadata)
 	payload, err := newProxyRequestPayload(req)
 	if err != nil {
 		return nil, err
@@ -221,7 +216,6 @@ type proxyRequestPayload struct {
 	MaxTokens      int64               `json:"max_tokens"`
 	Temperature    *float64            `json:"temperature,omitempty"`
 	Messages       []llm.ProxyMessage  `json:"messages"`
-	Metadata       map[string]string   `json:"metadata,omitempty"`
 	Stop           []string            `json:"stop,omitempty"`
 	StopSeqs       []string            `json:"stop_sequences,omitempty"`
 	ResponseFormat *llm.ResponseFormat `json:"response_format,omitempty"`
@@ -240,9 +234,6 @@ func newProxyRequestPayload(req ProxyRequest) (proxyRequestPayload, error) {
 		Temperature:    req.Temperature,
 		Messages:       req.Messages,
 		ResponseFormat: req.ResponseFormat,
-	}
-	if len(req.Metadata) > 0 {
-		payload.Metadata = req.Metadata
 	}
 	if len(req.Stop) > 0 {
 		payload.Stop = req.Stop
@@ -271,9 +262,6 @@ func newCustomerProxyRequestPayload(req ProxyRequest) proxyRequestPayload {
 		Messages:       req.Messages,
 		ResponseFormat: req.ResponseFormat,
 	}
-	if len(req.Metadata) > 0 {
-		payload.Metadata = req.Metadata
-	}
 	if len(req.Stop) > 0 {
 		payload.Stop = req.Stop
 	}
@@ -287,28 +275,6 @@ func newCustomerProxyRequestPayload(req ProxyRequest) proxyRequestPayload {
 		payload.ToolChoice = req.ToolChoice
 	}
 	return payload
-}
-
-func mergeMetadataMaps(defaults, req, overrides map[string]string) map[string]string {
-	merged := make(map[string]string)
-	addMetadata(merged, defaults)
-	addMetadata(merged, req)
-	addMetadata(merged, overrides)
-	if len(merged) == 0 {
-		return nil
-	}
-	return merged
-}
-
-func addMetadata(dst map[string]string, src map[string]string) {
-	for key, value := range src {
-		k := strings.TrimSpace(key)
-		v := strings.TrimSpace(value)
-		if k == "" || v == "" {
-			continue
-		}
-		dst[k] = v
-	}
 }
 
 type ndjsonStream struct {

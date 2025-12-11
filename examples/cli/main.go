@@ -38,7 +38,6 @@ func main() {
 	// Build client options
 	opts := []sdk.Option{
 		sdk.WithClientHeader("modelrelay-cli/1.0"),
-		sdk.WithDefaultMetadata(map[string]string{"cli": "true"}),
 		sdk.WithDefaultHeaders(http.Header{"X-Debug": []string{"cli-default"}}),
 	}
 	if *baseURL != "" {
@@ -50,13 +49,12 @@ func main() {
 		log.Fatalf("new client: %v", err)
 	}
 
-	proxyOpts := make([]sdk.ProxyOption, 0, 3)
+	proxyOpts := make([]sdk.ProxyOption, 0, 2)
 	if *requestID != "" {
 		proxyOpts = append(proxyOpts, sdk.WithRequestID(*requestID))
 	}
 	proxyOpts = append(proxyOpts,
-		sdk.WithHeader("X-Debug", "cli-run"),
-		sdk.WithMetadataEntry("prompt_length", fmt.Sprintf("%d", len(prompt))))
+		sdk.WithHeader("X-Debug", "cli-run"))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 
@@ -67,7 +65,6 @@ func main() {
 			Role:    "user",
 			Content: prompt,
 		}},
-		Metadata: map[string]string{"source": "cli"},
 	}, proxyOpts...)
 	if err != nil {
 		cancel()

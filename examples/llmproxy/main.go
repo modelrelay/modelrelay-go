@@ -27,7 +27,6 @@ func main() {
 		MaxTokens(64).
 		System("You are a witty assistant.").
 		User("Tell me a short joke").
-		MetadataEntry("tenant", "example").
 		RequestID("example-stream-1").
 		Stream(ctx)
 	if err != nil {

@@ -22,19 +22,18 @@ const (
 	defaultRequestTO  = 60 * time.Second
 )
 
-// Config wires authentication, base URL, headers/metadata defaults, and telemetry for the API client.
+// Config wires authentication, base URL, headers defaults, and telemetry for the API client.
 //
 // Deprecated: Use NewClientWithKey or NewClientWithToken with functional options instead.
 type Config struct {
-	BaseURL         string
-	APIKey          string
-	AccessToken     string
-	HTTPClient      *http.Client
-	Telemetry       TelemetryHooks
-	UserAgent       string
-	ClientHeader    string
-	DefaultHeaders  http.Header
-	DefaultMetadata map[string]string
+	BaseURL        string
+	APIKey         string
+	AccessToken    string
+	HTTPClient     *http.Client
+	Telemetry      TelemetryHooks
+	UserAgent      string
+	ClientHeader   string
+	DefaultHeaders http.Header
 	// Optional timeouts (nil => defaults). Set to 0 to disable.
 	ConnectTimeout *time.Duration
 	RequestTimeout *time.Duration
@@ -46,16 +45,15 @@ type Config struct {
 type Option func(*clientOptions)
 
 type clientOptions struct {
-	baseURL         string
-	httpClient      *http.Client
-	telemetry       TelemetryHooks
-	userAgent       string
-	clientHeader    string
-	defaultHeaders  http.Header
-	defaultMetadata map[string]string
-	connectTimeout  *time.Duration
-	requestTimeout  *time.Duration
-	retry           *RetryConfig
+	baseURL        string
+	httpClient     *http.Client
+	telemetry      TelemetryHooks
+	userAgent      string
+	clientHeader   string
+	defaultHeaders http.Header
+	connectTimeout *time.Duration
+	requestTimeout *time.Duration
+	retry          *RetryConfig
 }
 
 // WithBaseURL sets a custom API base URL.
@@ -88,11 +86,6 @@ func WithDefaultHeaders(headers http.Header) Option {
 	return func(o *clientOptions) { o.defaultHeaders = headers }
 }
 
-// WithDefaultMetadata sets metadata merged into every proxy request.
-func WithDefaultMetadata(metadata map[string]string) Option {
-	return func(o *clientOptions) { o.defaultMetadata = metadata }
-}
-
 // WithConnectTimeout sets the connection timeout (nil uses default, 0 disables).
 func WithConnectTimeout(d time.Duration) Option {
 	return func(o *clientOptions) { o.connectTimeout = &d }
@@ -110,17 +103,16 @@ func WithRetryConfig(cfg RetryConfig) Option {
 
 // Client provides high-level helpers for interacting with the ModelRelay API.
 type Client struct {
-	baseURL         string
-	httpClient      *http.Client
-	auth            authChain
-	telemetry       TelemetryHooks
-	userAgent       string
-	clientHead      string
-	defaultHeaders  http.Header
-	defaultMetadata map[string]string
-	connectTimeout  time.Duration
-	requestTimeout  time.Duration
-	retryCfg        RetryConfig
+	baseURL        string
+	httpClient     *http.Client
+	auth           authChain
+	telemetry      TelemetryHooks
+	userAgent      string
+	clientHead     string
+	defaultHeaders http.Header
+	connectTimeout time.Duration
+	requestTimeout time.Duration
+	retryCfg       RetryConfig
 
 	// Grouped service clients.
 	LLM       *LLMClient
@@ -205,23 +197,21 @@ func newClientFromOptions(apiKey, accessToken string, opts clientOptions) (*Clie
 		clientHeader = deriveDefaultClientHeader()
 	}
 	defaultHeaders := sanitizeHeaders(opts.defaultHeaders)
-	defaultMetadata := sanitizeMetadata(opts.defaultMetadata)
 	retryCfg := defaultRetryConfig()
 	if opts.retry != nil {
 		retryCfg = opts.retry.normalized()
 	}
 	client := &Client{
-		baseURL:         normalized,
-		httpClient:      httpClient,
-		auth:            auth,
-		telemetry:       opts.telemetry,
-		userAgent:       ua,
-		clientHead:      clientHeader,
-		defaultHeaders:  defaultHeaders,
-		defaultMetadata: defaultMetadata,
-		connectTimeout:  resolveConnectTimeout(opts.connectTimeout),
-		requestTimeout:  resolveRequestTimeout(opts.requestTimeout),
-		retryCfg:        retryCfg,
+		baseURL:        normalized,
+		httpClient:     httpClient,
+		auth:           auth,
+		telemetry:      opts.telemetry,
+		userAgent:      ua,
+		clientHead:     clientHeader,
+		defaultHeaders: defaultHeaders,
+		connectTimeout: resolveConnectTimeout(opts.connectTimeout),
+		requestTimeout: resolveRequestTimeout(opts.requestTimeout),
+		retryCfg:       retryCfg,
 	}
 	client.LLM = &LLMClient{client: client}
 	client.Usage = &UsageClient{client: client}
@@ -242,16 +232,15 @@ func NewClient(cfg Config) (*Client, error) {
 	}
 	// Map Config to clientOptions and delegate
 	opts := clientOptions{
-		baseURL:         cfg.BaseURL,
-		httpClient:      cfg.HTTPClient,
-		telemetry:       cfg.Telemetry,
-		userAgent:       cfg.UserAgent,
-		clientHeader:    cfg.ClientHeader,
-		defaultHeaders:  cfg.DefaultHeaders,
-		defaultMetadata: cfg.DefaultMetadata,
-		connectTimeout:  cfg.ConnectTimeout,
-		requestTimeout:  cfg.RequestTimeout,
-		retry:           cfg.Retry,
+		baseURL:        cfg.BaseURL,
+		httpClient:     cfg.HTTPClient,
+		telemetry:      cfg.Telemetry,
+		userAgent:      cfg.UserAgent,
+		clientHeader:   cfg.ClientHeader,
+		defaultHeaders: cfg.DefaultHeaders,
+		connectTimeout: cfg.ConnectTimeout,
+		requestTimeout: cfg.RequestTimeout,
+		retry:          cfg.Retry,
 	}
 	return newClientFromOptions(cfg.APIKey, cfg.AccessToken, opts)
 }
@@ -292,25 +281,6 @@ func sanitizeHeaders(src http.Header) http.Header {
 			}
 			out.Add(trimmedKey, trimmedVal)
 		}
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
-}
-
-func sanitizeMetadata(src map[string]string) map[string]string {
-	if len(src) == 0 {
-		return nil
-	}
-	out := make(map[string]string, len(src))
-	for k, v := range src {
-		key := strings.TrimSpace(k)
-		val := strings.TrimSpace(v)
-		if key == "" || val == "" {
-			continue
-		}
-		out[key] = val
 	}
 	if len(out) == 0 {
 		return nil

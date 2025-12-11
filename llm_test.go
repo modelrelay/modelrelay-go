@@ -30,10 +30,6 @@ func TestProxyMessage(t *testing.T) {
 		if reqPayload["model"] != "demo" {
 			t.Fatalf("unexpected model %v", reqPayload["model"])
 		}
-		meta, _ := reqPayload["metadata"].(map[string]any)
-		if meta["trace_id"] != "abc123" {
-			t.Fatalf("missing metadata: %+v", reqPayload)
-		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set(headers.ChatRequestID, "resp-req-123")
 		json.NewEncoder(w).Encode(llm.ProxyResponse{ID: "resp_123", Provider: "openai", Model: "demo", Content: []string{"hi"}, Usage: llm.Usage{}})
@@ -49,7 +45,6 @@ func TestProxyMessage(t *testing.T) {
 		Model:     NewModelID("demo"),
 		MaxTokens: 32,
 		Messages:  []llm.ProxyMessage{{Role: "user", Content: "ping"}},
-		Metadata:  map[string]string{"trace_id": "abc123"},
 	}, WithRequestID("req-123"))
 	if err != nil {
 		t.Fatalf("proxy message: %v", err)
@@ -515,7 +510,6 @@ func TestStructuredJSONStream_InvalidJSONLine(t *testing.T) {
 
 func TestProxyOptionsMergeDefaults(t *testing.T) {
 	configHeaders := http.Header{"X-Debug": []string{"cfg", ""}, "X-App": []string{"go-client"}}
-	configMetadata := map[string]string{"env": "prod", "trace_id": "cfg", "app": "go"}
 
 	t.Run("blocking", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -536,29 +530,16 @@ func TestProxyOptionsMergeDefaults(t *testing.T) {
 			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 				t.Fatalf("decode payload: %v", err)
 			}
-			if payload.Metadata["env"] != "staging" {
-				t.Fatalf("expected env from request, got %+v", payload.Metadata)
-			}
-			if payload.Metadata["trace_id"] != "call" {
-				t.Fatalf("expected call metadata override, got %+v", payload.Metadata)
-			}
-			if payload.Metadata["app"] != "go" {
-				t.Fatalf("expected default metadata to persist, got %+v", payload.Metadata)
-			}
-			if payload.Metadata["user"] != "alice" {
-				t.Fatalf("expected per-call metadata entry, got %+v", payload.Metadata)
-			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(llm.ProxyResponse{ID: "resp_blocking", Provider: "echo", Model: payload.Model, Content: []string{"ok"}, Usage: llm.Usage{}})
 		}))
 		defer srv.Close()
 
 		client, err := NewClient(Config{
-			BaseURL:         srv.URL,
-			APIKey:          "test",
-			HTTPClient:      srv.Client(),
-			DefaultHeaders:  configHeaders,
-			DefaultMetadata: configMetadata,
+			BaseURL:        srv.URL,
+			APIKey:         "test",
+			HTTPClient:     srv.Client(),
+			DefaultHeaders: configHeaders,
 		})
 		if err != nil {
 			t.Fatalf("new client: %v", err)
@@ -567,10 +548,7 @@ func TestProxyOptionsMergeDefaults(t *testing.T) {
 		_, err = client.LLM.ProxyMessage(context.Background(), ProxyRequest{
 			Model:    NewModelID("demo"),
 			Messages: []llm.ProxyMessage{{Role: "user", Content: "hi"}},
-			Metadata: map[string]string{"env": "staging", "request": "true"},
 		},
-			WithMetadata(map[string]string{"trace_id": "call"}),
-			WithMetadataEntry("user", "alice"),
 			WithHeader("X-Debug", "call"),
 			WithHeader("X-Multi", "one"),
 			WithHeader("X-Multi", "two"),
@@ -589,9 +567,6 @@ func TestProxyOptionsMergeDefaults(t *testing.T) {
 			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 				t.Fatalf("decode payload: %v", err)
 			}
-			if payload.Metadata["env"] != "sandbox" || payload.Metadata["trace_id"] != "stream" {
-				t.Fatalf("unexpected metadata %+v", payload.Metadata)
-			}
 			w.Header().Set("Content-Type", "application/x-ndjson")
 			w.Header().Set(headers.ChatRequestID, "resp-stream-merge")
 			flusher, _ := w.(http.Flusher)
@@ -603,11 +578,10 @@ func TestProxyOptionsMergeDefaults(t *testing.T) {
 		defer srv.Close()
 
 		client, err := NewClient(Config{
-			BaseURL:         srv.URL,
-			APIKey:          "test",
-			HTTPClient:      srv.Client(),
-			DefaultHeaders:  configHeaders,
-			DefaultMetadata: configMetadata,
+			BaseURL:        srv.URL,
+			APIKey:         "test",
+			HTTPClient:     srv.Client(),
+			DefaultHeaders: configHeaders,
 		})
 		if err != nil {
 			t.Fatalf("new client: %v", err)
@@ -619,9 +593,7 @@ func TestProxyOptionsMergeDefaults(t *testing.T) {
 		stream, err := client.LLM.ProxyStream(ctx, ProxyRequest{
 			Model:    NewModelID("demo"),
 			Messages: []llm.ProxyMessage{{Role: "user", Content: "hello"}},
-			Metadata: map[string]string{"env": "sandbox"},
 		},
-			WithMetadataEntry("trace_id", "stream"),
 			WithHeader("X-Debug", "call-stream"),
 		)
 		if err != nil {
@@ -669,9 +641,6 @@ func TestChatBuilderBlocking(t *testing.T) {
 		if len(payload.Stop) != 1 || payload.Stop[0] != "DONE" {
 			t.Fatalf("unexpected stop %+v", payload.Stop)
 		}
-		if payload.Metadata["trace_id"] != "abc123" {
-			t.Fatalf("unexpected metadata %+v", payload.Metadata)
-		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set(headers.ChatRequestID, "resp-builder")
 		json.NewEncoder(w).Encode(llm.ProxyResponse{ID: "resp_abc", Provider: "openai", Model: "demo", Content: []string{"ok"}, StopReason: "end_turn", Usage: llm.Usage{TotalTokens: 3}})
@@ -689,7 +658,6 @@ func TestChatBuilderBlocking(t *testing.T) {
 		System("you are helpful").
 		User("hi there").
 		Stop("DONE").
-		MetadataEntry("trace_id", "abc123").
 		Header("X-Debug", "true").
 		RequestID("builder-req").
 		Send(context.Background())

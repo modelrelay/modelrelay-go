@@ -17,7 +17,6 @@ type ProxyRequest struct {
 	MaxTokens      int64
 	Temperature    *float64
 	Messages       []llm.ProxyMessage
-	Metadata       map[string]string
 	Stop           []string
 	StopSequences  []string
 	ResponseFormat *llm.ResponseFormat
@@ -87,10 +86,9 @@ func (s *StreamHandle) Collect(ctx context.Context) (*ProxyResponse, error) {
 type ProxyOption func(*proxyCallOptions)
 
 type proxyCallOptions struct {
-	headers  http.Header
-	metadata map[string]string
-	timeout  *time.Duration
-	retry    *RetryConfig
+	headers http.Header
+	timeout *time.Duration
+	retry   *RetryConfig
 }
 
 // WithRequestID sets the X-ModelRelay-Chat-Request-Id header for the request.
@@ -155,39 +153,6 @@ func WithHeaders(hdrs map[string]string) ProxyOption {
 	}
 }
 
-// WithMetadataEntry adds a single metadata key/value to the request payload.
-func WithMetadataEntry(key, value string) ProxyOption {
-	return func(opts *proxyCallOptions) {
-		if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" {
-			return
-		}
-		if opts.metadata == nil {
-			opts.metadata = make(map[string]string)
-		}
-		opts.metadata[strings.TrimSpace(key)] = strings.TrimSpace(value)
-	}
-}
-
-// WithMetadata merges the provided metadata map into the request payload.
-func WithMetadata(metadata map[string]string) ProxyOption {
-	return func(opts *proxyCallOptions) {
-		if len(metadata) == 0 {
-			return
-		}
-		if opts.metadata == nil {
-			opts.metadata = make(map[string]string, len(metadata))
-		}
-		for key, value := range metadata {
-			k := strings.TrimSpace(key)
-			v := strings.TrimSpace(value)
-			if k == "" || v == "" {
-				continue
-			}
-			opts.metadata[k] = v
-		}
-	}
-}
-
 // WithTimeout overrides the request timeout for this call (0 disables timeout).
 func WithTimeout(timeout time.Duration) ProxyOption {
 	return func(opts *proxyCallOptions) {
@@ -229,7 +194,6 @@ func buildProxyCallOptions(options []ProxyOption) proxyCallOptions {
 		opt(&cfg)
 	}
 	cfg.headers = sanitizeHeaders(cfg.headers)
-	cfg.metadata = sanitizeMetadata(cfg.metadata)
 	return cfg
 }
 
