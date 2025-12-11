@@ -491,6 +491,30 @@ func (r *ProxyResponse) FirstToolCall() *llm.ToolCall {
 	return &r.ToolCalls[0]
 }
 
+// Text returns the first content block or an empty string if none exist.
+func (r *ProxyResponse) Text() string {
+	if r == nil || len(r.Content) == 0 {
+		return ""
+	}
+	return r.Content[0]
+}
+
+// FirstContent returns the first content block and whether it exists.
+func (r *ProxyResponse) FirstContent() (string, bool) {
+	if r == nil || len(r.Content) == 0 {
+		return "", false
+	}
+	return r.Content[0], true
+}
+
+// AllText joins all content blocks into a single string.
+func (r *ProxyResponse) AllText() string {
+	if r == nil || len(r.Content) == 0 {
+		return ""
+	}
+	return strings.Join(r.Content, "")
+}
+
 // ToolResultMessage creates a message containing the result of a tool call.
 // The result parameter should be a JSON-encodable value or a string.
 func ToolResultMessage(toolCallID string, result any) (llm.ProxyMessage, error) {

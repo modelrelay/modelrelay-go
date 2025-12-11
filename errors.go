@@ -172,7 +172,7 @@ func IsProvisioningError(err error) bool {
 func decodeAPIError(resp *http.Response, retry *RetryMetadata) error {
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return APIError{Status: resp.StatusCode, Message: "failed to read response body", Retry: retry}
+		data = []byte(fmt.Sprintf("[failed to read response body: %v]", err))
 	}
 	apiErr := APIError{Status: resp.StatusCode, Retry: retry}
 	if len(data) == 0 {

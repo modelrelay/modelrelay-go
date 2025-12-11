@@ -6,6 +6,16 @@ import (
 	"time"
 )
 
+// RequestContext bundles common request metadata for telemetry callbacks.
+// Fields may be nil when unavailable.
+type RequestContext struct {
+	Method     string
+	Path       string
+	Model      *ModelID
+	RequestID  *string
+	ResponseID *string
+}
+
 // TelemetryHooks expose observability callbacks without forcing dependencies on the caller.
 type TelemetryHooks struct {
 	// OnHTTPRequest fires before the HTTP request is sent.
@@ -14,6 +24,9 @@ type TelemetryHooks struct {
 	OnHTTPResponse func(ctx context.Context, req *http.Request, resp *http.Response, err error, latency time.Duration)
 	// OnStreamEvent fires for every streaming event returned by /llm/proxy.
 	OnStreamEvent func(ctx context.Context, event StreamEvent)
+	// OnStreamFirstToken fires once per stream when the first token (text delta) is observed.
+	// Latency is measured from request send to first token arrival.
+	OnStreamFirstToken func(ctx context.Context, latency time.Duration, reqCtx RequestContext)
 	// OnLogEntry allows callers to capture SDK log events (info/errors).
 	OnLogEntry func(ctx context.Context, entry LogEntry)
 	// OnMetric records lightweight counters/gauges for observability dashboards.

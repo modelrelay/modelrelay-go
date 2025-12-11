@@ -1,6 +1,10 @@
 package sdk
 
 // Version is the published SDK version.
+// 0.37.0: Breaking - Strengthen Go SDK types for tier codes, customer external IDs,
+// tier IDs in customer requests, and API key ids/kind (#499).
+// 0.36.0: Add MockClient for testing, ProxyResponse content helpers, TTFT telemetry hook,
+// and tighten NDJSON/error parsing parity with Rust SDK (#499).
 // 0.33.0: Add InputPricePerMillionCents and OutputPricePerMillionCents fields to Tier struct
 // for per-tier token pricing (#476).
 // 0.32.0: Add tool use event parsing (tool_use_start, tool_use_delta, tool_use_stop) to NDJSON stream.
@@ -26,4 +30,4 @@ package sdk
 // Rich Hickey-style design with separate types for auto-provisioning.
 // 0.35.0: CustomersClient.Claim now works with publishable keys (mr_pk_*) for user self-service.
 // Enables CLI tools and frontends to link Stripe subscriptions to user identities.
-const Version = "0.35.0"
+const Version = "0.37.0"

@@ -17,12 +17,12 @@ type FrontendTokenRequest struct {
 	// PublishableKey (mr_pk_*) - required for authentication.
 	PublishableKey string `json:"publishable_key"`
 	// CustomerID - required to issue a token for this customer.
-	CustomerID string `json:"customer_id"`
+	CustomerID CustomerExternalID `json:"customer_id"`
 }
 
 // NewFrontendTokenRequest creates a request for an existing customer.
 // Both publishableKey and customerID are required.
-func NewFrontendTokenRequest(publishableKey, customerID string) FrontendTokenRequest {
+func NewFrontendTokenRequest(publishableKey string, customerID CustomerExternalID) FrontendTokenRequest {
 	return FrontendTokenRequest{
 		PublishableKey: publishableKey,
 		CustomerID:     customerID,
@@ -34,7 +34,7 @@ func (r FrontendTokenRequest) Validate() error {
 	if strings.TrimSpace(r.PublishableKey) == "" {
 		return fmt.Errorf("publishable_key is required")
 	}
-	if strings.TrimSpace(r.CustomerID) == "" {
+	if r.CustomerID.IsEmpty() {
 		return fmt.Errorf("customer_id is required")
 	}
 	return nil
@@ -65,14 +65,14 @@ func (r FrontendTokenRequest) WithOpts(opts FrontendTokenOpts) FrontendTokenRequ
 // All fields are required. Use NewFrontendTokenAutoProvisionRequest or
 // FrontendTokenRequest.WithAutoProvision to create.
 type FrontendTokenAutoProvisionRequest struct {
-	PublishableKey string `json:"publishable_key"`
-	CustomerID     string `json:"customer_id"`
-	Email          string `json:"email"`
+	PublishableKey string             `json:"publishable_key"`
+	CustomerID     CustomerExternalID `json:"customer_id"`
+	Email          string             `json:"email"`
 }
 
 // NewFrontendTokenAutoProvisionRequest creates a request for auto-provisioning a customer.
 // All parameters are required.
-func NewFrontendTokenAutoProvisionRequest(publishableKey, customerID, email string) FrontendTokenAutoProvisionRequest {
+func NewFrontendTokenAutoProvisionRequest(publishableKey string, customerID CustomerExternalID, email string) FrontendTokenAutoProvisionRequest {
 	return FrontendTokenAutoProvisionRequest{
 		PublishableKey: publishableKey,
 		CustomerID:     customerID,
@@ -85,7 +85,7 @@ func (r FrontendTokenAutoProvisionRequest) Validate() error {
 	if strings.TrimSpace(r.PublishableKey) == "" {
 		return fmt.Errorf("publishable_key is required")
 	}
-	if strings.TrimSpace(r.CustomerID) == "" {
+	if r.CustomerID.IsEmpty() {
 		return fmt.Errorf("customer_id is required")
 	}
 	if strings.TrimSpace(r.Email) == "" {
@@ -114,11 +114,11 @@ type FrontendTokenOpts struct {
 
 // FrontendTokenRequestWithOpts is the wire format with all fields including options.
 type FrontendTokenRequestWithOpts struct {
-	PublishableKey string `json:"publishable_key"`
-	CustomerID     string `json:"customer_id"`
-	Email          string `json:"email,omitempty"`
-	DeviceID       string `json:"device_id,omitempty"`
-	TTLSeconds     int64  `json:"ttl_seconds,omitempty"`
+	PublishableKey string             `json:"publishable_key"`
+	CustomerID     CustomerExternalID `json:"customer_id"`
+	Email          string             `json:"email,omitempty"`
+	DeviceID       string             `json:"device_id,omitempty"`
+	TTLSeconds     int64              `json:"ttl_seconds,omitempty"`
 }
 
 // Validate checks that required fields are set.
@@ -126,7 +126,7 @@ func (r FrontendTokenRequestWithOpts) Validate() error {
 	if strings.TrimSpace(r.PublishableKey) == "" {
 		return fmt.Errorf("publishable_key is required")
 	}
-	if strings.TrimSpace(r.CustomerID) == "" {
+	if r.CustomerID.IsEmpty() {
 		return fmt.Errorf("customer_id is required")
 	}
 	return nil
@@ -140,17 +140,17 @@ const TokenTypeBearer TokenType = "Bearer"
 
 // FrontendToken holds the issued bearer token for client-side LLM calls.
 type FrontendToken struct {
-	Token              string    `json:"token"`
-	ExpiresAt          time.Time `json:"expires_at"`
-	ExpiresIn          int       `json:"expires_in"`
-	TokenType          TokenType `json:"token_type"`
-	KeyID              uuid.UUID `json:"key_id"`
-	SessionID          uuid.UUID `json:"session_id"`
-	ProjectID          uuid.UUID `json:"project_id"`
-	CustomerID         uuid.UUID `json:"customer_id"`
-	CustomerExternalID string    `json:"customer_external_id"`
+	Token              string             `json:"token"`
+	ExpiresAt          time.Time          `json:"expires_at"`
+	ExpiresIn          int                `json:"expires_in"`
+	TokenType          TokenType          `json:"token_type"`
+	KeyID              uuid.UUID          `json:"key_id"`
+	SessionID          uuid.UUID          `json:"session_id"`
+	ProjectID          uuid.UUID          `json:"project_id"`
+	CustomerID         uuid.UUID          `json:"customer_id"`
+	CustomerExternalID CustomerExternalID `json:"customer_external_id"`
 	// TierCode is the tier code for the customer (e.g., "free", "pro", "enterprise").
-	TierCode string `json:"tier_code"`
+	TierCode TierCode `json:"tier_code"`
 }
 
 // AuthClient wraps authentication-related endpoints.

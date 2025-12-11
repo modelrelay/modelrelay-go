@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/modelrelay/modelrelay/platform/headers"
 	llm "github.com/modelrelay/modelrelay/providers"
@@ -122,15 +123,18 @@ func (c *LLMClient) ProxyCustomerStream(ctx context.Context, customerID string, 
 	// All streaming uses unified NDJSON format
 	httpReq.Header.Set("Accept", "application/x-ndjson")
 	applyProxyHeaders(httpReq, callOpts)
+	startedAt := time.Now()
 	//nolint:bodyclose // resp.Body is transferred to stream and will be closed by stream.Close()
 	resp, _, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
 	if err != nil {
 		return nil, err
 	}
-	stream := newNDJSONStream(ctx, resp.Body, c.client.telemetry)
+	requestID := requestIDFromHeaders(resp.Header)
+	reqCtx := newRequestContext(httpReq.Method, httpReq.URL.Path, req.Model, requestID)
+	stream := newNDJSONStream(ctx, resp.Body, c.client.telemetry, startedAt, reqCtx)
 	return &StreamHandle{
 		stream:    stream,
-		RequestID: requestIDFromHeaders(resp.Header),
+		RequestID: requestID,
 	}, nil
 }
 
@@ -153,15 +157,18 @@ func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options .
 	// All streaming uses unified NDJSON format
 	httpReq.Header.Set("Accept", "application/x-ndjson")
 	applyProxyHeaders(httpReq, callOpts)
+	startedAt := time.Now()
 	//nolint:bodyclose // resp.Body is transferred to stream and will be closed by stream.Close()
 	resp, _, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
 	if err != nil {
 		return nil, err
 	}
-	stream := newNDJSONStream(ctx, resp.Body, c.client.telemetry)
+	requestID := requestIDFromHeaders(resp.Header)
+	reqCtx := newRequestContext(httpReq.Method, httpReq.URL.Path, req.Model, requestID)
+	stream := newNDJSONStream(ctx, resp.Body, c.client.telemetry, startedAt, reqCtx)
 	return &StreamHandle{
 		stream:    stream,
-		RequestID: requestIDFromHeaders(resp.Header),
+		RequestID: requestID,
 	}, nil
 }
 
@@ -290,15 +297,24 @@ type ndjsonStream struct {
 	// Metadata from start record propagated to subsequent events
 	startRequestID string
 	startModel     string
+
+	startedAt       time.Time
+	firstTokenFired bool
+	requestCtx      RequestContext
 }
 
-func newNDJSONStream(ctx context.Context, body io.ReadCloser, telemetry TelemetryHooks) *ndjsonStream {
+func newNDJSONStream(ctx context.Context, body io.ReadCloser, telemetry TelemetryHooks, startedAt time.Time, reqCtx RequestContext) *ndjsonStream {
+	if startedAt.IsZero() {
+		startedAt = time.Now()
+	}
 	stream := &ndjsonStream{
-		ctx:       ctx,
-		reader:    bufio.NewReader(body),
-		body:      body,
-		telemetry: telemetry,
-		done:      make(chan struct{}),
+		ctx:        ctx,
+		reader:     bufio.NewReader(body),
+		body:       body,
+		telemetry:  telemetry,
+		done:       make(chan struct{}),
+		startedAt:  startedAt,
+		requestCtx: reqCtx,
 	}
 	go func() {
 		select {
@@ -356,6 +372,25 @@ func (s *ndjsonStream) Next() (StreamEvent, bool, error) {
 		}
 		if event.Model.IsEmpty() && s.startModel != "" {
 			event.Model = NewModelID(s.startModel)
+		}
+
+		// Update request context with response metadata.
+		if s.requestCtx.ResponseID == nil && event.ResponseID != "" {
+			respID := event.ResponseID
+			s.requestCtx.ResponseID = &respID
+		}
+		if s.requestCtx.Model == nil && !event.Model.IsEmpty() {
+			m := event.Model
+			s.requestCtx.Model = &m
+		}
+
+		// First-token latency hook (TTFT).
+		if !s.firstTokenFired && event.TextDelta != "" {
+			s.firstTokenFired = true
+			if s.telemetry.OnStreamFirstToken != nil {
+				latency := time.Since(s.startedAt)
+				s.telemetry.OnStreamFirstToken(s.ctx, latency, s.requestCtx)
+			}
 		}
 
 		if s.telemetry.OnStreamEvent != nil {
@@ -438,11 +473,13 @@ func parseNDJSONEvent(line []byte) (StreamEvent, error) {
 	// Extract content from payload if available
 	var textDelta string
 	if len(envelope.Payload) > 0 {
-		var content struct {
-			Content string `json:"content"`
-		}
-		if json.Unmarshal(envelope.Payload, &content) == nil && content.Content != "" {
-			textDelta = content.Content
+		var obj map[string]json.RawMessage
+		if err := json.Unmarshal(envelope.Payload, &obj); err == nil {
+			if rawContent, ok := obj["content"]; ok {
+				if err := json.Unmarshal(rawContent, &textDelta); err != nil {
+					return StreamEvent{}, fmt.Errorf("invalid stream payload content: %w", err)
+				}
+			}
 		}
 	}
 
@@ -474,6 +511,22 @@ func parseNDJSONEvent(line []byte) (StreamEvent, error) {
 	}
 
 	return event, nil
+}
+
+func newRequestContext(method, path string, model ModelID, requestID string) RequestContext {
+	ctx := RequestContext{
+		Method: method,
+		Path:   path,
+	}
+	if !model.IsEmpty() {
+		m := model
+		ctx.Model = &m
+	}
+	if rid := strings.TrimSpace(requestID); rid != "" {
+		ridCopy := rid
+		ctx.RequestID = &ridCopy
+	}
+	return ctx
 }
 
 func requestIDFromHeaders(h http.Header) string {

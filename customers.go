@@ -23,44 +23,44 @@ type CustomerMetadata map[string]any
 
 // Customer represents a customer in a ModelRelay project.
 type Customer struct {
-	ID                   uuid.UUID        `json:"id"`
-	ProjectID            uuid.UUID        `json:"project_id"`
-	TierID               uuid.UUID        `json:"tier_id"`
-	TierCode             string           `json:"tier_code,omitempty"`
-	ExternalID           string           `json:"external_id"`
-	Email                string           `json:"email"`
-	Metadata             CustomerMetadata `json:"metadata,omitempty"`
-	StripeCustomerID     string           `json:"stripe_customer_id,omitempty"`
-	StripeSubscriptionID string           `json:"stripe_subscription_id,omitempty"`
-	SubscriptionStatus   string           `json:"subscription_status,omitempty"`
-	CurrentPeriodStart   *time.Time       `json:"current_period_start,omitempty"`
-	CurrentPeriodEnd     *time.Time       `json:"current_period_end,omitempty"`
-	CreatedAt            time.Time        `json:"created_at"`
-	UpdatedAt            time.Time        `json:"updated_at"`
+	ID                   uuid.UUID          `json:"id"`
+	ProjectID            uuid.UUID          `json:"project_id"`
+	TierID               uuid.UUID          `json:"tier_id"`
+	TierCode             TierCode           `json:"tier_code,omitempty"`
+	ExternalID           CustomerExternalID `json:"external_id"`
+	Email                string             `json:"email"`
+	Metadata             CustomerMetadata   `json:"metadata,omitempty"`
+	StripeCustomerID     string             `json:"stripe_customer_id,omitempty"`
+	StripeSubscriptionID string             `json:"stripe_subscription_id,omitempty"`
+	SubscriptionStatus   string             `json:"subscription_status,omitempty"`
+	CurrentPeriodStart   *time.Time         `json:"current_period_start,omitempty"`
+	CurrentPeriodEnd     *time.Time         `json:"current_period_end,omitempty"`
+	CreatedAt            time.Time          `json:"created_at"`
+	UpdatedAt            time.Time          `json:"updated_at"`
 }
 
 // CustomerCreateRequest contains the fields to create a customer.
 type CustomerCreateRequest struct {
-	TierID     string           `json:"tier_id"`
-	ExternalID string           `json:"external_id"`
-	Email      string           `json:"email"`
-	Metadata   CustomerMetadata `json:"metadata,omitempty"`
+	TierID     uuid.UUID          `json:"tier_id"`
+	ExternalID CustomerExternalID `json:"external_id"`
+	Email      string             `json:"email"`
+	Metadata   CustomerMetadata   `json:"metadata,omitempty"`
 }
 
 // CustomerUpsertRequest contains the fields to upsert a customer by external_id.
 type CustomerUpsertRequest struct {
-	TierID     string           `json:"tier_id"`
-	ExternalID string           `json:"external_id"`
-	Email      string           `json:"email"`
-	Metadata   CustomerMetadata `json:"metadata,omitempty"`
+	TierID     uuid.UUID          `json:"tier_id"`
+	ExternalID CustomerExternalID `json:"external_id"`
+	Email      string             `json:"email"`
+	Metadata   CustomerMetadata   `json:"metadata,omitempty"`
 }
 
 // CustomerClaimRequest contains the fields to claim a customer by email.
 // Used when a customer subscribes via Stripe Checkout (email only) and later
 // authenticates to the app, needing to link their identity.
 type CustomerClaimRequest struct {
-	Email      string `json:"email"`
-	ExternalID string `json:"external_id"`
+	Email      string             `json:"email"`
+	ExternalID CustomerExternalID `json:"external_id"`
 }
 
 // CheckoutSessionRequest contains the URLs for checkout redirect.
@@ -128,10 +128,10 @@ func (c *CustomersClient) Create(ctx context.Context, req CustomerCreateRequest)
 	if c == nil || c.client == nil {
 		return Customer{}, fmt.Errorf("sdk: customers client not initialized")
 	}
-	if strings.TrimSpace(req.TierID) == "" {
+	if req.TierID == uuid.Nil {
 		return Customer{}, fmt.Errorf("sdk: tier_id required")
 	}
-	if strings.TrimSpace(req.ExternalID) == "" {
+	if req.ExternalID.IsEmpty() {
 		return Customer{}, fmt.Errorf("sdk: external_id required")
 	}
 	if strings.TrimSpace(req.Email) == "" {
@@ -190,10 +190,10 @@ func (c *CustomersClient) Upsert(ctx context.Context, req CustomerUpsertRequest)
 	if c == nil || c.client == nil {
 		return Customer{}, fmt.Errorf("sdk: customers client not initialized")
 	}
-	if strings.TrimSpace(req.TierID) == "" {
+	if req.TierID == uuid.Nil {
 		return Customer{}, fmt.Errorf("sdk: tier_id required")
 	}
-	if strings.TrimSpace(req.ExternalID) == "" {
+	if req.ExternalID.IsEmpty() {
 		return Customer{}, fmt.Errorf("sdk: external_id required")
 	}
 	if strings.TrimSpace(req.Email) == "" {
@@ -239,7 +239,7 @@ func (c *CustomersClient) Claim(ctx context.Context, req CustomerClaimRequest) (
 	if !isValidEmail(req.Email) {
 		return Customer{}, fmt.Errorf("sdk: invalid email format")
 	}
-	if strings.TrimSpace(req.ExternalID) == "" {
+	if req.ExternalID.IsEmpty() {
 		return Customer{}, fmt.Errorf("sdk: external_id required")
 	}
 	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/customers/claim", req)

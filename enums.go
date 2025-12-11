@@ -113,3 +113,97 @@ func (m *ModelID) UnmarshalJSON(data []byte) error {
 	*m = NewModelID(raw)
 	return nil
 }
+
+// TierCode is a strongly-typed wrapper around tier codes (e.g., "free").
+type TierCode string
+
+// NewTierCode constructs a tier code from a raw string, trimming surrounding whitespace.
+func NewTierCode(val string) TierCode {
+	return TierCode(strings.TrimSpace(val))
+}
+
+// IsEmpty reports whether the tier code was left blank.
+func (c TierCode) IsEmpty() bool {
+	return strings.TrimSpace(string(c)) == ""
+}
+
+func (c TierCode) String() string { return string(c) }
+
+func (c TierCode) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(c))
+}
+
+func (c *TierCode) UnmarshalJSON(data []byte) error {
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*c = NewTierCode(raw)
+	return nil
+}
+
+// CustomerExternalID is a strongly-typed wrapper around caller-defined customer identifiers.
+type CustomerExternalID string
+
+// NewCustomerExternalID constructs an external customer id from a raw string, trimming whitespace.
+func NewCustomerExternalID(val string) CustomerExternalID {
+	return CustomerExternalID(strings.TrimSpace(val))
+}
+
+// IsEmpty reports whether the external id was left blank.
+func (e CustomerExternalID) IsEmpty() bool {
+	return strings.TrimSpace(string(e)) == ""
+}
+
+func (e CustomerExternalID) String() string { return string(e) }
+
+func (e CustomerExternalID) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(e))
+}
+
+func (e *CustomerExternalID) UnmarshalJSON(data []byte) error {
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*e = NewCustomerExternalID(raw)
+	return nil
+}
+
+// APIKeyKind encodes the kind of API key.
+type APIKeyKind string
+
+const (
+	APIKeyKindSecret      APIKeyKind = "secret"
+	APIKeyKindPublishable APIKeyKind = "publishable"
+)
+
+// ParseAPIKeyKind normalizes known kinds while preserving unknown values.
+func ParseAPIKeyKind(val string) APIKeyKind {
+	normalized := strings.TrimSpace(strings.ToLower(val))
+	switch normalized {
+	case "":
+		return ""
+	case "secret":
+		return APIKeyKindSecret
+	case "publishable":
+		return APIKeyKindPublishable
+	default:
+		return APIKeyKind(val)
+	}
+}
+
+func (k APIKeyKind) String() string { return string(k) }
+
+func (k APIKeyKind) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(k))
+}
+
+func (k *APIKeyKind) UnmarshalJSON(data []byte) error {
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*k = ParseAPIKeyKind(raw)
+	return nil
+}

@@ -93,8 +93,8 @@ resp, _ := client.LLM.ChatForCustomer("customer-123").
 ```go
 // Create/update customer
 customer, _ := client.Customers.Upsert(ctx, sdk.CustomerUpsertRequest{
-    TierID:     "tier-uuid",
-    ExternalID: "your-user-id",
+    TierID:     uuid.MustParse("00000000-0000-0000-0000-000000000000"), // Replace with your tier UUID
+    ExternalID: sdk.NewCustomerExternalID("your-user-id"),
     Email:      "user@example.com",
 })
 

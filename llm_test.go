@@ -873,7 +873,7 @@ func TestStreamParsesNDJSONFormat(t *testing.T) {
 {"type":"update","payload":{"content":"Hello"}}
 {"type":"completion","payload":{"content":"Hello World"},"complete_fields":["content"]}
 `
-	stream := newNDJSONStream(context.Background(), io.NopCloser(strings.NewReader(ndjsonContent)), TelemetryHooks{})
+	stream := newNDJSONStream(context.Background(), io.NopCloser(strings.NewReader(ndjsonContent)), TelemetryHooks{}, time.Time{}, RequestContext{})
 	defer stream.Close()
 
 	// First event: start
@@ -930,7 +930,7 @@ func TestStreamParsesToolUseEvents(t *testing.T) {
 {"type":"tool_use_stop","tool_calls":[{"id":"call_1","type":"function","function":{"name":"get_weather","arguments":"{\"location\":\"NYC\"}"}}]}
 {"type":"completion","payload":{"content":"Done"},"stop_reason":"tool_calls"}
 `
-	stream := newNDJSONStream(context.Background(), io.NopCloser(strings.NewReader(ndjsonContent)), TelemetryHooks{})
+	stream := newNDJSONStream(context.Background(), io.NopCloser(strings.NewReader(ndjsonContent)), TelemetryHooks{}, time.Time{}, RequestContext{})
 	defer stream.Close()
 
 	// First event: start
@@ -1010,7 +1010,7 @@ func TestStreamParsesSingleToolCall(t *testing.T) {
 	// Test parsing tool_use_stop with a single tool_call (not array)
 	ndjsonContent := `{"type":"tool_use_stop","tool_call":{"id":"call_1","type":"function","function":{"name":"get_weather","arguments":"{}"}}}
 `
-	stream := newNDJSONStream(context.Background(), io.NopCloser(strings.NewReader(ndjsonContent)), TelemetryHooks{})
+	stream := newNDJSONStream(context.Background(), io.NopCloser(strings.NewReader(ndjsonContent)), TelemetryHooks{}, time.Time{}, RequestContext{})
 	defer stream.Close()
 
 	got, ok, err := stream.Next()

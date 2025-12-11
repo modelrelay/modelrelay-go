@@ -22,7 +22,7 @@ const (
 type Tier struct {
 	ID                         uuid.UUID     `json:"id"`
 	ProjectID                  uuid.UUID     `json:"project_id"`
-	TierCode                   string        `json:"tier_code"`
+	TierCode                   TierCode      `json:"tier_code"`
 	DisplayName                string        `json:"display_name"`
 	SpendLimitCents            int64         `json:"spend_limit_cents"`             // Monthly spend limit in cents (e.g., 2000 = $20.00)
 	InputPricePerMillionCents  int64         `json:"input_price_per_million_cents"` // Input token price in cents per million (e.g., 300 = $3.00/1M)
