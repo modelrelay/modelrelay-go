@@ -4,6 +4,19 @@
 go get github.com/modelrelay/modelrelay/sdk/go
 ```
 
+## Chat (Blocking)
+
+```go
+client, _ := sdk.NewClient(sdk.Config{APIKey: os.Getenv("MODELRELAY_API_KEY")})
+
+resp, _ := client.LLM.Chat(sdk.NewModelID("claude-sonnet-4-20250514")).
+    System("You are helpful.").
+    User("Hello!").
+    Send(ctx)
+
+fmt.Println(resp.Text())
+```
+
 ## Streaming Chat
 
 ```go
