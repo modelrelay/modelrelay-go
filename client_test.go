@@ -55,7 +55,7 @@ func TestBearerTokenDuplication(t *testing.T) {
 }
 
 func TestBaseURLOverride(t *testing.T) {
-	client, err := NewClient(Config{BaseURL: "https://override.example.com/api/v1", APIKey: "test"})
+	client, err := NewClient(Config{BaseURL: "https://override.example.com/api/v1", APIKey: mustSecretKey(t, "mr_sk_test")})
 	if err != nil {
 		t.Fatalf("NewClient failed: %v", err)
 	}
@@ -65,12 +65,23 @@ func TestBaseURLOverride(t *testing.T) {
 }
 
 func TestDefaultBaseURL(t *testing.T) {
-	client, err := NewClient(Config{APIKey: "test"})
+	client, err := NewClient(Config{APIKey: mustSecretKey(t, "mr_sk_test")})
 	if err != nil {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 	if client.baseURL != defaultBaseURL {
 		t.Fatalf("expected default base url %s got %s", defaultBaseURL, client.baseURL)
+	}
+}
+
+func TestNewClientRejectsEmptyAPIKeyAuth(t *testing.T) {
+	_, err := NewClient(Config{APIKey: SecretKey("   ")})
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	var cfgErr ConfigError
+	if !errors.As(err, &cfgErr) {
+		t.Fatalf("expected ConfigError, got %T", err)
 	}
 }
 
@@ -86,7 +97,7 @@ func TestRetryOnServerError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
@@ -111,7 +122,7 @@ func TestPostDoesNotRetryByDefault(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
@@ -132,7 +143,7 @@ func TestTransportTimeout(t *testing.T) {
 	}))
 	defer srv.Close()
 	timeout := 50 * time.Millisecond
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client(), RequestTimeout: &timeout})
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client(), RequestTimeout: &timeout})
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
@@ -154,7 +165,7 @@ func TestDisableRetry(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
@@ -179,9 +190,9 @@ func TestNewClientWithKey(t *testing.T) {
 	defer srv.Close()
 
 	t.Run("RequiresNonEmptyKey", func(t *testing.T) {
-		_, err := NewClientWithKey("")
+		_, err := NewClientWithKey(nil)
 		if err == nil {
-			t.Fatal("expected error for empty key")
+			t.Fatal("expected error for missing key")
 		}
 		var cfgErr ConfigError
 		if !errors.As(err, &cfgErr) {
@@ -190,7 +201,11 @@ func TestNewClientWithKey(t *testing.T) {
 	})
 
 	t.Run("WithOptions", func(t *testing.T) {
-		client, err := NewClientWithKey("mr_sk_test123", WithBaseURL(srv.URL))
+		secret, err := ParseSecretKey("mr_sk_test123")
+		if err != nil {
+			t.Fatalf("parse secret key: %v", err)
+		}
+		client, err := NewClientWithKey(secret, WithBaseURL(srv.URL))
 		if err != nil {
 			t.Fatalf("NewClientWithKey failed: %v", err)
 		}

@@ -125,11 +125,11 @@ func (s *responseStream) CollectWithMetrics(ctx context.Context) (*Response, Res
 	}
 
 	resp := &Response{
-		ID:        responseID,
-		Model:     model,
-		Output:    output,
+		ID:         responseID,
+		Model:      model,
+		Output:     output,
 		StopReason: stop,
-		RequestID: s.handle.RequestID,
+		RequestID:  s.handle.RequestID,
 	}
 	if usage != nil {
 		resp.Usage = *usage

@@ -3,7 +3,6 @@ package sdk
 
 import (
 	"net/http"
-	"strings"
 )
 
 type authStrategy interface {
@@ -33,17 +32,20 @@ func (b bearerAuth) Apply(req *http.Request) {
 }
 
 type apiKeyAuth struct {
-	key string
+	key APIKeyAuth
 }
 
 func (a apiKeyAuth) Apply(req *http.Request) {
-	if a.key == "" {
+	if a.key == nil || a.key.String() == "" {
 		return
 	}
-	req.Header.Set("X-ModelRelay-Api-Key", a.key)
+	req.Header.Set("X-ModelRelay-Api-Key", a.key.String())
 }
 
-// isSecretKey returns true if the API key is a secret key (mr_sk_*).
+// isSecretKey returns true if the API key is a secret key.
 func (a apiKeyAuth) isSecretKey() bool {
-	return strings.HasPrefix(a.key, "mr_sk_")
+	if a.key == nil {
+		return false
+	}
+	return a.key.Kind() == APIKeyKindSecret
 }

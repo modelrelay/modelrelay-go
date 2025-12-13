@@ -5,8 +5,8 @@ import llm "github.com/modelrelay/modelrelay/providers"
 // StreamEvent represents events from the unified NDJSON streaming format.
 type StreamEvent struct {
 	Kind          llm.StreamEventKind
-	Name          string             // Record type: "start", "update", "completion", "error"
-	Data          []byte             // Raw payload (deprecated: use structured fields)
+	Name          string // Record type: "start", "update", "completion", "error"
+	Data          []byte // Raw payload (deprecated: use structured fields)
 	Usage         *Usage
 	ResponseID    string
 	Model         ModelID

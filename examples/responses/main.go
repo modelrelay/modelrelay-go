@@ -16,7 +16,11 @@ func main() {
 	if apiKey == "" {
 		log.Fatal("MODELRELAY_API_KEY must be set")
 	}
-	client, err := sdk.NewClientWithKey(apiKey)
+	key, err := sdk.ParseAPIKeyAuth(apiKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+	client, err := sdk.NewClientWithKey(key)
 	if err != nil {
 		log.Fatal(err)
 	}

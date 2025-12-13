@@ -41,12 +41,16 @@ func TestFrontendToken(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "mr_pk_demo"})
+	pk, err := ParsePublishableKey("mr_pk_demo")
+	if err != nil {
+		t.Fatalf("parse publishable key: %v", err)
+	}
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: pk})
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
 
-	req := NewFrontendTokenRequest("mr_pk_demo", NewCustomerExternalID("customer_123"))
+	req := NewFrontendTokenRequest(pk, NewCustomerExternalID("customer_123"))
 	token, err := client.Auth.FrontendToken(context.Background(), req)
 	if err != nil {
 		t.Fatalf("frontend token: %v", err)
@@ -65,7 +69,7 @@ func TestFrontendTokenRequestValidation(t *testing.T) {
 	}{
 		{
 			name:      "valid request",
-			req:       NewFrontendTokenRequest("mr_pk_test", NewCustomerExternalID("customer_123")),
+			req:       NewFrontendTokenRequest(PublishableKey("mr_pk_test"), NewCustomerExternalID("customer_123")),
 			wantError: false,
 		},
 		{
@@ -76,19 +80,19 @@ func TestFrontendTokenRequestValidation(t *testing.T) {
 		},
 		{
 			name:      "whitespace-only publishable key",
-			req:       FrontendTokenRequest{PublishableKey: "   ", CustomerID: NewCustomerExternalID("customer_123")},
+			req:       FrontendTokenRequest{PublishableKey: PublishableKey("   "), CustomerID: NewCustomerExternalID("customer_123")},
 			wantError: true,
 			errorMsg:  "publishable_key is required",
 		},
 		{
 			name:      "empty customer ID",
-			req:       FrontendTokenRequest{PublishableKey: "mr_pk_test"},
+			req:       FrontendTokenRequest{PublishableKey: PublishableKey("mr_pk_test")},
 			wantError: true,
 			errorMsg:  "customer_id is required",
 		},
 		{
 			name:      "whitespace-only customer ID",
-			req:       FrontendTokenRequest{PublishableKey: "mr_pk_test", CustomerID: NewCustomerExternalID("   ")},
+			req:       FrontendTokenRequest{PublishableKey: PublishableKey("mr_pk_test"), CustomerID: NewCustomerExternalID("   ")},
 			wantError: true,
 			errorMsg:  "customer_id is required",
 		},
@@ -121,18 +125,18 @@ func TestFrontendTokenAutoProvisionRequestValidation(t *testing.T) {
 	}{
 		{
 			name:      "valid request",
-			req:       NewFrontendTokenAutoProvisionRequest("mr_pk_test", NewCustomerExternalID("customer_123"), "test@example.com"),
+			req:       NewFrontendTokenAutoProvisionRequest(PublishableKey("mr_pk_test"), NewCustomerExternalID("customer_123"), "test@example.com"),
 			wantError: false,
 		},
 		{
 			name:      "empty email",
-			req:       FrontendTokenAutoProvisionRequest{PublishableKey: "mr_pk_test", CustomerID: NewCustomerExternalID("customer_123")},
+			req:       FrontendTokenAutoProvisionRequest{PublishableKey: PublishableKey("mr_pk_test"), CustomerID: NewCustomerExternalID("customer_123")},
 			wantError: true,
 			errorMsg:  "email is required for auto-provisioning",
 		},
 		{
 			name:      "whitespace-only email",
-			req:       FrontendTokenAutoProvisionRequest{PublishableKey: "mr_pk_test", CustomerID: NewCustomerExternalID("customer_123"), Email: "   "},
+			req:       FrontendTokenAutoProvisionRequest{PublishableKey: PublishableKey("mr_pk_test"), CustomerID: NewCustomerExternalID("customer_123"), Email: "   "},
 			wantError: true,
 			errorMsg:  "email is required for auto-provisioning",
 		},
@@ -164,7 +168,7 @@ func TestFrontendTokenAutoProvisionRequestValidation(t *testing.T) {
 
 func TestFrontendTokenRequestBuilders(t *testing.T) {
 	t.Run("WithAutoProvision creates correct type", func(t *testing.T) {
-		base := NewFrontendTokenRequest("mr_pk_test", NewCustomerExternalID("customer_123"))
+		base := NewFrontendTokenRequest(PublishableKey("mr_pk_test"), NewCustomerExternalID("customer_123"))
 		autoProvision := base.WithAutoProvision("user@example.com")
 
 		if autoProvision.PublishableKey != "mr_pk_test" {
@@ -179,7 +183,7 @@ func TestFrontendTokenRequestBuilders(t *testing.T) {
 	})
 
 	t.Run("WithOpts adds optional fields", func(t *testing.T) {
-		base := NewFrontendTokenRequest("mr_pk_test", NewCustomerExternalID("customer_123"))
+		base := NewFrontendTokenRequest(PublishableKey("mr_pk_test"), NewCustomerExternalID("customer_123"))
 		withOpts := base.WithOpts(FrontendTokenOpts{
 			DeviceID:   "device_abc",
 			TTLSeconds: 3600,
@@ -197,7 +201,7 @@ func TestFrontendTokenRequestBuilders(t *testing.T) {
 	})
 
 	t.Run("AutoProvision.WithOpts preserves email", func(t *testing.T) {
-		base := NewFrontendTokenRequest("mr_pk_test", NewCustomerExternalID("customer_123"))
+		base := NewFrontendTokenRequest(PublishableKey("mr_pk_test"), NewCustomerExternalID("customer_123"))
 		withOpts := base.WithAutoProvision("user@example.com").WithOpts(FrontendTokenOpts{
 			DeviceID: "device_xyz",
 		})
@@ -243,12 +247,16 @@ func TestFrontendTokenAutoProvision(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "mr_pk_demo"})
+	pk, err := ParsePublishableKey("mr_pk_demo")
+	if err != nil {
+		t.Fatalf("parse publishable key: %v", err)
+	}
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: pk})
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
 
-	req := NewFrontendTokenAutoProvisionRequest("mr_pk_demo", NewCustomerExternalID("customer_123"), "test@example.com")
+	req := NewFrontendTokenAutoProvisionRequest(pk, NewCustomerExternalID("customer_123"), "test@example.com")
 	token, err := client.Auth.FrontendTokenAutoProvision(context.Background(), req)
 	if err != nil {
 		t.Fatalf("frontend token auto provision: %v", err)

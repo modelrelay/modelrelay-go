@@ -28,7 +28,7 @@ const (
 // Deprecated: Use NewClientWithKey or NewClientWithToken with functional options instead.
 type Config struct {
 	BaseURL        string
-	APIKey         string
+	APIKey         APIKeyAuth
 	AccessToken    string
 	HTTPClient     *http.Client
 	Telemetry      TelemetryHooks
@@ -129,10 +129,11 @@ type Client struct {
 //
 // Example:
 //
-//	client, err := sdk.NewClientWithKey("mr_sk_...")
-//	client, err := sdk.NewClientWithKey("mr_sk_...", sdk.WithBaseURL("https://custom.api.com/api/v1"))
-func NewClientWithKey(key string, opts ...Option) (*Client, error) {
-	if strings.TrimSpace(key) == "" {
+//	secret, err := sdk.ParseSecretKey("mr_sk_...")
+//	if err != nil { /* handle */ }
+//	client, err := sdk.NewClientWithKey(secret)
+func NewClientWithKey(key APIKeyAuth, opts ...Option) (*Client, error) {
+	if key == nil || strings.TrimSpace(key.String()) == "" {
 		return nil, ConfigError{Reason: "api key is required"}
 	}
 	options := applyOptions(opts)
@@ -152,7 +153,7 @@ func NewClientWithToken(token string, opts ...Option) (*Client, error) {
 		return nil, ConfigError{Reason: "access token is required"}
 	}
 	options := applyOptions(opts)
-	return newClientFromOptions("", token, options)
+	return newClientFromOptions(nil, token, options)
 }
 
 func applyOptions(opts []Option) clientOptions {
@@ -165,7 +166,7 @@ func applyOptions(opts []Option) clientOptions {
 	return options
 }
 
-func newClientFromOptions(apiKey, accessToken string, opts clientOptions) (*Client, error) {
+func newClientFromOptions(apiKey APIKeyAuth, accessToken string, opts clientOptions) (*Client, error) {
 	baseURL := opts.baseURL
 	if baseURL == "" {
 		baseURL = defaultBaseURL
@@ -186,7 +187,7 @@ func newClientFromOptions(apiKey, accessToken string, opts clientOptions) (*Clie
 		}
 		auth = append(auth, bearerAuth{token: token})
 	}
-	if apiKey != "" {
+	if apiKey != nil {
 		auth = append(auth, apiKeyAuth{key: apiKey})
 	}
 	ua := strings.TrimSpace(opts.userAgent)
@@ -228,7 +229,10 @@ func newClientFromOptions(apiKey, accessToken string, opts clientOptions) (*Clie
 // API key requirements and compile-time safety.
 func NewClient(cfg Config) (*Client, error) {
 	// Validate auth before delegating
-	if strings.TrimSpace(cfg.APIKey) == "" && strings.TrimSpace(cfg.AccessToken) == "" {
+	hasKey := cfg.APIKey != nil && strings.TrimSpace(cfg.APIKey.String()) != ""
+	token := strings.TrimSpace(cfg.AccessToken)
+	hasToken := token != ""
+	if !hasKey && !hasToken {
 		return nil, ConfigError{Reason: "api key or access token required"}
 	}
 	// Map Config to clientOptions and delegate
@@ -243,7 +247,11 @@ func NewClient(cfg Config) (*Client, error) {
 		requestTimeout: cfg.RequestTimeout,
 		retry:          cfg.Retry,
 	}
-	return newClientFromOptions(cfg.APIKey, cfg.AccessToken, opts)
+	var apiKey APIKeyAuth
+	if hasKey {
+		apiKey = cfg.APIKey
+	}
+	return newClientFromOptions(apiKey, token, opts)
 }
 
 func normalizeBaseURL(raw string) (string, error) {

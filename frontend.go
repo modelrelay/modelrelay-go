@@ -15,14 +15,14 @@ import (
 // All fields are required. Use NewFrontendTokenRequest to create.
 type FrontendTokenRequest struct {
 	// PublishableKey (mr_pk_*) - required for authentication.
-	PublishableKey string `json:"publishable_key"`
+	PublishableKey PublishableKey `json:"publishable_key"`
 	// CustomerID - required to issue a token for this customer.
 	CustomerID CustomerExternalID `json:"customer_id"`
 }
 
 // NewFrontendTokenRequest creates a request for an existing customer.
 // Both publishableKey and customerID are required.
-func NewFrontendTokenRequest(publishableKey string, customerID CustomerExternalID) FrontendTokenRequest {
+func NewFrontendTokenRequest(publishableKey PublishableKey, customerID CustomerExternalID) FrontendTokenRequest {
 	return FrontendTokenRequest{
 		PublishableKey: publishableKey,
 		CustomerID:     customerID,
@@ -31,8 +31,12 @@ func NewFrontendTokenRequest(publishableKey string, customerID CustomerExternalI
 
 // Validate checks that required fields are set.
 func (r FrontendTokenRequest) Validate() error {
-	if strings.TrimSpace(r.PublishableKey) == "" {
+	key := strings.TrimSpace(r.PublishableKey.String())
+	if key == "" {
 		return fmt.Errorf("publishable_key is required")
+	}
+	if !strings.HasPrefix(key, "mr_pk_") || len(key) <= len("mr_pk_") {
+		return fmt.Errorf("publishable_key must be a publishable key (mr_pk_*)")
 	}
 	if r.CustomerID.IsEmpty() {
 		return fmt.Errorf("customer_id is required")
@@ -65,14 +69,14 @@ func (r FrontendTokenRequest) WithOpts(opts FrontendTokenOpts) FrontendTokenRequ
 // All fields are required. Use NewFrontendTokenAutoProvisionRequest or
 // FrontendTokenRequest.WithAutoProvision to create.
 type FrontendTokenAutoProvisionRequest struct {
-	PublishableKey string             `json:"publishable_key"`
+	PublishableKey PublishableKey     `json:"publishable_key"`
 	CustomerID     CustomerExternalID `json:"customer_id"`
 	Email          string             `json:"email"`
 }
 
 // NewFrontendTokenAutoProvisionRequest creates a request for auto-provisioning a customer.
 // All parameters are required.
-func NewFrontendTokenAutoProvisionRequest(publishableKey string, customerID CustomerExternalID, email string) FrontendTokenAutoProvisionRequest {
+func NewFrontendTokenAutoProvisionRequest(publishableKey PublishableKey, customerID CustomerExternalID, email string) FrontendTokenAutoProvisionRequest {
 	return FrontendTokenAutoProvisionRequest{
 		PublishableKey: publishableKey,
 		CustomerID:     customerID,
@@ -82,8 +86,12 @@ func NewFrontendTokenAutoProvisionRequest(publishableKey string, customerID Cust
 
 // Validate checks that required fields are set.
 func (r FrontendTokenAutoProvisionRequest) Validate() error {
-	if strings.TrimSpace(r.PublishableKey) == "" {
+	key := strings.TrimSpace(r.PublishableKey.String())
+	if key == "" {
 		return fmt.Errorf("publishable_key is required")
+	}
+	if !strings.HasPrefix(key, "mr_pk_") || len(key) <= len("mr_pk_") {
+		return fmt.Errorf("publishable_key must be a publishable key (mr_pk_*)")
 	}
 	if r.CustomerID.IsEmpty() {
 		return fmt.Errorf("customer_id is required")
@@ -114,7 +122,7 @@ type FrontendTokenOpts struct {
 
 // FrontendTokenRequestWithOpts is the wire format with all fields including options.
 type FrontendTokenRequestWithOpts struct {
-	PublishableKey string             `json:"publishable_key"`
+	PublishableKey PublishableKey     `json:"publishable_key"`
 	CustomerID     CustomerExternalID `json:"customer_id"`
 	Email          string             `json:"email,omitempty"`
 	DeviceID       string             `json:"device_id,omitempty"`
@@ -123,8 +131,12 @@ type FrontendTokenRequestWithOpts struct {
 
 // Validate checks that required fields are set.
 func (r FrontendTokenRequestWithOpts) Validate() error {
-	if strings.TrimSpace(r.PublishableKey) == "" {
+	key := strings.TrimSpace(r.PublishableKey.String())
+	if key == "" {
 		return fmt.Errorf("publishable_key is required")
+	}
+	if !strings.HasPrefix(key, "mr_pk_") || len(key) <= len("mr_pk_") {
+		return fmt.Errorf("publishable_key must be a publishable key (mr_pk_*)")
 	}
 	if r.CustomerID.IsEmpty() {
 		return fmt.Errorf("customer_id is required")

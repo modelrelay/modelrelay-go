@@ -33,6 +33,10 @@ func main() {
 	if apiKey == "" {
 		log.Fatal("MODELRELAY_API_KEY is not set")
 	}
+	key, err := sdk.ParseAPIKeyAuth(apiKey)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Build client options
 	opts := []sdk.Option{
@@ -43,7 +47,7 @@ func main() {
 		opts = append(opts, sdk.WithBaseURL(*baseURL))
 	}
 
-	client, err := sdk.NewClientWithKey(apiKey, opts...)
+	client, err := sdk.NewClientWithKey(key, opts...)
 	if err != nil {
 		log.Fatalf("new client: %v", err)
 	}

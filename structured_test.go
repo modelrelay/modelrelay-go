@@ -121,7 +121,7 @@ func TestStructuredHappyPath(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
@@ -142,4 +142,3 @@ func TestStructuredHappyPath(t *testing.T) {
 		t.Fatalf("unexpected value %+v", result.Value)
 	}
 }
-

@@ -8,7 +8,8 @@ go get github.com/modelrelay/modelrelay/sdk/go
 
 ```go
 ctx := context.Background()
-client, _ := sdk.NewClientWithKey(os.Getenv("MODELRELAY_API_KEY"))
+key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
+client, _ := sdk.NewClientWithKey(key)
 
 req, callOpts, _ := client.Responses.New().
     Model(sdk.NewModelID("claude-sonnet-4-20250514")).
@@ -26,7 +27,8 @@ For the most common path (**system + user → assistant text**):
 
 ```go
 ctx := context.Background()
-client, _ := sdk.NewClientWithKey(os.Getenv("MODELRELAY_API_KEY"))
+key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
+client, _ := sdk.NewClientWithKey(key)
 
 text, _ := client.Responses.Text(
     ctx,
@@ -67,7 +69,8 @@ for {
 
 ```go
 ctx := context.Background()
-client, _ := sdk.NewClientWithKey(os.Getenv("MODELRELAY_API_KEY"))
+key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
+client, _ := sdk.NewClientWithKey(key)
 
 req, callOpts, _ := client.Responses.New().
     Model(sdk.NewModelID("claude-sonnet-4-20250514")).
@@ -180,8 +183,8 @@ status, _ := client.Customers.GetSubscription(ctx, customer.ID)
 ## Configuration
 
 ```go
-client, _ := sdk.NewClientWithKey(
-    "mr_sk_...",
+secret, _ := sdk.ParseSecretKey("mr_sk_...")
+client, _ := sdk.NewClientWithKey(secret,
     sdk.WithConnectTimeout(5*time.Second),
     sdk.WithRetryConfig(sdk.RetryConfig{MaxAttempts: 3}),
 )

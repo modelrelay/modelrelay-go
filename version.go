@@ -37,4 +37,5 @@ package sdk
 // 0.35.0: CustomersClient.Claim now works with publishable keys (mr_pk_*) for user self-service.
 // Enables CLI tools and frontends to link Stripe subscriptions to user identities.
 // 0.41.0: Streaming robustness + explicit stream timeout options (TTFT/Idle/Total) and typed stream errors.
-const Version = "0.41.0"
+// 0.42.0: Breaking - Use typed API key auth values (publishable vs secret) (#505).
+const Version = "0.42.0"
