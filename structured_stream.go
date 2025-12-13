@@ -13,7 +13,7 @@ import (
 )
 
 // StructuredRecordType identifies the NDJSON record kind in structured
-// streaming responses from /llm/proxy.
+// streaming responses from /responses.
 type StructuredRecordType string
 
 const (
@@ -120,8 +120,14 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 		}
 		recordType := StructuredRecordType(strings.TrimSpace(strings.ToLower(raw.Type)))
 		switch recordType {
-		case StructuredRecordTypeStart, "":
-			// Ignore warm-up and malformed records; continue reading.
+		case StructuredRecordTypeStart:
+			// Ignore warm-up records; continue reading.
+			continue
+		case "":
+			return StructuredJSONEvent[T]{}, false, s.protocolError("structured stream record missing type")
+		case "keepalive":
+			// Keepalive records are not part of the structured-output contract.
+			// They are used to keep long-lived connections from timing out.
 			continue
 		case StructuredRecordTypeUpdate, StructuredRecordTypeCompletion:
 			if len(bytes.TrimSpace(raw.Payload)) == 0 {
@@ -204,7 +210,7 @@ func (s *StructuredJSONStream[T]) Collect(ctx context.Context) (T, error) {
 	}
 }
 
-// RequestID returns the X-ModelRelay-Chat-Request-Id associated with this stream.
+// RequestID returns the X-ModelRelay-Request-Id associated with this stream.
 func (s *StructuredJSONStream[T]) RequestID() string {
 	return s.requestID
 }

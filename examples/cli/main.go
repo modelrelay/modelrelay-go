@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	llm "github.com/modelrelay/modelrelay/providers"
 	"github.com/modelrelay/modelrelay/sdk/go"
 )
 
@@ -19,7 +18,7 @@ func main() {
 	baseURL := flag.String("base-url", "", "ModelRelay API base URL override")
 	model := flag.String("model", "gpt-5.1", "LLM model identifier")
 	maxTokens := flag.Int("max-tokens", 256, "Maximum tokens to request")
-	requestID := flag.String("request-id", "", "Optional X-ModelRelay-Chat-Request-Id value")
+	requestID := flag.String("request-id", "", "Optional X-ModelRelay-Request-Id value")
 	flag.Parse()
 
 	prompt := strings.Join(flag.Args(), " ")
@@ -49,23 +48,24 @@ func main() {
 		log.Fatalf("new client: %v", err)
 	}
 
-	proxyOpts := make([]sdk.ProxyOption, 0, 2)
+	builder := client.Responses.New().
+		Model(sdk.NewModelID(*model)).
+		MaxOutputTokens(int64(*maxTokens)).
+		User(prompt).
+		Header("X-Debug", "cli-run")
 	if *requestID != "" {
-		proxyOpts = append(proxyOpts, sdk.WithRequestID(*requestID))
+		builder = builder.RequestID(*requestID)
 	}
-	proxyOpts = append(proxyOpts,
-		sdk.WithHeader("X-Debug", "cli-run"))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 
-	stream, err := client.LLM.ProxyStream(ctx, sdk.ProxyRequest{
-		Model:     sdk.NewModelID(*model),
-		MaxTokens: int64(*maxTokens),
-		Messages: []llm.ProxyMessage{{
-			Role:    "user",
-			Content: prompt,
-		}},
-	}, proxyOpts...)
+	req, callOpts, err := builder.Build()
+	if err != nil {
+		cancel()
+		log.Fatalf("build request: %v", err)
+	}
+
+	stream, err := client.Responses.Stream(ctx, req, callOpts...)
 	if err != nil {
 		cancel()
 		log.Fatalf("proxy stream: %v", err)

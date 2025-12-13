@@ -27,16 +27,16 @@ func MustSchemaFromType[T any]() json.RawMessage {
 	return schema
 }
 
-// ResponseFormatFromType creates a ResponseFormat for structured outputs from a Go type.
+// OutputFormatFromType creates an OutputFormat for structured outputs from a Go type.
 // The schema is generated via reflection with strict mode enabled.
-func ResponseFormatFromType[T any](name string) (*llm.ResponseFormat, error) {
+func OutputFormatFromType[T any](name string) (*llm.OutputFormat, error) {
 	schema, err := SchemaFromType[T]()
 	if err != nil {
 		return nil, err
 	}
 	strict := true
-	return &llm.ResponseFormat{
-		Type: llm.ResponseFormatTypeJSONSchema,
+	return &llm.OutputFormat{
+		Type: llm.OutputFormatTypeJSONSchema,
 		JSONSchema: &llm.JSONSchemaFormat{
 			Name:   name,
 			Schema: schema,
@@ -45,9 +45,9 @@ func ResponseFormatFromType[T any](name string) (*llm.ResponseFormat, error) {
 	}, nil
 }
 
-// MustResponseFormatFromType creates a ResponseFormat, panicking on error.
-func MustResponseFormatFromType[T any](name string) *llm.ResponseFormat {
-	rf, err := ResponseFormatFromType[T](name)
+// MustOutputFormatFromType creates an OutputFormat, panicking on error.
+func MustOutputFormatFromType[T any](name string) *llm.OutputFormat {
+	rf, err := OutputFormatFromType[T](name)
 	if err != nil {
 		panic(err)
 	}

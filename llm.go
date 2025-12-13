@@ -14,40 +14,44 @@ import (
 	"time"
 
 	"github.com/modelrelay/modelrelay/platform/headers"
+	"github.com/modelrelay/modelrelay/platform/routes"
 	llm "github.com/modelrelay/modelrelay/providers"
 )
 
-// LLMClient proxies chat completions through the SaaS API.
-type LLMClient struct {
+// ResponsesClient calls the /responses endpoint.
+type ResponsesClient struct {
 	client *Client
 }
 
-// ProxyMessage performs a blocking completion and returns the aggregated response.
-func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options ...ProxyOption) (*ProxyResponse, error) {
-	callOpts := buildProxyCallOptions(options)
+// Create performs a blocking /responses request.
+func (c *ResponsesClient) Create(ctx context.Context, req ResponseRequest, options ...ResponseOption) (*Response, error) {
+	callOpts := buildResponseCallOptions(options)
 	if callOpts.retry == nil {
 		cfg := c.client.retryCfg
 		cfg.RetryPost = true
 		callOpts.retry = &cfg
 	}
-	reqPayload, err := newProxyRequestPayload(req)
-	if err != nil {
+
+	requireModel := callOpts.headers == nil || strings.TrimSpace(callOpts.headers.Get(headers.CustomerID)) == ""
+	if err := req.validate(requireModel); err != nil {
 		return nil, err
 	}
-	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/llm/proxy", reqPayload)
+
+	reqPayload := newResponseRequestPayload(req)
+	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, routes.Responses, reqPayload)
 	if err != nil {
 		return nil, err
 	}
 	httpReq.Header.Set("Accept", "application/json")
-	applyProxyHeaders(httpReq, callOpts)
+	applyResponseHeaders(httpReq, callOpts)
 	resp, retryMeta, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
 	if err != nil {
-		c.client.telemetry.log(ctx, LogLevelError, "proxy_message_failed", map[string]any{"error": err.Error(), "retries": retryMeta})
+		c.client.telemetry.log(ctx, LogLevelError, "responses_create_failed", map[string]any{"error": err.Error(), "retries": retryMeta})
 		return nil, err
 	}
 	//nolint:errcheck // best-effort cleanup on return
 	defer func() { _ = resp.Body.Close() }()
-	var respPayload ProxyResponse
+	var respPayload Response
 	if err := json.NewDecoder(resp.Body).Decode(&respPayload); err != nil {
 		return nil, err
 	}
@@ -55,74 +59,28 @@ func (c *LLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, options 
 	return &respPayload, nil
 }
 
-// ProxyCustomerMessage performs a blocking completion for customer-attributed requests.
-// Unlike ProxyMessage, this does not require a model because the customer's tier determines it.
-// The customerID is sent via the X-ModelRelay-Customer-Id header.
-func (c *LLMClient) ProxyCustomerMessage(ctx context.Context, customerID string, req ProxyRequest, options ...ProxyOption) (*ProxyResponse, error) {
-	if customerID == "" {
-		return nil, fmt.Errorf("customer ID is required")
-	}
-	// Prepend customer ID option so it's applied first
-	options = append([]ProxyOption{WithCustomerID(customerID)}, options...)
-	callOpts := buildProxyCallOptions(options)
+// Stream opens a streaming connection for /responses.
+func (c *ResponsesClient) Stream(ctx context.Context, req ResponseRequest, options ...ResponseOption) (*StreamHandle, error) {
+	callOpts := buildResponseCallOptions(options)
 	if callOpts.retry == nil {
 		cfg := c.client.retryCfg
 		cfg.RetryPost = true
 		callOpts.retry = &cfg
 	}
-	// Validate without requiring model
-	if len(req.Messages) == 0 {
-		return nil, fmt.Errorf("at least one message is required")
-	}
-	payload := newCustomerProxyRequestPayload(req)
-	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/llm/proxy", payload)
-	if err != nil {
-		return nil, err
-	}
-	httpReq.Header.Set("Accept", "application/json")
-	applyProxyHeaders(httpReq, callOpts)
-	resp, retryMeta, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
-	if err != nil {
-		c.client.telemetry.log(ctx, LogLevelError, "proxy_customer_message_failed", map[string]any{"error": err.Error(), "retries": retryMeta})
-		return nil, err
-	}
-	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
-	var respPayload ProxyResponse
-	if err := json.NewDecoder(resp.Body).Decode(&respPayload); err != nil {
-		return nil, err
-	}
-	respPayload.RequestID = requestIDFromHeaders(resp.Header)
-	return &respPayload, nil
-}
 
-// ProxyCustomerStream opens a streaming connection for customer-attributed chat completions.
-// Unlike ProxyStream, this does not require a model because the customer's tier determines it.
-// The customerID is sent via the X-ModelRelay-Customer-Id header.
-func (c *LLMClient) ProxyCustomerStream(ctx context.Context, customerID string, req ProxyRequest, options ...ProxyOption) (*StreamHandle, error) {
-	if customerID == "" {
-		return nil, fmt.Errorf("customer ID is required")
+	requireModel := callOpts.headers == nil || strings.TrimSpace(callOpts.headers.Get(headers.CustomerID)) == ""
+	if err := req.validate(requireModel); err != nil {
+		return nil, err
 	}
-	// Prepend customer ID option so it's applied first
-	options = append([]ProxyOption{WithCustomerID(customerID)}, options...)
-	callOpts := buildProxyCallOptions(options)
-	if callOpts.retry == nil {
-		cfg := c.client.retryCfg
-		cfg.RetryPost = true
-		callOpts.retry = &cfg
-	}
-	// Validate without requiring model
-	if len(req.Messages) == 0 {
-		return nil, fmt.Errorf("at least one message is required")
-	}
-	payload := newCustomerProxyRequestPayload(req)
-	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/llm/proxy", payload)
+
+	payload := newResponseRequestPayload(req)
+	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, routes.Responses, payload)
 	if err != nil {
 		return nil, err
 	}
 	// All streaming uses unified NDJSON format
 	httpReq.Header.Set("Accept", "application/x-ndjson")
-	applyProxyHeaders(httpReq, callOpts)
+	applyResponseHeaders(httpReq, callOpts)
 	startedAt := time.Now()
 	//nolint:bodyclose // resp.Body is transferred to stream and will be closed by stream.Close()
 	resp, _, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
@@ -130,7 +88,7 @@ func (c *LLMClient) ProxyCustomerStream(ctx context.Context, customerID string, 
 		return nil, err
 	}
 	requestID := requestIDFromHeaders(resp.Header)
-	reqCtx := newRequestContext(httpReq.Method, httpReq.URL.Path, req.Model, requestID)
+	reqCtx := newRequestContext(httpReq.Method, httpReq.URL.Path, req.model, requestID)
 	stream := newNDJSONStream(ctx, resp.Body, c.client.telemetry, startedAt, reqCtx)
 	return &StreamHandle{
 		stream:    stream,
@@ -138,66 +96,33 @@ func (c *LLMClient) ProxyCustomerStream(ctx context.Context, customerID string, 
 	}, nil
 }
 
-// ProxyStream opens a streaming connection for chat completions.
-func (c *LLMClient) ProxyStream(ctx context.Context, req ProxyRequest, options ...ProxyOption) (*StreamHandle, error) {
-	callOpts := buildProxyCallOptions(options)
+// StreamJSON streams structured JSON responses for requests that set
+// output_format.type=json_schema. It negotiates NDJSON per the structured
+// streaming contract and decodes each update/completion payload into T.
+func StreamJSON[T any](ctx context.Context, c *ResponsesClient, req ResponseRequest, options ...ResponseOption) (*StructuredJSONStream[T], error) {
+	if req.outputFormat == nil || !req.outputFormat.IsStructured() {
+		return nil, ConfigError{Reason: "output_format with type=json_schema is required for structured streaming"}
+	}
+
+	callOpts := buildResponseCallOptions(options)
 	if callOpts.retry == nil {
 		cfg := c.client.retryCfg
 		cfg.RetryPost = true
 		callOpts.retry = &cfg
 	}
-	payload, err := newProxyRequestPayload(req)
-	if err != nil {
-		return nil, err
-	}
-	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/llm/proxy", payload)
-	if err != nil {
-		return nil, err
-	}
-	// All streaming uses unified NDJSON format
-	httpReq.Header.Set("Accept", "application/x-ndjson")
-	applyProxyHeaders(httpReq, callOpts)
-	startedAt := time.Now()
-	//nolint:bodyclose // resp.Body is transferred to stream and will be closed by stream.Close()
-	resp, _, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
-	if err != nil {
-		return nil, err
-	}
-	requestID := requestIDFromHeaders(resp.Header)
-	reqCtx := newRequestContext(httpReq.Method, httpReq.URL.Path, req.Model, requestID)
-	stream := newNDJSONStream(ctx, resp.Body, c.client.telemetry, startedAt, reqCtx)
-	return &StreamHandle{
-		stream:    stream,
-		RequestID: requestID,
-	}, nil
-}
 
-// ProxyStreamJSON streams structured JSON responses for requests that use
-// response_format with type=json_schema. It negotiates NDJSON per the
-// /llm/proxy structured streaming contract and decodes each update/completion
-// payload into T. The caller is responsible for driving the stream via Next or
-// Collect.
-func ProxyStreamJSON[T any](ctx context.Context, c *LLMClient, req ProxyRequest, options ...ProxyOption) (*StructuredJSONStream[T], error) {
-	if req.ResponseFormat == nil || !req.ResponseFormat.IsStructured() {
-		return nil, ConfigError{Reason: "response_format with type=json_schema is required for structured streaming"}
+	requireModel := callOpts.headers == nil || strings.TrimSpace(callOpts.headers.Get(headers.CustomerID)) == ""
+	if err := req.validate(requireModel); err != nil {
+		return nil, err
 	}
 
-	callOpts := buildProxyCallOptions(options)
-	if callOpts.retry == nil {
-		cfg := c.client.retryCfg
-		cfg.RetryPost = true
-		callOpts.retry = &cfg
-	}
-	payload, err := newProxyRequestPayload(req)
-	if err != nil {
-		return nil, err
-	}
-	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/llm/proxy", payload)
+	payload := newResponseRequestPayload(req)
+	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, routes.Responses, payload)
 	if err != nil {
 		return nil, err
 	}
 	httpReq.Header.Set("Accept", "application/x-ndjson")
-	applyProxyHeaders(httpReq, callOpts)
+	applyResponseHeaders(httpReq, callOpts)
 
 	//nolint:bodyclose // resp.Body is owned by the StructuredJSONStream
 	resp, retryMeta, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
@@ -218,68 +143,37 @@ func ProxyStreamJSON[T any](ctx context.Context, c *LLMClient, req ProxyRequest,
 	return newStructuredJSONStream[T](ctx, resp.Body, requestIDFromHeaders(resp.Header), retryMeta), nil
 }
 
-type proxyRequestPayload struct {
-	Model          string              `json:"model"`
-	MaxTokens      int64               `json:"max_tokens"`
-	Temperature    *float64            `json:"temperature,omitempty"`
-	Messages       []llm.ProxyMessage  `json:"messages"`
-	Stop           []string            `json:"stop,omitempty"`
-	StopSeqs       []string            `json:"stop_sequences,omitempty"`
-	ResponseFormat *llm.ResponseFormat `json:"response_format,omitempty"`
-	Tools          []llm.Tool          `json:"tools,omitempty"`
-	ToolChoice     *llm.ToolChoice     `json:"tool_choice,omitempty"`
+type responseRequestPayload struct {
+	Provider        string            `json:"provider,omitempty"`
+	Model           string            `json:"model,omitempty"`
+	Input           []llm.InputItem   `json:"input"`
+	OutputFormat    *llm.OutputFormat `json:"output_format,omitempty"`
+	MaxOutputTokens int64             `json:"max_output_tokens,omitempty"`
+	Temperature     *float64          `json:"temperature,omitempty"`
+	Stop            []string          `json:"stop,omitempty"`
+	Tools           []llm.Tool        `json:"tools,omitempty"`
+	ToolChoice      *llm.ToolChoice   `json:"tool_choice,omitempty"`
 }
 
-func newProxyRequestPayload(req ProxyRequest) (proxyRequestPayload, error) {
-	if err := req.Validate(); err != nil {
-		return proxyRequestPayload{}, err
+func newResponseRequestPayload(req ResponseRequest) responseRequestPayload {
+	payload := responseRequestPayload{
+		Input:           req.input,
+		OutputFormat:    req.outputFormat,
+		MaxOutputTokens: req.maxOutputTokens,
+		Temperature:     req.temperature,
+		ToolChoice:      req.toolChoice,
 	}
-
-	payload := proxyRequestPayload{
-		Model:          req.Model.String(),
-		MaxTokens:      req.MaxTokens,
-		Temperature:    req.Temperature,
-		Messages:       req.Messages,
-		ResponseFormat: req.ResponseFormat,
+	if !req.provider.IsEmpty() {
+		payload.Provider = req.provider.String()
 	}
-	if len(req.Stop) > 0 {
-		payload.Stop = req.Stop
+	if !req.model.IsEmpty() {
+		payload.Model = req.model.String()
 	}
-	if len(req.StopSequences) > 0 {
-		payload.StopSeqs = req.StopSequences
+	if len(req.stop) > 0 {
+		payload.Stop = req.stop
 	}
-	if len(req.Tools) > 0 {
-		payload.Tools = req.Tools
-	}
-	if req.ToolChoice != nil {
-		payload.ToolChoice = req.ToolChoice
-	}
-	return payload, nil
-}
-
-// newCustomerProxyRequestPayload builds a payload for customer-attributed requests.
-// Unlike newProxyRequestPayload, this does NOT call Validate() because model validation
-// would fail - the customer's tier determines the model on the server side.
-// Callers must validate required fields (e.g., messages) before calling this function.
-func newCustomerProxyRequestPayload(req ProxyRequest) proxyRequestPayload {
-	payload := proxyRequestPayload{
-		// Model is intentionally omitted - tier determines it
-		MaxTokens:      req.MaxTokens,
-		Temperature:    req.Temperature,
-		Messages:       req.Messages,
-		ResponseFormat: req.ResponseFormat,
-	}
-	if len(req.Stop) > 0 {
-		payload.Stop = req.Stop
-	}
-	if len(req.StopSequences) > 0 {
-		payload.StopSeqs = req.StopSequences
-	}
-	if len(req.Tools) > 0 {
-		payload.Tools = req.Tools
-	}
-	if req.ToolChoice != nil {
-		payload.ToolChoice = req.ToolChoice
+	if len(req.tools) > 0 {
+		payload.Tools = req.tools
 	}
 	return payload
 }
@@ -533,7 +427,7 @@ func requestIDFromHeaders(h http.Header) string {
 	if h == nil {
 		return ""
 	}
-	if id := h.Get(headers.ChatRequestID); id != "" {
+	if id := h.Get(headers.RequestID); id != "" {
 		return id
 	}
 	return ""

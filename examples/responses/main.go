@@ -23,12 +23,18 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 
-	stream, err := client.LLM.Chat(sdk.NewModelID("gpt-5.1")).
-		MaxTokens(64).
+	req, opts, err := client.Responses.New().
+		Model(sdk.NewModelID("gpt-5.1")).
+		MaxOutputTokens(64).
 		System("You are a witty assistant.").
 		User("Tell me a short joke").
 		RequestID("example-stream-1").
-		Stream(ctx)
+		Build()
+	if err != nil {
+		cancel()
+		log.Fatal(err)
+	}
+	stream, err := client.Responses.Stream(ctx, req, opts...)
 	if err != nil {
 		cancel()
 		log.Fatal(err)
@@ -38,7 +44,7 @@ func main() {
 	defer func() { _ = stream.Close() }()
 
 	for {
-		chunk, ok, err := stream.Next()
+		event, ok, err := stream.Next()
 		if err != nil {
 			//nolint:errcheck // best-effort cleanup before exit
 			_ = stream.Close()
@@ -50,15 +56,15 @@ func main() {
 		if !ok {
 			break
 		}
-		if chunk.TextDelta != "" {
-			log.Printf("delta: %s", chunk.TextDelta)
+		if event.TextDelta != "" {
+			log.Printf("delta: %s", event.TextDelta)
 			continue
 		}
-		if chunk.Type == llm.StreamEventKindMessageStop && chunk.Usage != nil {
-			log.Printf("stop: reason=%s usage=%+v", chunk.StopReason, *chunk.Usage)
+		if event.Kind == llm.StreamEventKindMessageStop && event.Usage != nil {
+			log.Printf("stop: reason=%s usage=%+v", event.StopReason, *event.Usage)
 			continue
 		}
-		log.Printf("event=%s data=%s", chunk.Type, string(chunk.Raw.Data))
+		log.Printf("event=%s data=%s", event.Kind, string(event.Data))
 	}
-	log.Printf("request id: %s", stream.RequestID())
+	log.Printf("request id: %s", stream.RequestID)
 }

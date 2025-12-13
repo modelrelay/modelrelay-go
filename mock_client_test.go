@@ -10,12 +10,12 @@ import (
 
 func TestMockClient_ProxyMessageQueue(t *testing.T) {
 	mock := NewMockClient().
-		WithProxyResponse(ProxyResponse{Content: []string{"one"}}).
-		WithProxyError(errors.New("boom"))
+		WithResponse(Response{Output: []llm.OutputItem{{Type: llm.OutputItemTypeMessage, Role: llm.RoleAssistant, Content: []llm.ContentPart{llm.TextPart("one")}}}}).
+		WithResponseError(errors.New("boom"))
 
-	req := ProxyRequest{Model: NewModelID("demo"), Messages: []llm.ProxyMessage{{Role: llm.RoleUser, Content: "hi"}}}
+	req := ResponseRequest{model: NewModelID("demo"), input: []llm.InputItem{llm.NewUserText("hi")}}
 
-	resp, err := mock.LLM.ProxyMessage(context.Background(), req)
+	resp, err := mock.Responses.Create(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -23,12 +23,12 @@ func TestMockClient_ProxyMessageQueue(t *testing.T) {
 		t.Fatalf("expected first response text 'one', got %q", resp.Text())
 	}
 
-	_, err = mock.LLM.ProxyMessage(context.Background(), req)
+	_, err = mock.Responses.Create(context.Background(), req)
 	if err == nil || err.Error() != "boom" {
 		t.Fatalf("expected queued error, got %v", err)
 	}
 
-	_, err = mock.LLM.ProxyMessage(context.Background(), req)
+	_, err = mock.Responses.Create(context.Background(), req)
 	var mErr MockClientError
 	if err == nil || !errors.As(err, &mErr) {
 		t.Fatalf("expected MockClientError when queue exhausted, got %T %v", err, err)
@@ -43,9 +43,9 @@ func TestMockClient_ProxyStreamEvents(t *testing.T) {
 	}
 	mock := NewMockClient().WithStreamEvents(events)
 
-	req := ProxyRequest{Model: NewModelID("demo"), Messages: []llm.ProxyMessage{{Role: llm.RoleUser, Content: "hi"}}}
+	req := ResponseRequest{model: NewModelID("demo"), input: []llm.InputItem{llm.NewUserText("hi")}}
 
-	stream, err := mock.LLM.ProxyStream(context.Background(), req)
+	stream, err := mock.Responses.Stream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error creating stream: %v", err)
 	}

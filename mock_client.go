@@ -2,15 +2,16 @@ package sdk
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
+
+	"github.com/modelrelay/modelrelay/platform/headers"
 )
 
 // MockClient provides an in-memory client for unit tests without hitting the API.
-// It currently supports the LLM surface area (ProxyMessage/ProxyStream).
+// It currently supports the Responses surface area (Create/Stream).
 type MockClient struct {
-	LLM *MockLLMClient
+	Responses *MockResponsesClient
 }
 
 // MockClientError is returned when a mock client is used without configuration.
@@ -21,7 +22,7 @@ type MockClientError struct {
 func (e MockClientError) Error() string { return "mock client: " + e.Reason }
 
 type mockProxyResult struct {
-	resp ProxyResponse
+	resp Response
 	err  error
 }
 
@@ -30,8 +31,8 @@ type mockStreamResult struct {
 	err    error
 }
 
-// MockLLMClient implements LLMClient methods using preconfigured responses.
-type MockLLMClient struct {
+// MockResponsesClient implements ResponsesClient methods using preconfigured responses.
+type MockResponsesClient struct {
 	mu          sync.Mutex
 	proxyQueue  []mockProxyResult
 	streamQueue []mockStreamResult
@@ -39,48 +40,48 @@ type MockLLMClient struct {
 
 // NewMockClient creates an empty mock client.
 func NewMockClient() *MockClient {
-	llmClient := &MockLLMClient{}
-	return &MockClient{LLM: llmClient}
+	responses := &MockResponsesClient{}
+	return &MockClient{Responses: responses}
 }
 
-// WithProxyResponse enqueues a blocking ProxyResponse for the next ProxyMessage call.
-func (c *MockClient) WithProxyResponse(resp ProxyResponse) *MockClient {
-	c.LLM.enqueueProxy(resp, nil)
+// WithResponse enqueues a blocking Response for the next Create call.
+func (c *MockClient) WithResponse(resp Response) *MockClient {
+	c.Responses.enqueueProxy(resp, nil)
 	return c
 }
 
-// WithProxyError enqueues an error for the next ProxyMessage call.
-func (c *MockClient) WithProxyError(err error) *MockClient {
-	c.LLM.enqueueProxy(ProxyResponse{}, err)
+// WithResponseError enqueues an error for the next Create call.
+func (c *MockClient) WithResponseError(err error) *MockClient {
+	c.Responses.enqueueProxy(Response{}, err)
 	return c
 }
 
-// WithStreamEvents enqueues a stream of events for the next ProxyStream call.
+// WithStreamEvents enqueues a stream of events for the next Stream call.
 func (c *MockClient) WithStreamEvents(events []StreamEvent) *MockClient {
-	c.LLM.enqueueStream(events, nil)
+	c.Responses.enqueueStream(events, nil)
 	return c
 }
 
-// WithStreamError enqueues an error for the next ProxyStream call.
+// WithStreamError enqueues an error for the next Stream call.
 func (c *MockClient) WithStreamError(err error) *MockClient {
-	c.LLM.enqueueStream(nil, err)
+	c.Responses.enqueueStream(nil, err)
 	return c
 }
 
-func (c *MockLLMClient) enqueueProxy(resp ProxyResponse, err error) {
+func (c *MockResponsesClient) enqueueProxy(resp Response, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.proxyQueue = append(c.proxyQueue, mockProxyResult{resp: resp, err: err})
 }
 
-func (c *MockLLMClient) enqueueStream(events []StreamEvent, err error) {
+func (c *MockResponsesClient) enqueueStream(events []StreamEvent, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	copied := append([]StreamEvent(nil), events...)
 	c.streamQueue = append(c.streamQueue, mockStreamResult{events: copied, err: err})
 }
 
-func (c *MockLLMClient) dequeueProxy() (mockProxyResult, error) {
+func (c *MockResponsesClient) dequeueProxy() (mockProxyResult, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if len(c.proxyQueue) == 0 {
@@ -91,7 +92,7 @@ func (c *MockLLMClient) dequeueProxy() (mockProxyResult, error) {
 	return res, nil
 }
 
-func (c *MockLLMClient) dequeueStream() (mockStreamResult, error) {
+func (c *MockResponsesClient) dequeueStream() (mockStreamResult, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if len(c.streamQueue) == 0 {
@@ -102,9 +103,11 @@ func (c *MockLLMClient) dequeueStream() (mockStreamResult, error) {
 	return res, nil
 }
 
-// ProxyMessage returns the next queued ProxyResponse or error.
-func (c *MockLLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, _ ...ProxyOption) (*ProxyResponse, error) {
-	if err := req.Validate(); err != nil {
+// Create returns the next queued Response or error.
+func (c *MockResponsesClient) Create(ctx context.Context, req ResponseRequest, opts ...ResponseOption) (*Response, error) {
+	callOpts := buildResponseCallOptions(opts)
+	requireModel := strings.TrimSpace(callOpts.headers.Get(headers.CustomerID)) == ""
+	if err := req.validate(requireModel); err != nil {
 		return nil, err
 	}
 	res, err := c.dequeueProxy()
@@ -118,47 +121,12 @@ func (c *MockLLMClient) ProxyMessage(ctx context.Context, req ProxyRequest, _ ..
 	return &respCopy, nil
 }
 
-// ProxyCustomerMessage behaves like ProxyMessage but does not require a model.
-func (c *MockLLMClient) ProxyCustomerMessage(ctx context.Context, customerID string, req ProxyRequest, _ ...ProxyOption) (*ProxyResponse, error) {
-	if strings.TrimSpace(customerID) == "" {
-		return nil, fmt.Errorf("customer ID is required")
-	}
-	if len(req.Messages) == 0 {
-		return nil, fmt.Errorf("at least one message is required")
-	}
-	res, err := c.dequeueProxy()
-	if err != nil {
+// Stream returns a StreamHandle that yields the next queued events.
+func (c *MockResponsesClient) Stream(ctx context.Context, req ResponseRequest, opts ...ResponseOption) (*StreamHandle, error) {
+	callOpts := buildResponseCallOptions(opts)
+	requireModel := strings.TrimSpace(callOpts.headers.Get(headers.CustomerID)) == ""
+	if err := req.validate(requireModel); err != nil {
 		return nil, err
-	}
-	if res.err != nil {
-		return nil, res.err
-	}
-	respCopy := res.resp
-	return &respCopy, nil
-}
-
-// ProxyStream returns a StreamHandle that yields the next queued events.
-func (c *MockLLMClient) ProxyStream(ctx context.Context, req ProxyRequest, _ ...ProxyOption) (*StreamHandle, error) {
-	if err := req.Validate(); err != nil {
-		return nil, err
-	}
-	res, err := c.dequeueStream()
-	if err != nil {
-		return nil, err
-	}
-	if res.err != nil {
-		return nil, res.err
-	}
-	return &StreamHandle{stream: &mockStreamReader{events: res.events}}, nil
-}
-
-// ProxyCustomerStream behaves like ProxyStream but does not require a model.
-func (c *MockLLMClient) ProxyCustomerStream(ctx context.Context, customerID string, req ProxyRequest, _ ...ProxyOption) (*StreamHandle, error) {
-	if strings.TrimSpace(customerID) == "" {
-		return nil, fmt.Errorf("customer ID is required")
-	}
-	if len(req.Messages) == 0 {
-		return nil, fmt.Errorf("at least one message is required")
 	}
 	res, err := c.dequeueStream()
 	if err != nil {

@@ -115,7 +115,7 @@ type Client struct {
 	retryCfg       RetryConfig
 
 	// Grouped service clients.
-	LLM       *LLMClient
+	Responses *ResponsesClient
 	Usage     *UsageClient
 	Auth      *AuthClient
 	Customers *CustomersClient
@@ -213,7 +213,7 @@ func newClientFromOptions(apiKey, accessToken string, opts clientOptions) (*Clie
 		requestTimeout: resolveRequestTimeout(opts.requestTimeout),
 		retryCfg:       retryCfg,
 	}
-	client.LLM = &LLMClient{client: client}
+	client.Responses = &ResponsesClient{client: client}
 	client.Usage = &UsageClient{client: client}
 	client.Auth = &AuthClient{client: client}
 	client.Customers = &CustomersClient{client: client}

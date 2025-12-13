@@ -194,18 +194,18 @@ func TestMustSchemaFromType(t *testing.T) {
 	}
 }
 
-func TestResponseFormatFromType(t *testing.T) {
+func TestOutputFormatFromType(t *testing.T) {
 	type Person struct {
 		Name string `json:"name"`
 		Age  int    `json:"age"`
 	}
 
-	rf, err := ResponseFormatFromType[Person]("person")
+	rf, err := OutputFormatFromType[Person]("person")
 	if err != nil {
-		t.Fatalf("ResponseFormatFromType failed: %v", err)
+		t.Fatalf("OutputFormatFromType failed: %v", err)
 	}
 
-	if rf.Type != llm.ResponseFormatTypeJSONSchema {
+	if rf.Type != llm.OutputFormatTypeJSONSchema {
 		t.Errorf("Expected type=json_schema, got %v", rf.Type)
 	}
 
@@ -226,13 +226,13 @@ func TestResponseFormatFromType(t *testing.T) {
 	}
 }
 
-func TestMustResponseFormatFromType(t *testing.T) {
+func TestMustOutputFormatFromType(t *testing.T) {
 	type Simple struct {
 		Value string `json:"value"`
 	}
 
 	// Should not panic
-	rf := MustResponseFormatFromType[Simple]("simple")
+	rf := MustOutputFormatFromType[Simple]("simple")
 	if rf.JSONSchema.Name != "simple" {
 		t.Errorf("Expected name=simple, got %v", rf.JSONSchema.Name)
 	}

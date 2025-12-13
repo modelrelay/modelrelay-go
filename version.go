@@ -1,10 +1,13 @@
 package sdk
 
 // Version is the published SDK version.
+// 0.38.0: Breaking - Responses-first API with pure /responses builders; drop chat completions;
+// rename request ID header; fail fast on invalid structured stream records;
+// move structured retry loop into client layer.
 // 0.37.0: Breaking - Strengthen Go SDK types for tier codes, customer external IDs,
 // tier IDs in customer requests, and API key ids/kind (#499).
 // 0.37.1: Docs - Add blocking chat example to README.
-// 0.36.0: Add MockClient for testing, ProxyResponse content helpers, TTFT telemetry hook,
+// 0.36.0: Add MockClient for testing, response content helpers, TTFT telemetry hook,
 // and tighten NDJSON/error parsing parity with Rust SDK (#499).
 // 0.33.0: Add InputPricePerMillionCents and OutputPricePerMillionCents fields to Tier struct
 // for per-tier token pricing (#476).
@@ -24,11 +27,11 @@ package sdk
 // CustomerID, CustomerExternal). Claims now has explicit fields instead of Scope []string.
 // 0.26.0: Breaking - Add ChatForCustomer(customerID) for customer-attributed requests where tier
 // determines model. This separates customer flow (no model param) from direct flow (model required).
-// 0.34.0: Breaking - Remove unused Metadata field from ProxyRequest and all builder methods.
+// 0.34.0: Breaking - Remove unused Metadata field from responses requests and builder methods.
 // Metadata was accepted but never used by providers or stored.
 // 0.24.0: Add package-level error helpers: IsEmailRequired, IsNoFreeTier, IsNoTiers, IsProvisioningError.
 // 0.23.0: Breaking - FrontendTokenRequest requires customer_id, add EMAIL_REQUIRED error code,
 // Rich Hickey-style design with separate types for auto-provisioning.
 // 0.35.0: CustomersClient.Claim now works with publishable keys (mr_pk_*) for user self-service.
 // Enables CLI tools and frontends to link Stripe subscriptions to user identities.
-const Version = "0.37.1"
+const Version = "0.38.0"

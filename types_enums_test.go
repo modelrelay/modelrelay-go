@@ -1,8 +1,9 @@
 package sdk
 
 import (
-	llm "github.com/modelrelay/modelrelay/providers"
 	"testing"
+
+	llm "github.com/modelrelay/modelrelay/providers"
 )
 
 func TestStopReasonParsingAndOther(t *testing.T) {
@@ -30,21 +31,22 @@ func TestProviderAndModelParsing(t *testing.T) {
 	}
 }
 
-func TestProxyRequestBuilderValidation(t *testing.T) {
-	_, err := NewProxyRequestBuilder("").Build()
+func TestResponseBuilderValidation(t *testing.T) {
+	_, _, err := (&ResponsesClient{}).New().Build()
 	if err == nil {
-		t.Fatalf("expected missing model validation error")
+		t.Fatalf("expected validation error")
 	}
 
-	_, err = NewProxyRequest(NewModelID("gpt-5.1"), []llm.ProxyMessage{})
+	_, _, err = (&ResponsesClient{}).New().Model(NewModelID("gpt-5.1")).Build()
 	if err == nil {
-		t.Fatalf("expected validation error for empty messages")
+		t.Fatalf("expected validation error for empty input")
 	}
 
-	req, err := NewProxyRequestBuilder(NewModelID("gpt-5.1")).
+	req, _, err := (&ResponsesClient{}).New().
+		Model(NewModelID("gpt-5.1")).
 		User("hello").
-		ResponseFormat(llm.ResponseFormat{
-			Type: llm.ResponseFormatTypeJSONSchema,
+		OutputFormat(llm.OutputFormat{
+			Type: llm.OutputFormatTypeJSONSchema,
 			JSONSchema: &llm.JSONSchemaFormat{
 				Name:   "test",
 				Schema: []byte(`{"type":"object"}`),
@@ -54,7 +56,7 @@ func TestProxyRequestBuilderValidation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected builder error: %v", err)
 	}
-	if len(req.Messages) != 1 || req.ResponseFormat == nil || req.ResponseFormat.Type != llm.ResponseFormatTypeJSONSchema {
+	if len(req.input) != 1 || req.outputFormat == nil || req.outputFormat.Type != llm.OutputFormatTypeJSONSchema {
 		t.Fatalf("builder failed: %+v", req)
 	}
 }

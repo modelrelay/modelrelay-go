@@ -276,7 +276,11 @@ func TestCreateRetryMessages(t *testing.T) {
 	if messages[0].ToolCallID != "call_2" {
 		t.Errorf("expected tool_call_id 'call_2', got '%s'", messages[0].ToolCallID)
 	}
-	if !contains(messages[0].Content, "Tool call error") {
+	text := ""
+	if len(messages[0].Content) > 0 {
+		text = messages[0].Content[0].Text
+	}
+	if !contains(text, "Tool call error") {
 		t.Error("expected message content to contain 'Tool call error'")
 	}
 }
@@ -297,7 +301,7 @@ func TestExecuteWithRetry(t *testing.T) {
 		retryCount := 0
 		results, err := ExecuteWithRetry(registry, calls, RetryOptions{
 			MaxRetries: 2,
-			OnRetry: func(messages []llm.ProxyMessage, attempt int) ([]llm.ToolCall, error) {
+			OnRetry: func(messages []llm.InputItem, attempt int) ([]llm.ToolCall, error) {
 				retryCount++
 				return nil, nil
 			},
@@ -333,7 +337,7 @@ func TestExecuteWithRetry(t *testing.T) {
 		retryCount := 0
 		results, err := ExecuteWithRetry(registry, calls, RetryOptions{
 			MaxRetries: 2,
-			OnRetry: func(messages []llm.ProxyMessage, attempt int) ([]llm.ToolCall, error) {
+			OnRetry: func(messages []llm.InputItem, attempt int) ([]llm.ToolCall, error) {
 				retryCount++
 				// Return corrected tool call
 				return []llm.ToolCall{{
@@ -373,7 +377,7 @@ func TestExecuteWithRetry(t *testing.T) {
 		retryCount := 0
 		results, err := ExecuteWithRetry(registry, calls, RetryOptions{
 			MaxRetries: 2,
-			OnRetry: func(messages []llm.ProxyMessage, attempt int) ([]llm.ToolCall, error) {
+			OnRetry: func(messages []llm.InputItem, attempt int) ([]llm.ToolCall, error) {
 				retryCount++
 				// Keep returning invalid JSON
 				return []llm.ToolCall{{
@@ -422,7 +426,7 @@ func TestExecuteWithRetry(t *testing.T) {
 		retryCount := 0
 		results, err := ExecuteWithRetry(registry, calls, RetryOptions{
 			MaxRetries: 2,
-			OnRetry: func(messages []llm.ProxyMessage, attempt int) ([]llm.ToolCall, error) {
+			OnRetry: func(messages []llm.InputItem, attempt int) ([]llm.ToolCall, error) {
 				retryCount++
 				// Return corrected tool call only for the failing one
 				return []llm.ToolCall{{
@@ -637,8 +641,8 @@ func TestNewUserMessage(t *testing.T) {
 	if msg.Role != "user" {
 		t.Errorf("expected role 'user', got '%s'", msg.Role)
 	}
-	if msg.Content != "Hello, world!" {
-		t.Errorf("expected content 'Hello, world!', got '%s'", msg.Content)
+	if len(msg.Content) == 0 || msg.Content[0].Text != "Hello, world!" {
+		t.Errorf("expected content 'Hello, world!', got %+v", msg.Content)
 	}
 }
 
@@ -647,8 +651,8 @@ func TestNewAssistantMessage(t *testing.T) {
 	if msg.Role != "assistant" {
 		t.Errorf("expected role 'assistant', got '%s'", msg.Role)
 	}
-	if msg.Content != "I can help with that." {
-		t.Errorf("expected content 'I can help with that.', got '%s'", msg.Content)
+	if len(msg.Content) == 0 || msg.Content[0].Text != "I can help with that." {
+		t.Errorf("expected content 'I can help with that.', got %+v", msg.Content)
 	}
 }
 
@@ -657,8 +661,8 @@ func TestNewSystemMessage(t *testing.T) {
 	if msg.Role != "system" {
 		t.Errorf("expected role 'system', got '%s'", msg.Role)
 	}
-	if msg.Content != "You are a helpful assistant." {
-		t.Errorf("expected content 'You are a helpful assistant.', got '%s'", msg.Content)
+	if len(msg.Content) == 0 || msg.Content[0].Text != "You are a helpful assistant." {
+		t.Errorf("expected content 'You are a helpful assistant.', got %+v", msg.Content)
 	}
 }
 
@@ -725,7 +729,7 @@ func TestNewUsage(t *testing.T) {
 // Tool Result Message Tests
 // ============================================================================
 
-// Ensure ProxyMessage has proper JSON marshaling for test comparison
+// Ensure tool result input items have proper JSON marshaling for test comparison
 func TestToolResultMessage(t *testing.T) {
 	msg, err := ToolResultMessage("call_123", "sunny")
 	if err != nil {
@@ -734,8 +738,8 @@ func TestToolResultMessage(t *testing.T) {
 	if msg.Role != "tool" {
 		t.Errorf("expected role 'tool', got '%s'", msg.Role)
 	}
-	if msg.Content != "sunny" {
-		t.Errorf("expected content 'sunny', got '%s'", msg.Content)
+	if len(msg.Content) == 0 || msg.Content[0].Text != "sunny" {
+		t.Errorf("expected content 'sunny', got %+v", msg.Content)
 	}
 	if msg.ToolCallID != "call_123" {
 		t.Errorf("expected tool_call_id 'call_123', got '%s'", msg.ToolCallID)
@@ -754,7 +758,10 @@ func TestToolResultMessageWithJSON(t *testing.T) {
 
 	// Verify JSON content
 	var parsed map[string]any
-	if err := json.Unmarshal([]byte(msg.Content), &parsed); err != nil {
+	if len(msg.Content) == 0 {
+		t.Fatalf("expected content")
+	}
+	if err := json.Unmarshal([]byte(msg.Content[0].Text), &parsed); err != nil {
 		t.Errorf("expected valid JSON content, got error: %v", err)
 	}
 }

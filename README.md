@@ -4,36 +4,42 @@
 go get github.com/modelrelay/modelrelay/sdk/go
 ```
 
-## Chat (Blocking)
+## Responses (Blocking)
 
 ```go
-client, _ := sdk.NewClient(sdk.Config{APIKey: os.Getenv("MODELRELAY_API_KEY")})
+ctx := context.Background()
+client, _ := sdk.NewClientWithKey(os.Getenv("MODELRELAY_API_KEY"))
 
-resp, _ := client.LLM.Chat(sdk.NewModelID("claude-sonnet-4-20250514")).
+req, callOpts, _ := client.Responses.New().
+    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
     System("You are helpful.").
     User("Hello!").
-    Send(ctx)
+    Build()
+resp, _ := client.Responses.Create(ctx, req, callOpts...)
 
 fmt.Println(resp.Text())
 ```
 
-## Streaming Chat
+## Streaming Responses
 
 ```go
-client, _ := sdk.NewClient(sdk.Config{APIKey: os.Getenv("MODELRELAY_API_KEY")})
+ctx := context.Background()
+client, _ := sdk.NewClientWithKey(os.Getenv("MODELRELAY_API_KEY"))
 
-stream, _ := client.LLM.Chat(sdk.NewModelID("claude-sonnet-4-20250514")).
+req, callOpts, _ := client.Responses.New().
+    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
     System("You are helpful.").
     User("Hello!").
-    Stream(ctx)
+    Build()
+stream, _ := client.Responses.Stream(ctx, req, callOpts...)
 defer stream.Close()
 
 for {
-    chunk, ok, _ := stream.Next()
+    event, ok, _ := stream.Next()
     if !ok {
         break
     }
-    fmt.Print(chunk.TextDelta)
+    fmt.Print(event.TextDelta)
 }
 ```
 
@@ -45,10 +51,12 @@ type Person struct {
     Age  int    `json:"age"`
 }
 
-result, _ := sdk.Structured[Person](ctx, client.LLM, sdk.ProxyRequest{
-    Model:    sdk.NewModelID("claude-sonnet-4-20250514"),
-    Messages: []llm.ProxyMessage{{Role: "user", Content: "Extract: John Doe is 30"}},
-}, sdk.StructuredOptions{MaxRetries: 2})
+ctx := context.Background()
+req, callOpts, _ := client.Responses.New().
+    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    User("Extract: John Doe is 30").
+    Build()
+result, _ := sdk.Structured[Person](ctx, client.Responses, req, sdk.StructuredOptions{MaxRetries: 2}, callOpts...)
 
 fmt.Printf("Name: %s, Age: %d\n", result.Value.Name, result.Value.Age)
 ```
@@ -64,10 +72,12 @@ type Article struct {
     Body    string `json:"body"`
 }
 
-stream, _ := sdk.StreamStructured[Article](ctx, client.LLM, sdk.ProxyRequest{
-    Model:    sdk.NewModelID("claude-sonnet-4-20250514"),
-    Messages: []llm.ProxyMessage{{Role: "user", Content: "Write an article about Go"}},
-})
+ctx := context.Background()
+req, callOpts, _ := client.Responses.New().
+    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    User("Write an article about Go").
+    Build()
+stream, _ := sdk.StreamStructured[Article](ctx, client.Responses, req, "", callOpts...)
 defer stream.Close()
 
 for {
@@ -93,12 +103,15 @@ for {
 
 ## Customer-Attributed Requests
 
-For metered billing, use `ChatForCustomer` — the customer's tier determines the model:
+For metered billing, use `CustomerID` — the customer's tier determines the model:
 
 ```go
-resp, _ := client.LLM.ChatForCustomer("customer-123").
+ctx := context.Background()
+req, callOpts, _ := client.Responses.New().
+    CustomerID("customer-123").
     User("Hello!").
-    Send(ctx)
+    Build()
+resp, _ := client.Responses.Create(ctx, req, callOpts...)
 ```
 
 ## Customer Management (Backend)
@@ -124,10 +137,9 @@ status, _ := client.Customers.GetSubscription(ctx, customer.ID)
 ## Configuration
 
 ```go
-client, _ := sdk.NewClient(sdk.Config{
-    APIKey:         "mr_sk_...",
-    Environment:    sdk.EnvironmentProduction,
-    ConnectTimeout: sdk.DurationPtr(5 * time.Second),
-    Retry:          &sdk.RetryConfig{MaxAttempts: 3},
-})
+client, _ := sdk.NewClientWithKey(
+    "mr_sk_...",
+    sdk.WithConnectTimeout(5*time.Second),
+    sdk.WithRetryConfig(sdk.RetryConfig{MaxAttempts: 3}),
+)
 ```

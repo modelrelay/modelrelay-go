@@ -12,19 +12,19 @@ import (
 // Message Factory Functions
 // ============================================================================
 
-// NewUserMessage creates a user message.
-func NewUserMessage(content string) llm.ProxyMessage {
-	return llm.ProxyMessage{Role: llm.RoleUser, Content: content}
+// NewUserMessage creates a user input message.
+func NewUserMessage(content string) llm.InputItem {
+	return llm.NewUserText(content)
 }
 
-// NewAssistantMessage creates an assistant message.
-func NewAssistantMessage(content string) llm.ProxyMessage {
-	return llm.ProxyMessage{Role: llm.RoleAssistant, Content: content}
+// NewAssistantMessage creates an assistant input message.
+func NewAssistantMessage(content string) llm.InputItem {
+	return llm.NewAssistantText(content)
 }
 
-// NewSystemMessage creates a system message.
-func NewSystemMessage(content string) llm.ProxyMessage {
-	return llm.ProxyMessage{Role: llm.RoleSystem, Content: content}
+// NewSystemMessage creates a system input message.
+func NewSystemMessage(content string) llm.InputItem {
+	return llm.NewSystemText(content)
 }
 
 // ============================================================================
@@ -478,46 +478,66 @@ func ToolChoiceNone() *llm.ToolChoice {
 	return &llm.ToolChoice{Type: llm.ToolChoiceNone}
 }
 
-// HasToolCalls returns true if the response contains tool calls.
-func (r *ProxyResponse) HasToolCalls() bool {
-	return len(r.ToolCalls) > 0
+// HasToolCalls returns true if any output item contains tool calls.
+func (r *Response) HasToolCalls() bool {
+	return len(r.ToolCalls()) > 0
 }
 
 // FirstToolCall returns the first tool call, or nil if none exist.
-func (r *ProxyResponse) FirstToolCall() *llm.ToolCall {
-	if len(r.ToolCalls) == 0 {
+func (r *Response) FirstToolCall() *llm.ToolCall {
+	calls := r.ToolCalls()
+	if len(calls) == 0 {
 		return nil
 	}
-	return &r.ToolCalls[0]
+	return &calls[0]
 }
 
-// Text returns the first content block or an empty string if none exist.
-func (r *ProxyResponse) Text() string {
-	if r == nil || len(r.Content) == 0 {
+// ToolCalls returns all tool calls in output order.
+func (r *Response) ToolCalls() []llm.ToolCall {
+	if r == nil {
+		return nil
+	}
+	var out []llm.ToolCall
+	for _, item := range r.Output {
+		out = append(out, item.ToolCalls...)
+	}
+	return out
+}
+
+// Text returns the first text content part or an empty string if none exist.
+func (r *Response) Text() string {
+	if r == nil {
 		return ""
 	}
-	return r.Content[0]
-}
-
-// FirstContent returns the first content block and whether it exists.
-func (r *ProxyResponse) FirstContent() (string, bool) {
-	if r == nil || len(r.Content) == 0 {
-		return "", false
+	for _, item := range r.Output {
+		for _, part := range item.Content {
+			if part.Type == llm.ContentPartTypeText && part.Text != "" {
+				return part.Text
+			}
+		}
 	}
-	return r.Content[0], true
+	return ""
 }
 
-// AllText joins all content blocks into a single string.
-func (r *ProxyResponse) AllText() string {
-	if r == nil || len(r.Content) == 0 {
+// AllText joins all text content parts across output items.
+func (r *Response) AllText() string {
+	if r == nil {
 		return ""
 	}
-	return strings.Join(r.Content, "")
+	var b strings.Builder
+	for _, item := range r.Output {
+		for _, part := range item.Content {
+			if part.Type == llm.ContentPartTypeText {
+				b.WriteString(part.Text)
+			}
+		}
+	}
+	return b.String()
 }
 
 // ToolResultMessage creates a message containing the result of a tool call.
 // The result parameter should be a JSON-encodable value or a string.
-func ToolResultMessage(toolCallID string, result any) (llm.ProxyMessage, error) {
+func ToolResultMessage(toolCallID string, result any) (llm.InputItem, error) {
 	var content string
 	switch v := result.(type) {
 	case string:
@@ -529,19 +549,15 @@ func ToolResultMessage(toolCallID string, result any) (llm.ProxyMessage, error) 
 	default:
 		data, err := json.Marshal(result)
 		if err != nil {
-			return llm.ProxyMessage{}, err
+			return llm.InputItem{}, err
 		}
 		content = string(data)
 	}
-	return llm.ProxyMessage{
-		Role:       llm.RoleTool,
-		Content:    content,
-		ToolCallID: toolCallID,
-	}, nil
+	return llm.NewToolResultText(toolCallID, content), nil
 }
 
 // MustToolResultMessage creates a tool result message, panicking on error.
-func MustToolResultMessage(toolCallID string, result any) llm.ProxyMessage {
+func MustToolResultMessage(toolCallID string, result any) llm.InputItem {
 	msg, err := ToolResultMessage(toolCallID, result)
 	if err != nil {
 		panic(err)
@@ -551,18 +567,16 @@ func MustToolResultMessage(toolCallID string, result any) llm.ProxyMessage {
 
 // RespondToToolCall creates a tool result message from a ToolCall.
 // Convenience wrapper around ToolResultMessage using the call's ID.
-func RespondToToolCall(call llm.ToolCall, result any) (llm.ProxyMessage, error) {
+func RespondToToolCall(call llm.ToolCall, result any) (llm.InputItem, error) {
 	return ToolResultMessage(call.ID, result)
 }
 
 // AssistantMessageWithToolCalls creates an assistant message that includes tool calls.
 // This is used to include the assistant's tool-calling turn in conversation history.
-func AssistantMessageWithToolCalls(content string, toolCalls []llm.ToolCall) llm.ProxyMessage {
-	return llm.ProxyMessage{
-		Role:      llm.RoleAssistant,
-		Content:   content,
-		ToolCalls: toolCalls,
-	}
+func AssistantMessageWithToolCalls(content string, toolCalls []llm.ToolCall) llm.InputItem {
+	item := llm.NewAssistantText(content)
+	item.ToolCalls = toolCalls
+	return item
 }
 
 // ToolCallAccumulator helps accumulate streaming tool call deltas into complete tool calls.
@@ -945,8 +959,8 @@ func (r *ToolRegistry) ExecuteAll(calls []llm.ToolCall) []ToolExecutionResult {
 
 // ResultsToMessages converts execution results to tool result messages.
 // Useful for appending to the conversation history.
-func (r *ToolRegistry) ResultsToMessages(results []ToolExecutionResult) []llm.ProxyMessage {
-	messages := make([]llm.ProxyMessage, len(results))
+func (r *ToolRegistry) ResultsToMessages(results []ToolExecutionResult) []llm.InputItem {
+	messages := make([]llm.InputItem, len(results))
 	for i, res := range results {
 		var content string
 		if res.Error != nil {
@@ -964,11 +978,7 @@ func (r *ToolRegistry) ResultsToMessages(results []ToolExecutionResult) []llm.Pr
 				}
 			}
 		}
-		messages[i] = llm.ProxyMessage{
-			Role:       llm.RoleTool,
-			Content:    content,
-			ToolCallID: res.ToolCallID,
-		}
+		messages[i] = llm.NewToolResultText(res.ToolCallID, content)
 	}
 	return messages
 }
@@ -1035,15 +1045,11 @@ func GetRetryableErrors(results []ToolExecutionResult) []ToolExecutionResult {
 
 // CreateRetryMessages creates tool result messages for retryable errors,
 // formatted to help the model correct them.
-func CreateRetryMessages(results []ToolExecutionResult) []llm.ProxyMessage {
+func CreateRetryMessages(results []ToolExecutionResult) []llm.InputItem {
 	retryable := GetRetryableErrors(results)
-	messages := make([]llm.ProxyMessage, len(retryable))
+	messages := make([]llm.InputItem, len(retryable))
 	for i, r := range retryable {
-		messages[i] = llm.ProxyMessage{
-			Role:       llm.RoleTool,
-			Content:    FormatToolErrorForModel(r),
-			ToolCallID: r.ToolCallID,
-		}
+		messages[i] = llm.NewToolResultText(r.ToolCallID, FormatToolErrorForModel(r))
 	}
 	return messages
 }
@@ -1051,7 +1057,7 @@ func CreateRetryMessages(results []ToolExecutionResult) []llm.ProxyMessage {
 // RetryCallback is invoked when a retryable error occurs.
 // It should return new tool calls from the model's response.
 // If it returns nil or empty slice, retry will stop.
-type RetryCallback func(errorMessages []llm.ProxyMessage, attempt int) ([]llm.ToolCall, error)
+type RetryCallback func(errorMessages []llm.InputItem, attempt int) ([]llm.ToolCall, error)
 
 // RetryOptions configures the retry behavior.
 type RetryOptions struct {
@@ -1079,15 +1085,19 @@ type RetryOptions struct {
 //
 //	results, err := sdk.ExecuteWithRetry(registry, toolCalls, sdk.RetryOptions{
 //	    MaxRetries: 2,
-//	    OnRetry: func(errorMessages []llm.ProxyMessage, attempt int) ([]llm.ToolCall, error) {
-//	        // Add error messages to conversation and call the model again
-//	        messages = append(messages, sdk.AssistantMessageWithToolCalls("", toolCalls))
-//	        messages = append(messages, errorMessages...)
-//	        resp, err := client.Chat(ctx, messages, opts)
+//	    OnRetry: func(errorMessages []llm.InputItem, attempt int) ([]llm.ToolCall, error) {
+//	        // Add error messages to input and call /responses again
+//	        input = append(input, sdk.AssistantMessageWithToolCalls("", toolCalls))
+//	        input = append(input, errorMessages...)
+//	        req, opts, err := client.Responses.New().Model(model).Input(input).Build()
 //	        if err != nil {
 //	            return nil, err
 //	        }
-//	        return resp.ToolCalls, nil
+//	        resp, err := client.Responses.Create(ctx, req, opts...)
+//	        if err != nil {
+//	            return nil, err
+//	        }
+//	        return resp.ToolCalls(), nil
 //	    },
 //	})
 func ExecuteWithRetry(registry *ToolRegistry, toolCalls []llm.ToolCall, opts RetryOptions) ([]ToolExecutionResult, error) {

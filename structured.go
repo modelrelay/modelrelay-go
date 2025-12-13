@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/santhosh-tekuri/jsonschema/v5"
 	llm "github.com/modelrelay/modelrelay/providers"
+	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
 // StructuredErrorKind identifies the type of structured output error.
@@ -42,7 +42,7 @@ type AttemptRecord struct {
 // StructuredErrorDetail holds the specific error information.
 type StructuredErrorDetail struct {
 	Kind    StructuredErrorKind
-	Message string           // For decode errors
+	Message string            // For decode errors
 	Issues  []ValidationIssue // For validation errors
 }
 
@@ -90,8 +90,8 @@ type RetryHandler interface {
 		attempt int,
 		rawJSON string,
 		err StructuredErrorDetail,
-		originalMessages []llm.ProxyMessage,
-	) []llm.ProxyMessage
+		originalInput []llm.InputItem,
+	) []llm.InputItem
 }
 
 // DefaultRetryHandler appends a simple error correction message on validation failures.
@@ -101,8 +101,8 @@ func (DefaultRetryHandler) OnValidationError(
 	_ int,
 	_ string,
 	err StructuredErrorDetail,
-	_ []llm.ProxyMessage,
-) []llm.ProxyMessage {
+	_ []llm.InputItem,
+) []llm.InputItem {
 	var errorMsg string
 	if err.Kind == StructuredErrorKindDecode {
 		errorMsg = err.Message
@@ -118,12 +118,9 @@ func (DefaultRetryHandler) OnValidationError(
 		errorMsg = strings.Join(parts, "; ")
 	}
 
-	return []llm.ProxyMessage{
-		{
-			Role:    "user",
-			Content: fmt.Sprintf("The previous response did not match the expected schema. Error: %s. Please provide a response that matches the schema exactly.", errorMsg),
-		},
-	}
+	return []llm.InputItem{llm.NewUserText(
+		fmt.Sprintf("The previous response did not match the expected schema. Error: %s. Please provide a response that matches the schema exactly.", errorMsg),
+	)}
 }
 
 // StructuredOptions configures structured output behavior.
@@ -228,12 +225,12 @@ type StructuredResult[T any] struct {
 	RequestID string
 }
 
-// Structured performs a chat completion with structured output and automatic
+// Structured performs a /responses request with structured output and automatic
 // schema generation from type T. It supports retry with validation error feedback.
 //
-// Unlike ProxyMessage, this function:
+// Unlike a raw /responses call, this function:
 //   - Auto-generates the JSON schema from T's struct tags
-//   - Sets response_format.type = "json_schema" with strict = true
+//   - Sets output_format.type = "json_schema" with strict = true
 //   - Automatically decodes and validates the response into T
 //   - Optionally retries with error feedback on validation failures
 //
@@ -244,16 +241,17 @@ type StructuredResult[T any] struct {
 //	    Age  int    `json:"age"`
 //	}
 //
-//	result, err := sdk.Structured[Person](ctx, client.LLM, sdk.ProxyRequest{
-//	    Model:    sdk.NewModelID("claude-sonnet-4-20250514"),
-//	    Messages: []llm.ProxyMessage{{Role: "user", Content: "Extract: John, 30"}},
-//	}, sdk.StructuredOptions{MaxRetries: 2})
+//	result, err := sdk.Structured[Person](ctx, client.Responses, client.Responses.New().
+//	    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+//	    User("Extract: John, 30").
+//	    Option(sdk.WithRequestID("demo-1")).
+//	    Build(), sdk.StructuredOptions{MaxRetries: 2})
 func Structured[T any](
 	ctx context.Context,
-	client *LLMClient,
-	req ProxyRequest,
+	client *ResponsesClient,
+	req ResponseRequest,
 	opts StructuredOptions,
-	proxyOpts ...ProxyOption,
+	callOpts ...ResponseOption,
 ) (*StructuredResult[T], error) {
 	// Generate schema from type
 	schemaName := opts.SchemaName
@@ -261,131 +259,161 @@ func Structured[T any](
 		schemaName = "response"
 	}
 
-	responseFormat, err := ResponseFormatFromType[T](schemaName)
+	outputFormat, err := OutputFormatFromType[T](schemaName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate schema: %w", err)
 	}
 
 	// Compile schema for validation
-	compiledSchema, err := compileSchema(responseFormat.JSONSchema.Schema)
+	compiledSchema, err := compileSchema(outputFormat.JSONSchema.Schema)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile schema for validation: %w", err)
 	}
 
-	// Set response format on request
-	req.ResponseFormat = responseFormat
+	// Set output format on request
+	req.outputFormat = outputFormat
 
 	retryHandler := opts.RetryHandler
 	if retryHandler == nil {
 		retryHandler = DefaultRetryHandler{}
 	}
 
-	var attempts []AttemptRecord
-	messages := make([]llm.ProxyMessage, len(req.Messages))
-	copy(messages, req.Messages)
+	valueAny, attempts, requestID, err := client.createStructuredWithRetry(
+		ctx,
+		req,
+		opts.MaxRetries,
+		retryHandler,
+		callOpts,
+		func(rawJSON string) *StructuredErrorDetail {
+			return validateAgainstSchema(compiledSchema, rawJSON)
+		},
+		func(rawJSON string) (any, *StructuredErrorDetail) {
+			var value T
+			if unmarshalErr := json.Unmarshal([]byte(rawJSON), &value); unmarshalErr != nil {
+				return nil, &StructuredErrorDetail{
+					Kind:    StructuredErrorKindDecode,
+					Message: unmarshalErr.Error(),
+				}
+			}
+			return value, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	maxAttempts := opts.MaxRetries + 1
+	value, ok := valueAny.(T)
+	if !ok {
+		return nil, fmt.Errorf("internal error: structured decoder returned unexpected type %T (this is a bug, please report it)", valueAny)
+	}
+
+	return &StructuredResult[T]{
+		Value:     value,
+		Attempts:  attempts,
+		RequestID: requestID,
+	}, nil
+}
+
+func (c *ResponsesClient) createStructuredWithRetry(
+	ctx context.Context,
+	req ResponseRequest,
+	maxRetries int,
+	retryHandler RetryHandler,
+	callOpts []ResponseOption,
+	validate func(rawJSON string) *StructuredErrorDetail,
+	decode func(rawJSON string) (any, *StructuredErrorDetail),
+) (value any, attempts int, requestID string, err error) {
+	if retryHandler == nil {
+		retryHandler = DefaultRetryHandler{}
+	}
+
+	var attemptRecords []AttemptRecord
+	input := make([]llm.InputItem, len(req.input))
+	copy(input, req.input)
+
+	maxAttempts := maxRetries + 1
 
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		req.Messages = messages
+		req.input = input
 
-		resp, err := client.ProxyMessage(ctx, req, proxyOpts...)
+		resp, err := c.Create(ctx, req, callOpts...)
 		if err != nil {
-			return nil, err
+			return nil, 0, "", err
 		}
 
-		// Extract JSON content
-		rawJSON := strings.Join(resp.Content, "")
+		rawJSON := resp.AllText()
 
-		// Step 1: Validate against JSON Schema first
-		if errDetail := validateAgainstSchema(compiledSchema, rawJSON); errDetail != nil {
-			attempts = append(attempts, AttemptRecord{
+		if errDetail := validate(rawJSON); errDetail != nil {
+			attemptRecords = append(attemptRecords, AttemptRecord{
 				Attempt: attempt,
 				RawJSON: rawJSON,
 				Error:   *errDetail,
 			})
 
-			// For decode errors on the first attempt with no retries, return StructuredDecodeError
-			// This allows callers to type-assert on first-attempt decode failures
 			if errDetail.Kind == StructuredErrorKindDecode && attempt == 1 && maxAttempts == 1 {
-				return nil, StructuredDecodeError{
+				return nil, 0, "", StructuredDecodeError{
 					RawJSON: rawJSON,
 					Message: errDetail.Message,
 					Attempt: attempt,
 				}
 			}
 
-			// If this was the last attempt, return exhausted error
 			if attempt >= maxAttempts {
-				return nil, StructuredExhaustedError{
+				return nil, 0, "", StructuredExhaustedError{
 					LastRawJSON: rawJSON,
-					AllAttempts: attempts,
+					AllAttempts: attemptRecords,
 					FinalError:  *errDetail,
 				}
 			}
 
-			// Get retry messages
-			retryMsgs := retryHandler.OnValidationError(attempt, rawJSON, *errDetail, req.Messages)
-			if retryMsgs == nil {
-				return nil, StructuredExhaustedError{
+			retryItems := retryHandler.OnValidationError(attempt, rawJSON, *errDetail, req.input)
+			if retryItems == nil {
+				return nil, 0, "", StructuredExhaustedError{
 					LastRawJSON: rawJSON,
-					AllAttempts: attempts,
+					AllAttempts: attemptRecords,
 					FinalError:  *errDetail,
 				}
 			}
 
-			// Build messages for retry: original + assistant response + retry feedback
-			messages = append(messages, llm.ProxyMessage{Role: "assistant", Content: rawJSON})
-			messages = append(messages, retryMsgs...)
+			input = append(input, llm.NewAssistantText(rawJSON))
+			input = append(input, retryItems...)
 			continue
 		}
 
-		// Step 2: Decode into target type (should succeed after schema validation)
-		var value T
-		if err := json.Unmarshal([]byte(rawJSON), &value); err != nil {
-			// This should rarely happen if schema validation passed, but handle it
-			errDetail := StructuredErrorDetail{
-				Kind:    StructuredErrorKindDecode,
-				Message: err.Error(),
-			}
-			attempts = append(attempts, AttemptRecord{
+		decoded, decodeErr := decode(rawJSON)
+		if decodeErr != nil {
+			attemptRecords = append(attemptRecords, AttemptRecord{
 				Attempt: attempt,
 				RawJSON: rawJSON,
-				Error:   errDetail,
+				Error:   *decodeErr,
 			})
 
 			if attempt >= maxAttempts {
-				return nil, StructuredExhaustedError{
+				return nil, 0, "", StructuredExhaustedError{
 					LastRawJSON: rawJSON,
-					AllAttempts: attempts,
-					FinalError:  errDetail,
+					AllAttempts: attemptRecords,
+					FinalError:  *decodeErr,
 				}
 			}
 
-			retryMsgs := retryHandler.OnValidationError(attempt, rawJSON, errDetail, req.Messages)
-			if retryMsgs == nil {
-				return nil, StructuredExhaustedError{
+			retryItems := retryHandler.OnValidationError(attempt, rawJSON, *decodeErr, req.input)
+			if retryItems == nil {
+				return nil, 0, "", StructuredExhaustedError{
 					LastRawJSON: rawJSON,
-					AllAttempts: attempts,
-					FinalError:  errDetail,
+					AllAttempts: attemptRecords,
+					FinalError:  *decodeErr,
 				}
 			}
 
-			messages = append(messages, llm.ProxyMessage{Role: "assistant", Content: rawJSON})
-			messages = append(messages, retryMsgs...)
+			input = append(input, llm.NewAssistantText(rawJSON))
+			input = append(input, retryItems...)
 			continue
 		}
 
-		// Success - both schema validation and type decoding passed
-		return &StructuredResult[T]{
-			Value:     value,
-			Attempts:  attempt,
-			RequestID: resp.RequestID,
-		}, nil
+		return decoded, attempt, resp.RequestID, nil
 	}
 
-	// This should be unreachable - if we get here, there's a logic bug in the retry loop
-	return nil, fmt.Errorf("internal error: structured output loop exited unexpectedly after %d attempts (this is a bug, please report it)", maxAttempts)
+	return nil, 0, "", fmt.Errorf("internal error: structured output loop exited unexpectedly after %d attempts (this is a bug, please report it)", maxAttempts)
 }
 
 // StreamStructured opens a streaming connection for structured JSON outputs.
@@ -399,27 +427,29 @@ func Structured[T any](
 //	    Age  int    `json:"age"`
 //	}
 //
-//	stream, err := sdk.StreamStructured[Person](ctx, client.LLM, sdk.ProxyRequest{
-//	    Model:    sdk.NewModelID("claude-sonnet-4-20250514"),
-//	    Messages: []llm.ProxyMessage{{Role: "user", Content: "Extract: John, 30"}},
-//	}, "person")
+//	stream, err := sdk.StreamStructured[Person](
+//	    ctx,
+//	    client.Responses,
+//	    client.Responses.New().Model(sdk.NewModelID("claude-sonnet-4-20250514")).User("Extract: John, 30").Build(),
+//	    "person",
+//	)
 func StreamStructured[T any](
 	ctx context.Context,
-	client *LLMClient,
-	req ProxyRequest,
+	client *ResponsesClient,
+	req ResponseRequest,
 	schemaName string,
-	proxyOpts ...ProxyOption,
+	callOpts ...ResponseOption,
 ) (*StructuredJSONStream[T], error) {
 	if schemaName == "" {
 		schemaName = "response"
 	}
 
-	responseFormat, err := ResponseFormatFromType[T](schemaName)
+	outputFormat, err := OutputFormatFromType[T](schemaName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate schema: %w", err)
 	}
 
-	req.ResponseFormat = responseFormat
+	req.outputFormat = outputFormat
 
-	return ProxyStreamJSON[T](ctx, client, req, proxyOpts...)
+	return StreamJSON[T](ctx, client, req, callOpts...)
 }

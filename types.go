@@ -11,48 +11,68 @@ import (
 	llm "github.com/modelrelay/modelrelay/providers"
 )
 
-// ProxyRequest mirrors the SaaS /llm/proxy JSON contract.
-type ProxyRequest struct {
-	Model          ModelID
-	MaxTokens      int64
-	Temperature    *float64
-	Messages       []llm.ProxyMessage
-	Stop           []string
-	StopSequences  []string
-	ResponseFormat *llm.ResponseFormat
-	Tools          []llm.Tool
-	ToolChoice     *llm.ToolChoice
+// ProviderID is a strongly-typed wrapper around provider identifiers.
+// Most callers should not set this; the server routes based on the model.
+type ProviderID string
+
+func NewProviderID(val string) ProviderID { return ProviderID(strings.TrimSpace(val)) }
+func (p ProviderID) IsEmpty() bool        { return strings.TrimSpace(string(p)) == "" }
+func (p ProviderID) String() string       { return string(p) }
+
+// ResponseRequest is an opaque request object for the /responses endpoint.
+//
+// Callers should construct requests via the fluent builder returned by
+// `client.Responses.New()` (preferred) or via package-level helpers.
+//
+// This type intentionally does not expose struct fields to avoid "stringly-typed"
+// composite literals and to keep the request shape evolvable without breaking
+// callers.
+type ResponseRequest struct {
+	provider        ProviderID
+	model           ModelID
+	input           []llm.InputItem
+	outputFormat    *llm.OutputFormat
+	maxOutputTokens int64
+	temperature     *float64
+	stop            []string
+	tools           []llm.Tool
+	toolChoice      *llm.ToolChoice
 }
 
 // Validate returns an error when required fields are missing.
-func (r ProxyRequest) Validate() error {
-	if r.Model.IsEmpty() {
+func (r ResponseRequest) Validate() error {
+	return r.validate(true)
+}
+
+func (r ResponseRequest) validate(requireModel bool) error {
+	if requireModel && r.model.IsEmpty() {
 		return fmt.Errorf("model is required")
 	}
-	if len(r.Messages) == 0 {
-		return fmt.Errorf("at least one message is required")
+	if len(r.input) == 0 {
+		return fmt.Errorf("input is required")
 	}
 	// The SDK does not validate model identifiers beyond non-emptiness.
 	// Callers may pass arbitrary custom ids; the server performs
 	// authoritative validation so new models can be adopted without
 	// requiring an SDK upgrade.
-	if rf := r.ResponseFormat; rf != nil && rf.Type == llm.ResponseFormatTypeJSONSchema {
+	if rf := r.outputFormat; rf != nil && rf.Type == llm.OutputFormatTypeJSONSchema {
 		if rf.JSONSchema == nil || strings.TrimSpace(rf.JSONSchema.Name) == "" || len(rf.JSONSchema.Schema) == 0 {
-			return fmt.Errorf("response_format.json_schema.name and schema are required when type=json_schema")
+			return fmt.Errorf("output_format.json_schema.name and schema are required when type=json_schema")
 		}
 	}
 	return nil
 }
 
-// ProxyResponse wraps the server response and surfaces the echoed request ID.
-type ProxyResponse struct {
-	ID         string         `json:"id"`
-	Content    []string       `json:"content"`
-	StopReason StopReason     `json:"stop_reason,omitempty"`
-	Model      ModelID        `json:"model"`
-	Usage      Usage          `json:"usage"`
-	RequestID  string         `json:"-"`
-	ToolCalls  []llm.ToolCall `json:"tool_calls,omitempty"`
+// Response wraps the server response and surfaces the echoed request ID.
+type Response struct {
+	ID         string           `json:"id"`
+	Provider   string           `json:"provider,omitempty"`
+	Output     []llm.OutputItem `json:"output"`
+	StopReason StopReason       `json:"stop_reason,omitempty"`
+	Model      ModelID          `json:"model"`
+	Usage      Usage            `json:"usage"`
+	RequestID  string           `json:"-"`
+	Citations  []llm.Citation   `json:"citations,omitempty"`
 }
 
 // StreamHandle exposes the streaming interface plus associated metadata.
@@ -76,24 +96,24 @@ func (s *StreamHandle) Close() error {
 	return s.stream.Close()
 }
 
-// Collect drains the stream into an aggregated ProxyResponse using the same
+// Collect drains the stream into an aggregated Response using the same
 // semantics as ChatStream. The stream is closed when the call returns.
-func (s *StreamHandle) Collect(ctx context.Context) (*ProxyResponse, error) {
-	return newChatStream(s).Collect(ctx)
+func (s *StreamHandle) Collect(ctx context.Context) (*Response, error) {
+	return newResponseStream(s).Collect(ctx)
 }
 
-// ProxyOption customizes outgoing proxy requests (headers, request IDs, etc.).
-type ProxyOption func(*proxyCallOptions)
+// ResponseOption customizes outgoing responses requests (headers, request IDs, etc.).
+type ResponseOption func(*responseCallOptions)
 
-type proxyCallOptions struct {
+type responseCallOptions struct {
 	headers http.Header
 	timeout *time.Duration
 	retry   *RetryConfig
 }
 
-// WithRequestID sets the X-ModelRelay-Chat-Request-Id header for the request.
-func WithRequestID(requestID string) ProxyOption {
-	return func(opts *proxyCallOptions) {
+// WithRequestID sets the X-ModelRelay-Request-Id header for the request.
+func WithRequestID(requestID string) ResponseOption {
+	return func(opts *responseCallOptions) {
 		clean := strings.TrimSpace(requestID)
 		if clean == "" {
 			return
@@ -101,14 +121,14 @@ func WithRequestID(requestID string) ProxyOption {
 		if opts.headers == nil {
 			opts.headers = make(http.Header)
 		}
-		opts.headers.Set(headers.ChatRequestID, clean)
+		opts.headers.Set(headers.RequestID, clean)
 	}
 }
 
 // WithCustomerID sets the X-ModelRelay-Customer-Id header for customer-attributed requests.
 // When this header is set, the customer's tier determines the model to use.
-func WithCustomerID(customerID string) ProxyOption {
-	return func(opts *proxyCallOptions) {
+func WithCustomerID(customerID string) ResponseOption {
+	return func(opts *responseCallOptions) {
 		clean := strings.TrimSpace(customerID)
 		if clean == "" {
 			return
@@ -121,8 +141,8 @@ func WithCustomerID(customerID string) ProxyOption {
 }
 
 // WithHeader attaches an arbitrary header to the underlying HTTP request.
-func WithHeader(key, value string) ProxyOption {
-	return func(opts *proxyCallOptions) {
+func WithHeader(key, value string) ResponseOption {
+	return func(opts *responseCallOptions) {
 		if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" {
 			return
 		}
@@ -134,8 +154,8 @@ func WithHeader(key, value string) ProxyOption {
 }
 
 // WithHeaders attaches multiple headers to the underlying HTTP request.
-func WithHeaders(hdrs map[string]string) ProxyOption {
-	return func(opts *proxyCallOptions) {
+func WithHeaders(hdrs map[string]string) ResponseOption {
+	return func(opts *responseCallOptions) {
 		if len(hdrs) == 0 {
 			return
 		}
@@ -154,15 +174,15 @@ func WithHeaders(hdrs map[string]string) ProxyOption {
 }
 
 // WithTimeout overrides the request timeout for this call (0 disables timeout).
-func WithTimeout(timeout time.Duration) ProxyOption {
-	return func(opts *proxyCallOptions) {
+func WithTimeout(timeout time.Duration) ResponseOption {
+	return func(opts *responseCallOptions) {
 		opts.timeout = &timeout
 	}
 }
 
 // WithRetry overrides the retry policy for this call.
-func WithRetry(cfg RetryConfig) ProxyOption {
-	return func(opts *proxyCallOptions) {
+func WithRetry(cfg RetryConfig) ResponseOption {
+	return func(opts *responseCallOptions) {
 		retryCfg := cfg
 		if retryCfg.BaseBackoff == 0 {
 			retryCfg.BaseBackoff = defaultRetryConfig().BaseBackoff
@@ -175,18 +195,18 @@ func WithRetry(cfg RetryConfig) ProxyOption {
 }
 
 // DisableRetry forces a single attempt for this call.
-func DisableRetry() ProxyOption {
-	return func(opts *proxyCallOptions) {
+func DisableRetry() ResponseOption {
+	return func(opts *responseCallOptions) {
 		cfg := RetryConfig{MaxAttempts: 1, BaseBackoff: 0, MaxBackoff: 0, RetryPost: false}
 		opts.retry = &cfg
 	}
 }
 
-func buildProxyCallOptions(options []ProxyOption) proxyCallOptions {
+func buildResponseCallOptions(options []ResponseOption) responseCallOptions {
 	if len(options) == 0 {
-		return proxyCallOptions{}
+		return responseCallOptions{}
 	}
-	cfg := proxyCallOptions{}
+	cfg := responseCallOptions{}
 	for _, opt := range options {
 		if opt == nil {
 			continue
@@ -197,7 +217,7 @@ func buildProxyCallOptions(options []ProxyOption) proxyCallOptions {
 	return cfg
 }
 
-func applyProxyHeaders(req *http.Request, opts proxyCallOptions) {
+func applyResponseHeaders(req *http.Request, opts responseCallOptions) {
 	for key, values := range opts.headers {
 		req.Header.Del(key)
 		for _, value := range values {

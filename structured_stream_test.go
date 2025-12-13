@@ -66,6 +66,35 @@ func TestStructuredJSONStream_ReadFailureReturnsTransportError(t *testing.T) {
 	}
 }
 
+func TestStructuredJSONStream_MissingTypeReturnsProtocolError(t *testing.T) {
+	ctx := context.Background()
+
+	type Simple struct {
+		Name string `json:"name"`
+	}
+
+	ndjson := `{"payload":{"name":"Test"}}
+`
+	stream := newStructuredJSONStream[Simple](ctx, newNDJSONReadCloser(ndjson), "req-missing-type", nil)
+	defer stream.Close()
+
+	_, ok, err := stream.Next()
+	if err == nil {
+		t.Fatal("expected error from Next, got nil")
+	}
+	if ok {
+		t.Fatalf("expected ok=false from Next, got %v", ok)
+	}
+
+	var terr TransportError
+	if !errors.As(err, &terr) {
+		t.Fatalf("expected TransportError from Next, got %T", err)
+	}
+	if terr.Message != "structured stream record missing type" {
+		t.Fatalf("expected TransportError.Message %q, got %q", "structured stream record missing type", terr.Message)
+	}
+}
+
 // ndjsonReadCloser wraps a string buffer for testing NDJSON parsing.
 type ndjsonReadCloser struct {
 	*bytes.Reader
@@ -190,4 +219,3 @@ func TestStructuredJSONStream_CompleteFieldsFiltersEmptyStrings(t *testing.T) {
 		t.Errorf("expected 2 fields in CompleteFields, got %d: %v", len(event.CompleteFields), event.CompleteFields)
 	}
 }
-

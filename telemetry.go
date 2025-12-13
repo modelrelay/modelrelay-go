@@ -22,7 +22,7 @@ type TelemetryHooks struct {
 	OnHTTPRequest func(ctx context.Context, req *http.Request)
 	// OnHTTPResponse fires after the request completes (even when err != nil).
 	OnHTTPResponse func(ctx context.Context, req *http.Request, resp *http.Response, err error, latency time.Duration)
-	// OnStreamEvent fires for every streaming event returned by /llm/proxy.
+	// OnStreamEvent fires for every streaming event returned by /responses.
 	OnStreamEvent func(ctx context.Context, event StreamEvent)
 	// OnStreamFirstToken fires once per stream when the first token (text delta) is observed.
 	// Latency is measured from request send to first token arrival.
