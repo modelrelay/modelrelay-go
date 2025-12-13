@@ -59,6 +59,145 @@ func (c *ResponsesClient) Create(ctx context.Context, req ResponseRequest, optio
 	return &respPayload, nil
 }
 
+// Text is a chat-like helper for the common "system + user -> assistant text" path.
+//
+// This is a thin wrapper over the responses-first API:
+// it builds the same input messages, calls /responses, and extracts assistant text.
+func (c *ResponsesClient) Text(
+	ctx context.Context,
+	model ModelID,
+	system string,
+	user string,
+	options ...ResponseOption,
+) (string, error) {
+	req, callOpts, err := c.New().
+		Model(model).
+		System(system).
+		User(user).
+		Build()
+	if err != nil {
+		return "", err
+	}
+	callOpts = append(callOpts, options...)
+	resp, err := c.Create(ctx, req, callOpts...)
+	if err != nil {
+		return "", err
+	}
+	text := resp.AssistantText()
+	if strings.TrimSpace(text) == "" {
+		return "", TransportError{Message: "response contained no assistant text output"}
+	}
+	return text, nil
+}
+
+// TextForCustomer is a chat-like helper for customer-attributed requests where the backend selects the model.
+//
+// This sets X-ModelRelay-Customer-Id and omits model from the request body.
+func (c *ResponsesClient) TextForCustomer(
+	ctx context.Context,
+	customerID string,
+	system string,
+	user string,
+	options ...ResponseOption,
+) (string, error) {
+	req, callOpts, err := c.New().
+		CustomerID(customerID).
+		System(system).
+		User(user).
+		Build()
+	if err != nil {
+		return "", err
+	}
+	callOpts = append(callOpts, options...)
+	resp, err := c.Create(ctx, req, callOpts...)
+	if err != nil {
+		return "", err
+	}
+	text := resp.AssistantText()
+	if strings.TrimSpace(text) == "" {
+		return "", TransportError{Message: "response contained no assistant text output"}
+	}
+	return text, nil
+}
+
+// TextDeltaStream yields only text content updates from a responses stream.
+//
+// Note: in the unified NDJSON format, update events contain accumulated content (not per-token deltas).
+type TextDeltaStream struct {
+	handle *StreamHandle
+}
+
+func (s *TextDeltaStream) Close() error {
+	if s == nil || s.handle == nil {
+		return nil
+	}
+	return s.handle.Close()
+}
+
+// Next returns the next non-empty text update, or ok=false when the stream is complete.
+func (s *TextDeltaStream) Next() (delta string, ok bool, err error) {
+	if s == nil || s.handle == nil {
+		return "", false, nil
+	}
+	for {
+		ev, ok, err := s.handle.Next()
+		if err != nil || !ok {
+			return "", ok, err
+		}
+		if ev.TextDelta != "" {
+			return ev.TextDelta, true, nil
+		}
+	}
+}
+
+// StreamTextDeltas opens a responses stream for the common prompt path and yields only text updates.
+func (c *ResponsesClient) StreamTextDeltas(
+	ctx context.Context,
+	model ModelID,
+	system string,
+	user string,
+	options ...ResponseOption,
+) (*TextDeltaStream, error) {
+	req, callOpts, err := c.New().
+		Model(model).
+		System(system).
+		User(user).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+	callOpts = append(callOpts, options...)
+	stream, err := c.Stream(ctx, req, callOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return &TextDeltaStream{handle: stream}, nil
+}
+
+// StreamTextDeltasForCustomer opens a responses stream for customer-attributed requests and yields only text updates.
+func (c *ResponsesClient) StreamTextDeltasForCustomer(
+	ctx context.Context,
+	customerID string,
+	system string,
+	user string,
+	options ...ResponseOption,
+) (*TextDeltaStream, error) {
+	req, callOpts, err := c.New().
+		CustomerID(customerID).
+		System(system).
+		User(user).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+	callOpts = append(callOpts, options...)
+	stream, err := c.Stream(ctx, req, callOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return &TextDeltaStream{handle: stream}, nil
+}
+
 // Stream opens a streaming connection for /responses.
 func (c *ResponsesClient) Stream(ctx context.Context, req ResponseRequest, options ...ResponseOption) (*StreamHandle, error) {
 	callOpts := buildResponseCallOptions(options)

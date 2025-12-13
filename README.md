@@ -20,6 +20,49 @@ resp, _ := client.Responses.Create(ctx, req, callOpts...)
 fmt.Println(resp.Text())
 ```
 
+## Chat-Like Text Helpers
+
+For the most common path (**system + user → assistant text**):
+
+```go
+ctx := context.Background()
+client, _ := sdk.NewClientWithKey(os.Getenv("MODELRELAY_API_KEY"))
+
+text, _ := client.Responses.Text(
+    ctx,
+    sdk.NewModelID("claude-sonnet-4-20250514"),
+    "You are helpful.",
+    "Hello!",
+)
+fmt.Println(text)
+```
+
+For customer-attributed requests where the backend selects the model:
+
+```go
+text, _ := client.Responses.TextForCustomer(ctx, "customer-123", "You are helpful.", "Hello!")
+```
+
+To stream only text updates (accumulated content in unified NDJSON):
+
+```go
+stream, _ := client.Responses.StreamTextDeltas(
+    ctx,
+    sdk.NewModelID("claude-sonnet-4-20250514"),
+    "You are helpful.",
+    "Hello!",
+)
+defer stream.Close()
+
+for {
+    delta, ok, _ := stream.Next()
+    if !ok {
+        break
+    }
+    fmt.Print(delta)
+}
+```
+
 ## Streaming Responses
 
 ```go

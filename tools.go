@@ -535,6 +535,50 @@ func (r *Response) AllText() string {
 	return b.String()
 }
 
+// AssistantTextChunks returns all assistant text content parts in output order.
+func (r *Response) AssistantTextChunks() []string {
+	if r == nil {
+		return nil
+	}
+	var out []string
+	for _, item := range r.Output {
+		if item.Type != llm.OutputItemTypeMessage {
+			continue
+		}
+		if item.Role != llm.RoleAssistant {
+			continue
+		}
+		for _, part := range item.Content {
+			if part.Type == llm.ContentPartTypeText {
+				out = append(out, part.Text)
+			}
+		}
+	}
+	return out
+}
+
+// AssistantText joins all assistant text content parts across output items.
+func (r *Response) AssistantText() string {
+	if r == nil {
+		return ""
+	}
+	var b strings.Builder
+	for _, item := range r.Output {
+		if item.Type != llm.OutputItemTypeMessage {
+			continue
+		}
+		if item.Role != llm.RoleAssistant {
+			continue
+		}
+		for _, part := range item.Content {
+			if part.Type == llm.ContentPartTypeText {
+				b.WriteString(part.Text)
+			}
+		}
+	}
+	return b.String()
+}
+
 // ToolResultMessage creates a message containing the result of a tool call.
 // The result parameter should be a JSON-encodable value or a string.
 func ToolResultMessage(toolCallID string, result any) (llm.InputItem, error) {

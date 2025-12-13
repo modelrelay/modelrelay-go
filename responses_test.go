@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -76,6 +77,180 @@ func TestResponsesCreate(t *testing.T) {
 	}
 	if got := resp.Text(); got != "hi" {
 		t.Fatalf("unexpected text %q", got)
+	}
+}
+
+func TestResponsesTextHelper(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != routes.Responses {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+		var reqPayload map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&reqPayload); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		if reqPayload["model"] != "demo" {
+			t.Fatalf("unexpected model %v", reqPayload["model"])
+		}
+		input, ok := reqPayload["input"].([]any)
+		if !ok || len(input) < 2 {
+			t.Fatalf("expected input messages")
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(llm.Response{
+			ID:    "resp_text",
+			Model: "demo",
+			Output: []llm.OutputItem{
+				{
+					Type:    llm.OutputItemTypeMessage,
+					Role:    llm.RoleUser,
+					Content: []llm.ContentPart{llm.TextPart("ignore")},
+				},
+				{
+					Type:    llm.OutputItemTypeMessage,
+					Role:    llm.RoleAssistant,
+					Content: []llm.ContentPart{llm.TextPart("Hello "), llm.TextPart("world")},
+				},
+			},
+			Usage: llm.Usage{TotalTokens: 3},
+		})
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	text, err := client.Responses.Text(context.Background(), NewModelID("demo"), "sys", "user")
+	if err != nil {
+		t.Fatalf("text: %v", err)
+	}
+	if text != "Hello world" {
+		t.Fatalf("unexpected text %q", text)
+	}
+}
+
+func TestResponsesTextForCustomerOmitsModel(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != routes.Responses {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+		if got := strings.TrimSpace(r.Header.Get(headers.CustomerID)); got != "cust_123" {
+			t.Fatalf("expected customer header got %q", got)
+		}
+		var reqPayload map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&reqPayload); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		if _, ok := reqPayload["model"]; ok {
+			t.Fatalf("expected model omitted for customer request")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(llm.Response{
+			ID:    "resp_customer_text",
+			Model: "tier-model",
+			Output: []llm.OutputItem{{
+				Type:    llm.OutputItemTypeMessage,
+				Role:    llm.RoleAssistant,
+				Content: []llm.ContentPart{llm.TextPart("ok")},
+			}},
+			Usage: llm.Usage{TotalTokens: 2},
+		})
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	text, err := client.Responses.TextForCustomer(context.Background(), "cust_123", "sys", "user")
+	if err != nil {
+		t.Fatalf("text for customer: %v", err)
+	}
+	if text != "ok" {
+		t.Fatalf("unexpected text %q", text)
+	}
+}
+
+func TestResponsesTextErrorsOnEmptyAssistantText(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(llm.Response{
+			ID:    "resp_empty_text",
+			Model: "demo",
+			Output: []llm.OutputItem{{
+				Type:      llm.OutputItemTypeMessage,
+				Role:      llm.RoleAssistant,
+				ToolCalls: []llm.ToolCall{{ID: "call_1", Type: llm.ToolTypeFunction}},
+			}},
+			Usage: llm.Usage{TotalTokens: 1},
+		})
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	_, err = client.Responses.Text(context.Background(), NewModelID("demo"), "sys", "user")
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	var te TransportError
+	if !errors.As(err, &te) {
+		t.Fatalf("expected transport error, got %T", err)
+	}
+}
+
+func TestResponsesStreamTextDeltas(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != routes.Responses {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		w.Header().Set(headers.RequestID, "resp-stream")
+		flusher, _ := w.(http.Flusher)
+		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
+		flusher.Flush()
+		_, _ = w.Write([]byte(`{"type":"update","payload":{"content":"Hello"}}` + "\n"))
+		flusher.Flush()
+		time.Sleep(10 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"type":"completion","payload":{"content":"Hello world"},"usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}` + "\n"))
+		flusher.Flush()
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stream, err := client.Responses.StreamTextDeltas(ctx, NewModelID("demo"), "sys", "user")
+	if err != nil {
+		t.Fatalf("stream text deltas: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	first, ok, err := stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected first delta got err=%v ok=%v", err, ok)
+	}
+	if first != "Hello" {
+		t.Fatalf("unexpected delta %q", first)
+	}
+	second, ok, err := stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected second delta got err=%v ok=%v", err, ok)
+	}
+	if second != "Hello world" {
+		t.Fatalf("unexpected delta %q", second)
 	}
 }
 
