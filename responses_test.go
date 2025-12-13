@@ -94,6 +94,7 @@ func TestResponsesStream(t *testing.T) {
 		flusher.Flush()
 		_, _ = w.Write([]byte(`{"type":"update","payload":{"content":"Hello"}}` + "\n"))
 		flusher.Flush()
+		time.Sleep(25 * time.Millisecond)
 		_, _ = w.Write([]byte(`{"type":"completion","payload":{"content":"Hello world"},"usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}` + "\n"))
 		flusher.Flush()
 	}))
@@ -177,6 +178,25 @@ func TestResponsesStream(t *testing.T) {
 	}
 	if got := resp.Text(); got != "Hello world" {
 		t.Fatalf("unexpected text %q", got)
+	}
+
+	// CollectWithMetrics on a fresh stream handle.
+	stream3, err := client.Responses.Stream(context.Background(), req2, opts2...)
+	if err != nil {
+		t.Fatalf("stream3: %v", err)
+	}
+	resp3, m, err := stream3.CollectWithMetrics(context.Background())
+	if err != nil {
+		t.Fatalf("collect metrics: %v", err)
+	}
+	if got := resp3.Text(); got != "Hello world" {
+		t.Fatalf("unexpected text %q", got)
+	}
+	if m.Duration <= 0 {
+		t.Fatalf("expected duration > 0, got %s", m.Duration)
+	}
+	if m.TTFT < 0 || m.TTFT > m.Duration {
+		t.Fatalf("expected 0 <= ttft <= duration, got ttft=%s duration=%s", m.TTFT, m.Duration)
 	}
 }
 

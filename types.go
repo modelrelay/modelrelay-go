@@ -79,6 +79,7 @@ type Response struct {
 type StreamHandle struct {
 	RequestID string
 	stream    streamReader
+	startedAt time.Time
 }
 
 type streamReader interface {
@@ -100,6 +101,22 @@ func (s *StreamHandle) Close() error {
 // semantics as ChatStream. The stream is closed when the call returns.
 func (s *StreamHandle) Collect(ctx context.Context) (*Response, error) {
 	return newResponseStream(s).Collect(ctx)
+}
+
+// ResponseStreamMetrics reports end-to-end stream timings and metadata as observed by the SDK.
+// TTFT is measured as time from request start to the first non-empty content update.
+type ResponseStreamMetrics struct {
+	TTFT     time.Duration
+	Duration time.Duration
+	Usage    *Usage
+	Model    ModelID
+	ID       string
+}
+
+// CollectWithMetrics drains the stream into an aggregated Response and returns stream timing metadata.
+// The stream is closed when the call returns.
+func (s *StreamHandle) CollectWithMetrics(ctx context.Context) (*Response, ResponseStreamMetrics, error) {
+	return newResponseStream(s).CollectWithMetrics(ctx)
 }
 
 // ResponseOption customizes outgoing responses requests (headers, request IDs, etc.).

@@ -93,6 +93,7 @@ func (c *ResponsesClient) Stream(ctx context.Context, req ResponseRequest, optio
 	return &StreamHandle{
 		stream:    stream,
 		RequestID: requestID,
+		startedAt: startedAt,
 	}, nil
 }
 

@@ -1,6 +1,8 @@
 package sdk
 
 // Version is the published SDK version.
+// 0.39.1: Fix request timeouts to not cancel streaming bodies.
+// 0.39.0: Add stream collection metrics helper (CollectWithMetrics) for /responses streaming.
 // 0.38.0: Breaking - Responses-first API with pure /responses builders; drop chat completions;
 // rename request ID header; fail fast on invalid structured stream records;
 // move structured retry loop into client layer.
@@ -34,4 +36,4 @@ package sdk
 // Rich Hickey-style design with separate types for auto-provisioning.
 // 0.35.0: CustomersClient.Claim now works with publishable keys (mr_pk_*) for user self-service.
 // Enables CLI tools and frontends to link Stripe subscriptions to user identities.
-const Version = "0.38.0"
+const Version = "0.39.1"

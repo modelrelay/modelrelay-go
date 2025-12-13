@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -391,12 +392,11 @@ func (c *Client) send(req *http.Request, timeout *time.Duration, retry *RetryCon
 	req = req.Clone(req.Context())
 	duration := resolveTimeout(timeout, c.requestTimeout)
 	ctx := req.Context()
+	var cancel context.CancelFunc
 	if duration > 0 {
 		if dl, ok := ctx.Deadline(); !ok || time.Until(dl) > duration {
-			var cancel context.CancelFunc
 			ctx, cancel = context.WithTimeout(ctx, duration)
 			req = req.WithContext(ctx)
-			defer cancel()
 		}
 	}
 	cfg := c.retryCfg
@@ -404,7 +404,38 @@ func (c *Client) send(req *http.Request, timeout *time.Duration, retry *RetryCon
 		cfg = retry.normalized()
 	}
 	resp, meta, err := c.sendWithRetry(req, cfg)
-	return resp, meta, err
+	if err != nil {
+		if cancel != nil {
+			cancel()
+		}
+		return nil, meta, err
+	}
+	if resp == nil {
+		if cancel != nil {
+			cancel()
+		}
+		return nil, meta, nil
+	}
+	if cancel != nil && resp.Body != nil {
+		resp.Body = &cancelOnCloseReadCloser{rc: resp.Body, cancel: cancel}
+	}
+	return resp, meta, nil
+}
+
+type cancelOnCloseReadCloser struct {
+	rc     io.ReadCloser
+	cancel context.CancelFunc
+	once   sync.Once
+}
+
+func (c *cancelOnCloseReadCloser) Read(p []byte) (int, error) {
+	return c.rc.Read(p)
+}
+
+func (c *cancelOnCloseReadCloser) Close() error {
+	err := c.rc.Close()
+	c.once.Do(c.cancel)
+	return err
 }
 
 func (c *Client) buildURL(path string) string {
