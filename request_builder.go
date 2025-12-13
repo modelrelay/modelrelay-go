@@ -21,6 +21,7 @@ type ResponseBuilder struct {
 	customerID string
 	headers    http.Header
 	timeout    *time.Duration
+	stream     StreamTimeouts
 	retry      *RetryConfig
 }
 
@@ -95,9 +96,15 @@ func (b ResponseBuilder) ToolChoice(choice llm.ToolChoice) ResponseBuilder {
 	return b
 }
 
-func (b ResponseBuilder) ToolChoiceAuto() ResponseBuilder     { return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceAuto}) }
-func (b ResponseBuilder) ToolChoiceRequired() ResponseBuilder { return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceRequired}) }
-func (b ResponseBuilder) ToolChoiceNone() ResponseBuilder     { return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceNone}) }
+func (b ResponseBuilder) ToolChoiceAuto() ResponseBuilder {
+	return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceAuto})
+}
+func (b ResponseBuilder) ToolChoiceRequired() ResponseBuilder {
+	return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceRequired})
+}
+func (b ResponseBuilder) ToolChoiceNone() ResponseBuilder {
+	return b.ToolChoice(llm.ToolChoice{Type: llm.ToolChoiceNone})
+}
 
 func (b ResponseBuilder) Input(items []llm.InputItem) ResponseBuilder {
 	b.req.input = append([]llm.InputItem(nil), items...)
@@ -120,9 +127,15 @@ func (b ResponseBuilder) Message(role llm.MessageRole, content string) ResponseB
 	})
 }
 
-func (b ResponseBuilder) System(content string) ResponseBuilder    { return b.Message(llm.RoleSystem, content) }
-func (b ResponseBuilder) User(content string) ResponseBuilder      { return b.Message(llm.RoleUser, content) }
-func (b ResponseBuilder) Assistant(content string) ResponseBuilder { return b.Message(llm.RoleAssistant, content) }
+func (b ResponseBuilder) System(content string) ResponseBuilder {
+	return b.Message(llm.RoleSystem, content)
+}
+func (b ResponseBuilder) User(content string) ResponseBuilder {
+	return b.Message(llm.RoleUser, content)
+}
+func (b ResponseBuilder) Assistant(content string) ResponseBuilder {
+	return b.Message(llm.RoleAssistant, content)
+}
 
 func (b ResponseBuilder) ToolResultText(toolCallID string, content string) ResponseBuilder {
 	return b.Item(llm.InputItem{
@@ -176,6 +189,24 @@ func (b ResponseBuilder) Timeout(timeout time.Duration) ResponseBuilder {
 	return b
 }
 
+// StreamTTFTTimeout sets the TTFT timeout for streaming calls (0 disables).
+func (b ResponseBuilder) StreamTTFTTimeout(timeout time.Duration) ResponseBuilder {
+	b.stream.TTFT = timeout
+	return b
+}
+
+// StreamIdleTimeout sets the idle timeout for streaming calls (0 disables).
+func (b ResponseBuilder) StreamIdleTimeout(timeout time.Duration) ResponseBuilder {
+	b.stream.Idle = timeout
+	return b
+}
+
+// StreamTotalTimeout sets the overall stream timeout (0 disables).
+func (b ResponseBuilder) StreamTotalTimeout(timeout time.Duration) ResponseBuilder {
+	b.stream.Total = timeout
+	return b
+}
+
 func (b ResponseBuilder) Retry(cfg RetryConfig) ResponseBuilder {
 	retryCfg := cfg
 	if retryCfg.BaseBackoff == 0 {
@@ -220,6 +251,9 @@ func (b ResponseBuilder) buildOptions() []ResponseOption {
 	}
 	if b.timeout != nil {
 		opts = append(opts, WithTimeout(*b.timeout))
+	}
+	if b.stream.TTFT > 0 || b.stream.Idle > 0 || b.stream.Total > 0 {
+		opts = append(opts, WithStreamTimeouts(b.stream))
 	}
 	if b.retry != nil {
 		opts = append(opts, WithRetry(*b.retry))

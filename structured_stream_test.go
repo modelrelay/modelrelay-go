@@ -27,7 +27,7 @@ func TestStructuredJSONStream_ReadFailureReturnsTransportError(t *testing.T) {
 	ctx := context.Background()
 	sentinelErr := errors.New("synthetic read failure")
 
-	stream := newStructuredJSONStream[struct{}](ctx, &failingReadCloser{err: sentinelErr}, "req-structured-read-failure", nil)
+	stream := newStructuredJSONStream[struct{}](ctx, &failingReadCloser{err: sentinelErr}, "req-structured-read-failure", nil, StreamTimeouts{})
 
 	_, ok, err := stream.Next()
 	if err == nil {
@@ -49,7 +49,7 @@ func TestStructuredJSONStream_ReadFailureReturnsTransportError(t *testing.T) {
 	}
 
 	// Collect should surface the same transport error shape.
-	stream2 := newStructuredJSONStream[struct{}](ctx, &failingReadCloser{err: sentinelErr}, "req-structured-read-failure-collect", nil)
+	stream2 := newStructuredJSONStream[struct{}](ctx, &failingReadCloser{err: sentinelErr}, "req-structured-read-failure-collect", nil, StreamTimeouts{})
 	_, err = stream2.Collect(ctx)
 	if err == nil {
 		t.Fatal("expected error from Collect, got nil")
@@ -75,7 +75,7 @@ func TestStructuredJSONStream_MissingTypeReturnsProtocolError(t *testing.T) {
 
 	ndjson := `{"payload":{"name":"Test"}}
 `
-	stream := newStructuredJSONStream[Simple](ctx, newNDJSONReadCloser(ndjson), "req-missing-type", nil)
+	stream := newStructuredJSONStream[Simple](ctx, newNDJSONReadCloser(ndjson), "req-missing-type", nil, StreamTimeouts{})
 	defer stream.Close()
 
 	_, ok, err := stream.Next()
@@ -120,7 +120,7 @@ func TestStructuredJSONStream_CompleteFieldsParsing(t *testing.T) {
 {"type":"update","payload":{"title":"Hello","body":"World"},"complete_fields":["title","body"]}
 {"type":"completion","payload":{"title":"Hello","body":"World"},"complete_fields":["title","body"]}
 `
-	stream := newStructuredJSONStream[Article](ctx, newNDJSONReadCloser(ndjson), "req-1", nil)
+	stream := newStructuredJSONStream[Article](ctx, newNDJSONReadCloser(ndjson), "req-1", nil, StreamTimeouts{})
 	defer stream.Close()
 
 	// First event: update with only title complete
@@ -192,7 +192,7 @@ func TestStructuredJSONStream_CompleteFieldsFiltersEmptyStrings(t *testing.T) {
 	ndjson := `{"type":"update","payload":{"name":"Test"},"complete_fields":["name", "", "  ", "other"]}
 {"type":"completion","payload":{"name":"Test"},"complete_fields":["name"]}
 `
-	stream := newStructuredJSONStream[Simple](ctx, newNDJSONReadCloser(ndjson), "req-2", nil)
+	stream := newStructuredJSONStream[Simple](ctx, newNDJSONReadCloser(ndjson), "req-2", nil, StreamTimeouts{})
 	defer stream.Close()
 
 	event, ok, err := stream.Next()

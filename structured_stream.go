@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 // StructuredRecordType identifies the NDJSON record kind in structured
@@ -40,10 +41,17 @@ type StructuredJSONEvent[T any] struct {
 // into caller-supplied types. It is created by LLMClient.ProxyStreamJSON.
 type StructuredJSONStream[T any] struct {
 	ctx       context.Context
+	cancel    context.CancelFunc
 	reader    *bufio.Reader
 	body      io.ReadCloser
 	requestID string
 	retry     *RetryMetadata
+
+	timeouts     StreamTimeouts
+	activity     chan struct{}
+	firstContent chan struct{} // closed on first update/completion/error record
+	timeoutErrMu sync.Mutex
+	timeoutErr   error
 
 	mu        sync.Mutex
 	closed    bool
@@ -52,25 +60,127 @@ type StructuredJSONStream[T any] struct {
 	terminal  bool // completion or error observed
 }
 
-func newStructuredJSONStream[T any](ctx context.Context, body io.ReadCloser, requestID string, retry *RetryMetadata) *StructuredJSONStream[T] {
+func newStructuredJSONStream[T any](ctx context.Context, body io.ReadCloser, requestID string, retry *RetryMetadata, timeouts StreamTimeouts) *StructuredJSONStream[T] {
+	streamCtx, cancel := context.WithCancel(ctx)
 	stream := &StructuredJSONStream[T]{
-		ctx:       ctx,
+		ctx:       streamCtx,
+		cancel:    cancel,
 		reader:    bufio.NewReader(body),
 		body:      body,
 		requestID: requestID,
 		retry:     retry,
 		done:      make(chan struct{}),
+		timeouts:  timeouts,
+		activity:  make(chan struct{}, 1),
+		// firstContent is only used when TTFT is configured.
+		firstContent: make(chan struct{}),
 	}
 	go func() {
 		select {
-		case <-ctx.Done():
+		case <-streamCtx.Done():
 			//nolint:errcheck // best-effort cleanup on context cancellation
 			_ = stream.Close()
 		case <-stream.done:
 			return
 		}
 	}()
+	stream.startTimeoutMonitor()
 	return stream
+}
+
+func (s *StructuredJSONStream[T]) startTimeoutMonitor() {
+	if s.timeouts.TTFT <= 0 && s.timeouts.Idle <= 0 && s.timeouts.Total <= 0 {
+		return
+	}
+
+	go func() {
+		var ttftTimer *time.Timer
+		var ttftC <-chan time.Time
+		if s.timeouts.TTFT > 0 {
+			ttftTimer = time.NewTimer(s.timeouts.TTFT)
+			ttftC = ttftTimer.C
+		}
+
+		var idleTimer *time.Timer
+		var idleC <-chan time.Time
+		if s.timeouts.Idle > 0 {
+			idleTimer = time.NewTimer(s.timeouts.Idle)
+			idleC = idleTimer.C
+		}
+
+		var totalTimer *time.Timer
+		var totalC <-chan time.Time
+		if s.timeouts.Total > 0 {
+			totalTimer = time.NewTimer(s.timeouts.Total)
+			totalC = totalTimer.C
+		}
+
+		firstCh := s.firstContent
+
+		defer func() {
+			if ttftTimer != nil {
+				ttftTimer.Stop()
+			}
+			if idleTimer != nil {
+				idleTimer.Stop()
+			}
+			if totalTimer != nil {
+				totalTimer.Stop()
+			}
+		}()
+
+		for {
+			select {
+			case <-s.done:
+				return
+			case <-s.ctx.Done():
+				return
+			case <-firstCh:
+				firstCh = nil
+				if ttftTimer != nil {
+					ttftTimer.Stop()
+					ttftC = nil
+				}
+			case <-s.activity:
+				if idleTimer != nil {
+					if !idleTimer.Stop() {
+						select {
+						case <-idleTimer.C:
+						default:
+						}
+					}
+					idleTimer.Reset(s.timeouts.Idle)
+					idleC = idleTimer.C
+				}
+			case <-ttftC:
+				s.setTimeoutErr(StreamTimeoutError{Kind: StreamTimeoutTTFT, Timeout: s.timeouts.TTFT})
+				s.cancel()
+				return
+			case <-idleC:
+				s.setTimeoutErr(StreamTimeoutError{Kind: StreamTimeoutIdle, Timeout: s.timeouts.Idle})
+				s.cancel()
+				return
+			case <-totalC:
+				s.setTimeoutErr(StreamTimeoutError{Kind: StreamTimeoutTotal, Timeout: s.timeouts.Total})
+				s.cancel()
+				return
+			}
+		}
+	}()
+}
+
+func (s *StructuredJSONStream[T]) setTimeoutErr(err error) {
+	s.timeoutErrMu.Lock()
+	defer s.timeoutErrMu.Unlock()
+	if s.timeoutErr == nil {
+		s.timeoutErr = err
+	}
+}
+
+func (s *StructuredJSONStream[T]) getTimeoutErr() error {
+	s.timeoutErrMu.Lock()
+	defer s.timeoutErrMu.Unlock()
+	return s.timeoutErr
 }
 
 // Next advances the stream and decodes the next update or completion record.
@@ -84,6 +194,11 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 	for {
 		line, err := s.reader.ReadBytes('\n')
 		if err != nil {
+			if terr := s.getTimeoutErr(); terr != nil && s.ctx.Err() != nil {
+				//nolint:errcheck // best-effort cleanup after timeout
+				_ = s.Close()
+				return StructuredJSONEvent[T]{}, false, terr
+			}
 			trimmed := bytes.TrimSpace(line)
 			if errors.Is(err, io.EOF) && len(trimmed) == 0 {
 				// End-of-stream: if no completion/error was seen, treat as
@@ -105,6 +220,10 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 		line = bytes.TrimSpace(line)
 		if len(line) == 0 {
 			continue
+		}
+		select {
+		case s.activity <- struct{}{}:
+		default:
 		}
 
 		var raw struct {
@@ -137,6 +256,11 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 			if err := json.Unmarshal(raw.Payload, &payload); err != nil {
 				return StructuredJSONEvent[T]{}, false, s.transportError("failed to decode structured payload", err)
 			}
+			select {
+			case <-s.firstContent:
+			default:
+				close(s.firstContent)
+			}
 			if recordType == StructuredRecordTypeCompletion {
 				s.markTerminal()
 				//nolint:errcheck // best-effort cleanup after completion
@@ -158,6 +282,11 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 				CompleteFields: completeFields,
 			}, true, nil
 		case StructuredRecordTypeError:
+			select {
+			case <-s.firstContent:
+			default:
+				close(s.firstContent)
+			}
 			s.markTerminal()
 			//nolint:errcheck // best-effort cleanup after error
 			_ = s.Close()
@@ -223,6 +352,9 @@ func (s *StructuredJSONStream[T]) Close() error {
 		s.closed = true
 		s.mu.Unlock()
 		close(s.done)
+		if s.cancel != nil {
+			s.cancel()
+		}
 		if cwe, ok := s.body.(interface{ CloseWithError(error) error }); ok {
 			//nolint:errcheck // best-effort cleanup
 			_ = cwe.CloseWithError(context.Canceled)

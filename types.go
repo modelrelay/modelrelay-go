@@ -126,6 +126,7 @@ type responseCallOptions struct {
 	headers http.Header
 	timeout *time.Duration
 	retry   *RetryConfig
+	stream  StreamTimeouts
 }
 
 // WithRequestID sets the X-ModelRelay-Request-Id header for the request.
@@ -216,6 +217,45 @@ func DisableRetry() ResponseOption {
 	return func(opts *responseCallOptions) {
 		cfg := RetryConfig{MaxAttempts: 1, BaseBackoff: 0, MaxBackoff: 0, RetryPost: false}
 		opts.retry = &cfg
+	}
+}
+
+// StreamTimeouts configures streaming timeouts for /responses streams.
+//
+// TTFT: time until the first non-empty content update is observed.
+// Idle: maximum time between successive NDJSON records.
+// Total: overall stream deadline.
+type StreamTimeouts struct {
+	TTFT  time.Duration
+	Idle  time.Duration
+	Total time.Duration
+}
+
+// WithStreamTimeouts configures streaming timeouts for /responses streams.
+func WithStreamTimeouts(timeouts StreamTimeouts) ResponseOption {
+	return func(opts *responseCallOptions) {
+		opts.stream = timeouts
+	}
+}
+
+// WithStreamTTFTTimeout sets the TTFT timeout for streams (0 disables).
+func WithStreamTTFTTimeout(timeout time.Duration) ResponseOption {
+	return func(opts *responseCallOptions) {
+		opts.stream.TTFT = timeout
+	}
+}
+
+// WithStreamIdleTimeout sets the idle timeout for streams (0 disables).
+func WithStreamIdleTimeout(timeout time.Duration) ResponseOption {
+	return func(opts *responseCallOptions) {
+		opts.stream.Idle = timeout
+	}
+}
+
+// WithStreamTotalTimeout sets the total stream timeout (0 disables).
+func WithStreamTotalTimeout(timeout time.Duration) ResponseOption {
+	return func(opts *responseCallOptions) {
+		opts.stream.Total = timeout
 	}
 }
 

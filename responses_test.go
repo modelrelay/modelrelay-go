@@ -375,6 +375,306 @@ func TestResponsesStream(t *testing.T) {
 	}
 }
 
+func TestResponsesStreamRejectsNonNDJSONContentType(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("<html>nope</html>"))
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	req, opts, err := client.Responses.New().
+		Model(NewModelID("demo")).
+		User("hi").
+		Build()
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	_, err = client.Responses.Stream(context.Background(), req, opts...)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var pe StreamProtocolError
+	if !errors.As(err, &pe) {
+		t.Fatalf("expected StreamProtocolError, got %T", err)
+	}
+	if pe.ReceivedContentType == "" {
+		t.Fatalf("expected received content type to be set")
+	}
+}
+
+func TestResponsesStreamJSONRejectsNonNDJSONContentType(t *testing.T) {
+	type Simple struct {
+		Name string `json:"name"`
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("<html>nope</html>"))
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	format, err := OutputFormatFromType[Simple]("simple")
+	if err != nil {
+		t.Fatalf("OutputFormatFromType: %v", err)
+	}
+
+	req, opts, err := client.Responses.New().
+		Model(NewModelID("demo")).
+		User("hi").
+		OutputFormat(*format).
+		Build()
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	_, err = StreamJSON[Simple](context.Background(), client.Responses, req, opts...)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var pe StreamProtocolError
+	if !errors.As(err, &pe) {
+		t.Fatalf("expected StreamProtocolError, got %T", err)
+	}
+	if pe.ReceivedContentType == "" {
+		t.Fatalf("expected received content type to be set")
+	}
+}
+
+func TestResponsesStreamTTFTTimeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		flusher, _ := w.(http.Flusher)
+		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
+		flusher.Flush()
+		time.Sleep(75 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"type":"completion","payload":{"content":"Hello world"}}` + "\n"))
+		flusher.Flush()
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	req, opts, err := client.Responses.New().
+		Model(NewModelID("demo")).
+		User("hi").
+		StreamTTFTTimeout(25 * time.Millisecond).
+		Build()
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	stream, err := client.Responses.Stream(ctx, req, opts...)
+	if err != nil {
+		t.Fatalf("stream: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	// First event (start) should arrive before TTFT elapses.
+	_, ok, err := stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected start event got err=%v ok=%v", err, ok)
+	}
+
+	// Next should fail due to TTFT timeout before first content is observed.
+	_, _, err = stream.Next()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var te StreamTimeoutError
+	if !errors.As(err, &te) {
+		t.Fatalf("expected StreamTimeoutError, got %T", err)
+	}
+	if te.Kind != StreamTimeoutTTFT {
+		t.Fatalf("expected kind=%s got %s", StreamTimeoutTTFT, te.Kind)
+	}
+}
+
+func TestResponsesStreamIdleTimeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		flusher, _ := w.(http.Flusher)
+		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
+		flusher.Flush()
+		time.Sleep(75 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"type":"completion","payload":{"content":"Hello world"}}` + "\n"))
+		flusher.Flush()
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	req, opts, err := client.Responses.New().
+		Model(NewModelID("demo")).
+		User("hi").
+		StreamIdleTimeout(25 * time.Millisecond).
+		Build()
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	stream, err := client.Responses.Stream(ctx, req, opts...)
+	if err != nil {
+		t.Fatalf("stream: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	_, ok, err := stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected start event got err=%v ok=%v", err, ok)
+	}
+
+	_, _, err = stream.Next()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var te StreamTimeoutError
+	if !errors.As(err, &te) {
+		t.Fatalf("expected StreamTimeoutError, got %T", err)
+	}
+	if te.Kind != StreamTimeoutIdle {
+		t.Fatalf("expected kind=%s got %s", StreamTimeoutIdle, te.Kind)
+	}
+}
+
+func TestResponsesStreamTotalTimeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		flusher, _ := w.(http.Flusher)
+		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
+		flusher.Flush()
+
+		// Keep the connection active so idle doesn't fire.
+		for i := 0; i < 20; i++ {
+			time.Sleep(10 * time.Millisecond)
+			_, _ = w.Write([]byte(`{"type":"keepalive"}` + "\n"))
+			flusher.Flush()
+		}
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	req, opts, err := client.Responses.New().
+		Model(NewModelID("demo")).
+		User("hi").
+		StreamTotalTimeout(35 * time.Millisecond).
+		Build()
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	stream, err := client.Responses.Stream(ctx, req, opts...)
+	if err != nil {
+		t.Fatalf("stream: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	var gotErr error
+	for i := 0; i < 50; i++ {
+		_, _, err := stream.Next()
+		if err != nil {
+			gotErr = err
+			break
+		}
+	}
+	if gotErr == nil {
+		t.Fatal("expected error")
+	}
+	var te StreamTimeoutError
+	if !errors.As(gotErr, &te) {
+		t.Fatalf("expected StreamTimeoutError, got %T", gotErr)
+	}
+	if te.Kind != StreamTimeoutTotal {
+		t.Fatalf("expected kind=%s got %s", StreamTimeoutTotal, te.Kind)
+	}
+}
+
+func TestResponsesStreamJSONTTFTTimeout(t *testing.T) {
+	type Simple struct {
+		Name string `json:"name"`
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		flusher, _ := w.(http.Flusher)
+		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
+		flusher.Flush()
+		time.Sleep(75 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"type":"completion","payload":{"name":"Jane"}}` + "\n"))
+		flusher.Flush()
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: "test", HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+
+	format, err := OutputFormatFromType[Simple]("simple")
+	if err != nil {
+		t.Fatalf("OutputFormatFromType: %v", err)
+	}
+
+	req, opts, err := client.Responses.New().
+		Model(NewModelID("demo")).
+		User("hi").
+		OutputFormat(*format).
+		StreamTTFTTimeout(25 * time.Millisecond).
+		Build()
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	stream, err := StreamJSON[Simple](context.Background(), client.Responses, req, opts...)
+	if err != nil {
+		t.Fatalf("stream json: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	_, _, err = stream.Next()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var te StreamTimeoutError
+	if !errors.As(err, &te) {
+		t.Fatalf("expected StreamTimeoutError, got %T", err)
+	}
+	if te.Kind != StreamTimeoutTTFT {
+		t.Fatalf("expected kind=%s got %s", StreamTimeoutTTFT, te.Kind)
+	}
+}
+
 func TestResponsesCustomerHeaderAllowsMissingModel(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != routes.Responses {

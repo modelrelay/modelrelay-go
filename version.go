@@ -36,5 +36,5 @@ package sdk
 // Rich Hickey-style design with separate types for auto-provisioning.
 // 0.35.0: CustomersClient.Claim now works with publishable keys (mr_pk_*) for user self-service.
 // Enables CLI tools and frontends to link Stripe subscriptions to user identities.
-// 0.40.0: Add chat-like text helpers (ResponsesClient.Text / TextForCustomer / StreamTextDeltas).
-const Version = "0.40.0"
+// 0.41.0: Streaming robustness + explicit stream timeout options (TTFT/Idle/Total) and typed stream errors.
+const Version = "0.41.0"

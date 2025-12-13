@@ -222,13 +222,23 @@ func (c *ResponsesClient) Stream(ctx context.Context, req ResponseRequest, optio
 	applyResponseHeaders(httpReq, callOpts)
 	startedAt := time.Now()
 	//nolint:bodyclose // resp.Body is transferred to stream and will be closed by stream.Close()
-	resp, _, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
+	resp, _, err := c.client.sendStreaming(httpReq, callOpts.retry)
 	if err != nil {
 		return nil, err
 	}
+	contentType := resp.Header.Get("Content-Type")
+	if !isNDJSONContentType(contentType) {
+		//nolint:errcheck // best-effort cleanup on protocol violation
+		_ = resp.Body.Close()
+		return nil, StreamProtocolError{
+			ExpectedContentType: "application/x-ndjson",
+			ReceivedContentType: contentType,
+			Status:              resp.StatusCode,
+		}
+	}
 	requestID := requestIDFromHeaders(resp.Header)
 	reqCtx := newRequestContext(httpReq.Method, httpReq.URL.Path, req.model, requestID)
-	stream := newNDJSONStream(ctx, resp.Body, c.client.telemetry, startedAt, reqCtx)
+	stream := newNDJSONStream(ctx, resp.Body, c.client.telemetry, startedAt, reqCtx, callOpts.stream)
 	return &StreamHandle{
 		stream:    stream,
 		RequestID: requestID,
@@ -265,7 +275,7 @@ func StreamJSON[T any](ctx context.Context, c *ResponsesClient, req ResponseRequ
 	applyResponseHeaders(httpReq, callOpts)
 
 	//nolint:bodyclose // resp.Body is owned by the StructuredJSONStream
-	resp, retryMeta, err := c.client.send(httpReq, callOpts.timeout, callOpts.retry)
+	resp, retryMeta, err := c.client.sendStreaming(httpReq, callOpts.retry)
 	if err != nil {
 		return nil, err
 	}
@@ -274,13 +284,20 @@ func StreamJSON[T any](ctx context.Context, c *ResponsesClient, req ResponseRequ
 		// Best-effort cleanup before returning a typed transport error.
 		//nolint:errcheck // best-effort cleanup on protocol violation
 		_ = resp.Body.Close()
-		return nil, TransportError{
-			Message: fmt.Sprintf("expected NDJSON structured stream, got Content-Type %q", contentType),
-			Retry:   retryMeta,
+		return nil, StreamProtocolError{
+			ExpectedContentType: "application/x-ndjson",
+			ReceivedContentType: contentType,
+			Status:              resp.StatusCode,
 		}
 	}
 
-	return newStructuredJSONStream[T](ctx, resp.Body, requestIDFromHeaders(resp.Header), retryMeta), nil
+	return newStructuredJSONStream[T](
+		ctx,
+		resp.Body,
+		requestIDFromHeaders(resp.Header),
+		retryMeta,
+		callOpts.stream,
+	), nil
 }
 
 type responseRequestPayload struct {
@@ -320,6 +337,7 @@ func newResponseRequestPayload(req ResponseRequest) responseRequestPayload {
 
 type ndjsonStream struct {
 	ctx       context.Context
+	cancel    context.CancelFunc
 	reader    *bufio.Reader
 	body      io.ReadCloser
 	telemetry TelemetryHooks
@@ -327,6 +345,12 @@ type ndjsonStream struct {
 	closeOnce sync.Once
 	mu        sync.Mutex
 	done      chan struct{}
+
+	timeouts     StreamTimeouts
+	activity     chan struct{}
+	firstEvent   chan struct{} // closed on first non-empty text delta
+	timeoutErrMu sync.Mutex
+	timeoutErr   error
 
 	// Metadata from start record propagated to subsequent events
 	startRequestID string
@@ -337,29 +361,137 @@ type ndjsonStream struct {
 	requestCtx      RequestContext
 }
 
-func newNDJSONStream(ctx context.Context, body io.ReadCloser, telemetry TelemetryHooks, startedAt time.Time, reqCtx RequestContext) *ndjsonStream {
+func newNDJSONStream(
+	ctx context.Context,
+	body io.ReadCloser,
+	telemetry TelemetryHooks,
+	startedAt time.Time,
+	reqCtx RequestContext,
+	timeouts StreamTimeouts,
+) *ndjsonStream {
 	if startedAt.IsZero() {
 		startedAt = time.Now()
 	}
+	streamCtx, cancel := context.WithCancel(ctx)
 	stream := &ndjsonStream{
-		ctx:        ctx,
+		ctx:        streamCtx,
+		cancel:     cancel,
 		reader:     bufio.NewReader(body),
 		body:       body,
 		telemetry:  telemetry,
 		done:       make(chan struct{}),
 		startedAt:  startedAt,
 		requestCtx: reqCtx,
+		timeouts:   timeouts,
+		activity:   make(chan struct{}, 1),
+		firstEvent: make(chan struct{}),
 	}
 	go func() {
 		select {
-		case <-ctx.Done():
+		case <-streamCtx.Done():
 			//nolint:errcheck // best-effort cleanup in goroutine
 			_ = stream.Close()
 		case <-stream.done:
 			return
 		}
 	}()
+	stream.startTimeoutMonitor()
 	return stream
+}
+
+func (s *ndjsonStream) startTimeoutMonitor() {
+	if s.timeouts.TTFT <= 0 && s.timeouts.Idle <= 0 && s.timeouts.Total <= 0 {
+		return
+	}
+
+	go func() {
+		var ttftTimer *time.Timer
+		var ttftC <-chan time.Time
+		if s.timeouts.TTFT > 0 {
+			ttftTimer = time.NewTimer(s.timeouts.TTFT)
+			ttftC = ttftTimer.C
+		}
+
+		var idleTimer *time.Timer
+		var idleC <-chan time.Time
+		if s.timeouts.Idle > 0 {
+			idleTimer = time.NewTimer(s.timeouts.Idle)
+			idleC = idleTimer.C
+		}
+
+		var totalTimer *time.Timer
+		var totalC <-chan time.Time
+		if s.timeouts.Total > 0 {
+			totalTimer = time.NewTimer(s.timeouts.Total)
+			totalC = totalTimer.C
+		}
+
+		firstCh := s.firstEvent
+
+		defer func() {
+			if ttftTimer != nil {
+				ttftTimer.Stop()
+			}
+			if idleTimer != nil {
+				idleTimer.Stop()
+			}
+			if totalTimer != nil {
+				totalTimer.Stop()
+			}
+		}()
+
+		for {
+			select {
+			case <-s.done:
+				return
+			case <-s.ctx.Done():
+				return
+			case <-firstCh:
+				firstCh = nil
+				if ttftTimer != nil {
+					ttftTimer.Stop()
+					ttftC = nil
+				}
+			case <-s.activity:
+				if idleTimer != nil {
+					if !idleTimer.Stop() {
+						select {
+						case <-idleTimer.C:
+						default:
+						}
+					}
+					idleTimer.Reset(s.timeouts.Idle)
+					idleC = idleTimer.C
+				}
+			case <-ttftC:
+				s.setTimeoutErr(StreamTimeoutError{Kind: StreamTimeoutTTFT, Timeout: s.timeouts.TTFT})
+				s.cancel()
+				return
+			case <-idleC:
+				s.setTimeoutErr(StreamTimeoutError{Kind: StreamTimeoutIdle, Timeout: s.timeouts.Idle})
+				s.cancel()
+				return
+			case <-totalC:
+				s.setTimeoutErr(StreamTimeoutError{Kind: StreamTimeoutTotal, Timeout: s.timeouts.Total})
+				s.cancel()
+				return
+			}
+		}
+	}()
+}
+
+func (s *ndjsonStream) setTimeoutErr(err error) {
+	s.timeoutErrMu.Lock()
+	defer s.timeoutErrMu.Unlock()
+	if s.timeoutErr == nil {
+		s.timeoutErr = err
+	}
+}
+
+func (s *ndjsonStream) getTimeoutErr() error {
+	s.timeoutErrMu.Lock()
+	defer s.timeoutErrMu.Unlock()
+	return s.timeoutErr
 }
 
 func (s *ndjsonStream) Next() (StreamEvent, bool, error) {
@@ -369,12 +501,23 @@ func (s *ndjsonStream) Next() (StreamEvent, bool, error) {
 	for {
 		line, err := s.reader.ReadBytes('\n')
 		if err != nil {
+			if terr := s.getTimeoutErr(); terr != nil && s.ctx.Err() != nil {
+				//nolint:errcheck // best-effort cleanup after timeout
+				_ = s.Close()
+				return StreamEvent{}, false, terr
+			}
 			if errors.Is(err, io.EOF) && len(line) == 0 {
 				//nolint:errcheck // best-effort cleanup on EOF
 				_ = s.Close()
+				if terr := s.getTimeoutErr(); terr != nil {
+					return StreamEvent{}, false, terr
+				}
 				return StreamEvent{}, false, nil
 			}
 			if errors.Is(err, context.Canceled) {
+				if terr := s.getTimeoutErr(); terr != nil {
+					return StreamEvent{}, false, terr
+				}
 				return StreamEvent{}, false, nil
 			}
 			if len(line) == 0 {
@@ -431,8 +574,37 @@ func (s *ndjsonStream) Next() (StreamEvent, bool, error) {
 			s.telemetry.OnStreamEvent(s.ctx, event)
 		}
 		s.telemetry.metric(s.ctx, "sdk_stream_events_total", 1, map[string]string{"event": event.EventName()})
+		if streamEventCountsForTTFT(event) {
+			select {
+			case <-s.firstEvent:
+			default:
+				close(s.firstEvent)
+			}
+		}
+		select {
+		case s.activity <- struct{}{}:
+		default:
+		}
 		return event, true, nil
 	}
+}
+
+func streamEventCountsForTTFT(event StreamEvent) bool {
+	if event.TextDelta != "" {
+		return true
+	}
+	if event.ToolCallDelta != nil {
+		return true
+	}
+	if len(event.ToolCalls) > 0 {
+		return true
+	}
+	// Errors are terminal output; treat them as "first content" so TTFT doesn't
+	// mask an observed error record.
+	if event.Name == "error" {
+		return true
+	}
+	return false
 }
 
 func (s *ndjsonStream) Close() error {
@@ -442,6 +614,9 @@ func (s *ndjsonStream) Close() error {
 		s.closed = true
 		s.mu.Unlock()
 		close(s.done)
+		if s.cancel != nil {
+			s.cancel()
+		}
 		if cwe, ok := s.body.(interface{ CloseWithError(error) error }); ok {
 			//nolint:errcheck // best-effort cleanup
 			_ = cwe.CloseWithError(context.Canceled)

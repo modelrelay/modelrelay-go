@@ -422,6 +422,24 @@ func (c *Client) send(req *http.Request, timeout *time.Duration, retry *RetryCon
 	return resp, meta, nil
 }
 
+// sendStreaming sends a request intended for streaming responses.
+//
+// IMPORTANT: Streaming requests must not apply per-request timeout contexts that
+// could cancel the body read after headers are received. Stream deadlines are
+// enforced by stream-specific timeouts (TTFT/Idle/Total) instead.
+func (c *Client) sendStreaming(req *http.Request, retry *RetryConfig) (*http.Response, *RetryMetadata, error) {
+	req = req.Clone(req.Context())
+	cfg := c.retryCfg
+	if retry != nil {
+		cfg = retry.normalized()
+	}
+	resp, meta, err := c.sendWithRetry(req, cfg)
+	if err != nil {
+		return nil, meta, err
+	}
+	return resp, meta, nil
+}
+
 type cancelOnCloseReadCloser struct {
 	rc     io.ReadCloser
 	cancel context.CancelFunc

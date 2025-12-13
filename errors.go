@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 // ErrorCategory tags SDK errors for callers.
@@ -41,6 +42,50 @@ func (e TransportError) Error() string {
 }
 
 func (e TransportError) Unwrap() error { return e.Cause }
+
+// StreamProtocolError indicates the server did not return the expected NDJSON stream.
+// This typically happens when an upstream proxy returns HTML (e.g., 504 pages).
+type StreamProtocolError struct {
+	ExpectedContentType string
+	ReceivedContentType string
+	Status              int
+}
+
+func (e StreamProtocolError) Error() string {
+	got := e.ReceivedContentType
+	if got == "" {
+		got = "<missing>"
+	}
+	return fmt.Sprintf("expected NDJSON stream (%s), got Content-Type %s", e.ExpectedContentType, got)
+}
+
+// StreamTimeoutKind indicates which streaming timeout triggered.
+type StreamTimeoutKind string
+
+const (
+	StreamTimeoutTTFT  StreamTimeoutKind = "ttft"
+	StreamTimeoutIdle  StreamTimeoutKind = "idle"
+	StreamTimeoutTotal StreamTimeoutKind = "total"
+)
+
+// StreamTimeoutError indicates a streaming timeout (ttft, idle, or total).
+type StreamTimeoutError struct {
+	Kind    StreamTimeoutKind
+	Timeout time.Duration
+}
+
+func (e StreamTimeoutError) Error() string {
+	switch e.Kind {
+	case StreamTimeoutTTFT:
+		return fmt.Sprintf("stream TTFT timeout after %s", e.Timeout)
+	case StreamTimeoutIdle:
+		return fmt.Sprintf("stream idle timeout after %s", e.Timeout)
+	case StreamTimeoutTotal:
+		return fmt.Sprintf("stream total timeout after %s", e.Timeout)
+	default:
+		return fmt.Sprintf("stream timeout after %s", e.Timeout)
+	}
+}
 
 // API error codes returned by the server.
 // These constants can be used for programmatic error handling.
