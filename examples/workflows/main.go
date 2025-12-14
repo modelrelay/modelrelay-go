@@ -224,7 +224,11 @@ func runOnce(ctx context.Context, client *sdk.Client, label string, spec workflo
 		case sdk.RunEventRunCanceledV0:
 			log.Printf("[%s] run_canceled: %s", label, e.Error.Message)
 		case sdk.RunEventRunCompletedV0:
-			b, _ := json.MarshalIndent(e.Outputs, "", "  ")
+			status, err := client.Runs.Get(ctx, created.RunID)
+			if err != nil {
+				return err
+			}
+			b, _ := json.MarshalIndent(status.Outputs, "", "  ")
 			log.Printf("[%s] outputs: %s", label, string(b))
 		}
 	}

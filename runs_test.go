@@ -51,7 +51,7 @@ func TestRunsCreateGetAndStream(t *testing.T) {
 			w.Header().Set("Content-Type", "application/x-ndjson")
 			ts := time.Now().UTC().Format(time.RFC3339Nano)
 			_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID.String() + `","seq":1,"ts":"` + ts + `","type":"run_started","plan_hash":"` + planHash.String() + `"}` + "\n"))
-			_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID.String() + `","seq":2,"ts":"` + ts + `","type":"run_completed","plan_hash":"` + planHash.String() + `","outputs":{"result":{"ok":true}}}` + "\n"))
+			_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID.String() + `","seq":2,"ts":"` + ts + `","type":"run_completed","plan_hash":"` + planHash.String() + `","outputs_artifact_key":"` + workflow.ArtifactKeyRunOutputsV0 + `","outputs_info":{"bytes":17,"sha256":"` + planHash.String() + `","included":false}}` + "\n"))
 		default:
 			http.NotFound(w, r)
 		}
@@ -125,7 +125,10 @@ func TestRunsCreateGetAndStream(t *testing.T) {
 	if completed.PlanHash != planHash {
 		t.Fatalf("unexpected plan hash %s", completed.PlanHash.String())
 	}
-	if _, ok := completed.Outputs["result"]; !ok {
-		t.Fatalf("expected outputs to include result")
+	if completed.OutputsArtifactKey != workflow.ArtifactKeyRunOutputsV0 {
+		t.Fatalf("unexpected outputs_artifact_key %q", completed.OutputsArtifactKey)
+	}
+	if completed.OutputsInfo.Included {
+		t.Fatalf("expected outputs_info.included=false")
 	}
 }

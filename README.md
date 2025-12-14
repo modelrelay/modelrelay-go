@@ -178,7 +178,9 @@ defer stream.Close()
 		}
 		switch e := ev.(type) {
 		case sdk.RunEventRunCompletedV0:
-			b, _ := json.Marshal(e.Outputs)
+			_ = e // event includes outputs_artifact_key; fetch the full outputs via /runs/{run_id}
+			status, _ := client.Runs.Get(ctx, created.RunID)
+			b, _ := json.Marshal(status.Outputs)
 			fmt.Printf("outputs: %s\n", string(b))
 		}
 	}

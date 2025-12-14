@@ -62,7 +62,8 @@ type RunEventRunStartedV0 struct {
 type RunEventRunCompletedV0 struct {
 	RunEventV0Base
 	PlanHash PlanHash
-	Outputs  map[workflow.OutputName]json.RawMessage
+	OutputsArtifactKey string
+	OutputsInfo        workflow.PayloadInfoV0
 }
 
 type RunEventRunFailedV0 struct {
@@ -95,10 +96,9 @@ type RunEventNodeFailedV0 struct {
 
 type RunEventNodeOutputV0 struct {
 	RunEventV0Base
-	NodeID        workflow.NodeID
-	Output        json.RawMessage
-	OutputInfo    workflow.PayloadInfoV0
-	OutputOmitted bool
+	NodeID       workflow.NodeID
+	ArtifactKey  string
+	OutputInfo   workflow.PayloadInfoV0
 }
 
 func (RunEventRunCompiledV0) isRunEventV0()   {}
@@ -147,34 +147,37 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 
 		switch env.Type {
 		case workflow.RunEventRunCompiled:
-			if env.Outputs != nil || env.Error != nil || env.OutputInfo != nil || env.Output != nil {
-				return nil, ProtocolError{Message: "run_compiled must not include outputs/error/output/output_info"}
+			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
+				return nil, ProtocolError{Message: "run_compiled must not include error/output_info/artifact fields"}
 			}
 			return RunEventRunCompiledV0{RunEventV0Base: base, PlanHash: planHash}, nil
 		case workflow.RunEventRunStarted:
-			if env.Outputs != nil || env.Error != nil || env.OutputInfo != nil || env.Output != nil {
-				return nil, ProtocolError{Message: "run_started must not include outputs/error/output/output_info"}
+			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
+				return nil, ProtocolError{Message: "run_started must not include error/output_info/artifact fields"}
 			}
 			return RunEventRunStartedV0{RunEventV0Base: base, PlanHash: planHash}, nil
 		case workflow.RunEventRunCompleted:
-			if env.Error != nil || env.OutputInfo != nil || env.Output != nil {
-				return nil, ProtocolError{Message: "run_completed must not include error/output/output_info"}
+			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
+				return nil, ProtocolError{Message: "run_completed must not include error/output_info/node artifact fields"}
 			}
-			if env.Outputs == nil {
-				return nil, ProtocolError{Message: "run_completed must include outputs"}
+			if strings.TrimSpace(env.OutputsArtifactKey) == "" || env.OutputsInfo == nil {
+				return nil, ProtocolError{Message: "run_completed must include outputs_artifact_key and outputs_info"}
 			}
-			return RunEventRunCompletedV0{RunEventV0Base: base, PlanHash: planHash, Outputs: env.Outputs}, nil
+			if env.OutputsInfo.Included {
+				return nil, ProtocolError{Message: "run_completed outputs_info.included must be false"}
+			}
+			return RunEventRunCompletedV0{RunEventV0Base: base, PlanHash: planHash, OutputsArtifactKey: env.OutputsArtifactKey, OutputsInfo: *env.OutputsInfo}, nil
 		case workflow.RunEventRunFailed:
-			if env.Outputs != nil || env.OutputInfo != nil || env.Output != nil {
-				return nil, ProtocolError{Message: "run_failed must not include outputs/output/output_info"}
+			if env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
+				return nil, ProtocolError{Message: "run_failed must not include output_info/artifact fields"}
 			}
 			if env.Error == nil || strings.TrimSpace(env.Error.Message) == "" {
 				return nil, ProtocolError{Message: "run_failed must include error"}
 			}
 			return RunEventRunFailedV0{RunEventV0Base: base, PlanHash: planHash, Error: *env.Error}, nil
 		case workflow.RunEventRunCanceled:
-			if env.Outputs != nil || env.OutputInfo != nil || env.Output != nil {
-				return nil, ProtocolError{Message: "run_canceled must not include outputs/output/output_info"}
+			if env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
+				return nil, ProtocolError{Message: "run_canceled must not include output_info/artifact fields"}
 			}
 			if env.Error == nil || strings.TrimSpace(env.Error.Message) == "" {
 				return nil, ProtocolError{Message: "run_canceled must include error"}
@@ -188,8 +191,8 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 		if env.PlanHash != nil {
 			return nil, ProtocolError{Message: "node-scoped event must not include plan_hash"}
 		}
-		if env.Outputs != nil {
-			return nil, ProtocolError{Message: "node-scoped event must not include outputs"}
+		if env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
+			return nil, ProtocolError{Message: "node-scoped event must not include outputs fields"}
 		}
 		if !env.NodeID.Valid() {
 			return nil, ProtocolError{Message: "node-scoped event must include node_id"}
@@ -197,18 +200,18 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 
 		switch env.Type {
 		case workflow.RunEventNodeStarted:
-			if env.Error != nil || env.OutputInfo != nil || env.Output != nil {
-				return nil, ProtocolError{Message: "node_started must not include error/output/output_info"}
+			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
+				return nil, ProtocolError{Message: "node_started must not include error/output_info/artifact_key"}
 			}
 			return RunEventNodeStartedV0{RunEventV0Base: base, NodeID: env.NodeID}, nil
 		case workflow.RunEventNodeSucceeded:
-			if env.Error != nil || env.OutputInfo != nil || env.Output != nil {
-				return nil, ProtocolError{Message: "node_succeeded must not include error/output/output_info"}
+			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
+				return nil, ProtocolError{Message: "node_succeeded must not include error/output_info/artifact_key"}
 			}
 			return RunEventNodeSucceededV0{RunEventV0Base: base, NodeID: env.NodeID}, nil
 		case workflow.RunEventNodeFailed:
-			if env.OutputInfo != nil || env.Output != nil {
-				return nil, ProtocolError{Message: "node_failed must not include output/output_info"}
+			if env.OutputInfo != nil || env.ArtifactKey != "" {
+				return nil, ProtocolError{Message: "node_failed must not include output_info/artifact_key"}
 			}
 			if env.Error == nil || strings.TrimSpace(env.Error.Message) == "" {
 				return nil, ProtocolError{Message: "node_failed must include error"}
@@ -221,16 +224,17 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			if env.OutputInfo == nil {
 				return nil, ProtocolError{Message: "node_output must include output_info"}
 			}
-			outputOmitted := env.Output == nil
-			if env.OutputInfo.Included != !outputOmitted {
-				return nil, ProtocolError{Message: "node_output output_info.included must match presence of output"}
+			if strings.TrimSpace(env.ArtifactKey) == "" {
+				return nil, ProtocolError{Message: "node_output must include artifact_key"}
+			}
+			if env.OutputInfo.Included {
+				return nil, ProtocolError{Message: "node_output output_info.included must be false"}
 			}
 			return RunEventNodeOutputV0{
 				RunEventV0Base: base,
-				NodeID:         env.NodeID,
-				Output:         env.Output,
-				OutputInfo:     *env.OutputInfo,
-				OutputOmitted:  outputOmitted,
+				NodeID:        env.NodeID,
+				ArtifactKey:   env.ArtifactKey,
+				OutputInfo:    *env.OutputInfo,
 			}, nil
 		default:
 			return nil, ProtocolError{Message: "unknown run event type"}
