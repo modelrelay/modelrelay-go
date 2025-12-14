@@ -59,6 +59,22 @@ func (e StreamProtocolError) Error() string {
 	return fmt.Sprintf("expected NDJSON stream (%s), got Content-Type %s", e.ExpectedContentType, got)
 }
 
+// ProtocolError indicates the server returned a syntactically valid response that violates
+// the SDK's expected wire contract (e.g., invalid run event envelopes).
+type ProtocolError struct {
+	Message string
+	Cause   error
+}
+
+func (e ProtocolError) Error() string {
+	if e.Message == "" {
+		return "protocol error"
+	}
+	return "protocol error: " + e.Message
+}
+
+func (e ProtocolError) Unwrap() error { return e.Cause }
+
 // StreamTimeoutKind indicates which streaming timeout triggered.
 type StreamTimeoutKind string
 

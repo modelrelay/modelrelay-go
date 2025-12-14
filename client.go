@@ -117,6 +117,7 @@ type Client struct {
 
 	// Grouped service clients.
 	Responses *ResponsesClient
+	Runs      *RunsClient
 	Usage     *UsageClient
 	Auth      *AuthClient
 	Customers *CustomersClient
@@ -216,6 +217,7 @@ func newClientFromOptions(apiKey APIKeyAuth, accessToken string, opts clientOpti
 		retryCfg:       retryCfg,
 	}
 	client.Responses = &ResponsesClient{client: client}
+	client.Runs = &RunsClient{client: client}
 	client.Usage = &UsageClient{client: client}
 	client.Auth = &AuthClient{client: client}
 	client.Customers = &CustomersClient{client: client}

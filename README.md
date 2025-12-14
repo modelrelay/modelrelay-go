@@ -89,6 +89,101 @@ for {
 }
 ```
 
+## Workflow Runs (workflow.v0)
+
+```go
+ctx := context.Background()
+key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
+client, _ := sdk.NewClientWithKey(key)
+
+mustJSON := func(v any) json.RawMessage {
+	b, _ := json.Marshal(v)
+	return b
+}
+
+spec := sdk.WorkflowSpecV0{
+	Kind: sdk.WorkflowKindV0,
+	Nodes: []workflow.NodeV0{
+		{
+			ID:   "agent_a",
+			Type: sdk.WorkflowNodeTypeLLMResponses,
+			Input: mustJSON(map[string]any{
+				"request": map[string]any{
+					"model": "claude-sonnet-4-20250514",
+					"input": []any{
+						map[string]any{"type": "message", "role": "system", "content": []any{map[string]any{"type": "text", "text": "You are Agent A."}}},
+						map[string]any{"type": "message", "role": "user", "content": []any{map[string]any{"type": "text", "text": "Write 3 ideas for a landing page."}}},
+					},
+				},
+			}),
+		},
+		{
+			ID:   "agent_b",
+			Type: sdk.WorkflowNodeTypeLLMResponses,
+			Input: mustJSON(map[string]any{
+				"request": map[string]any{
+					"model": "claude-sonnet-4-20250514",
+					"input": []any{
+						map[string]any{"type": "message", "role": "system", "content": []any{map[string]any{"type": "text", "text": "You are Agent B."}}},
+						map[string]any{"type": "message", "role": "user", "content": []any{map[string]any{"type": "text", "text": "Write 3 objections a user might have."}}},
+					},
+				},
+			}),
+		},
+		{
+			ID:   "agent_c",
+			Type: sdk.WorkflowNodeTypeLLMResponses,
+			Input: mustJSON(map[string]any{
+				"request": map[string]any{
+					"model": "claude-sonnet-4-20250514",
+					"input": []any{
+						map[string]any{"type": "message", "role": "system", "content": []any{map[string]any{"type": "text", "text": "You are Agent C."}}},
+						map[string]any{"type": "message", "role": "user", "content": []any{map[string]any{"type": "text", "text": "Write 3 alternative headlines."}}},
+					},
+				},
+			}),
+		},
+		{ID: "join", Type: sdk.WorkflowNodeTypeJoinAll},
+		{
+			ID:   "aggregate",
+			Type: sdk.WorkflowNodeTypeTransformJSON,
+			Input: mustJSON(map[string]any{
+				"object": map[string]any{
+					"agent_a": map[string]any{"from": "join", "pointer": "/agent_a"},
+					"agent_b": map[string]any{"from": "join", "pointer": "/agent_b"},
+					"agent_c": map[string]any{"from": "join", "pointer": "/agent_c"},
+				},
+			}),
+		},
+	},
+	Edges: []workflow.EdgeV0{
+		{From: "agent_a", To: "join"},
+		{From: "agent_b", To: "join"},
+		{From: "agent_c", To: "join"},
+		{From: "join", To: "aggregate"},
+	},
+	Outputs: []workflow.OutputRefV0{
+		{Name: "result", From: "aggregate"},
+	},
+}
+
+created, _ := client.Runs.Create(ctx, spec)
+
+stream, _ := client.Runs.StreamEvents(ctx, created.RunID)
+defer stream.Close()
+	for {
+		ev, ok, _ := stream.Next()
+		if !ok {
+			break
+		}
+		switch e := ev.(type) {
+		case sdk.RunEventRunCompletedV0:
+			b, _ := json.Marshal(e.Outputs)
+			fmt.Printf("outputs: %s\n", string(b))
+		}
+	}
+	```
+
 ## Structured Outputs
 
 ```go
