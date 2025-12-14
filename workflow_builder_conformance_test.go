@@ -12,24 +12,36 @@ import (
 	"github.com/modelrelay/modelrelay/platform/workflow"
 )
 
-func repoRootForTest(t *testing.T) string {
+func conformanceWorkflowsV0DirForTest(t *testing.T) (string, bool) {
 	t.Helper()
+
+	if root := os.Getenv("MODELRELAY_CONFORMANCE_DIR"); root != "" {
+		return filepath.Join(root, "workflows", "v0"), true
+	}
+
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	// file: .../sdk/go/workflow_builder_conformance_test.go
-	// root: .../ (two levels up)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+	// sdk/go/workflow_builder_conformance_test.go -> repo root
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+	internal := filepath.Join(repoRoot, "platform", "workflow", "testdata", "conformance", "workflows", "v0")
+	if _, err := os.Stat(internal); err == nil {
+		return internal, true
+	}
+	return "", false
 }
 
-func readFixtureBytes(t *testing.T, rel string) []byte {
+func readConformanceWorkflowV0FixtureBytes(t *testing.T, name string) []byte {
 	t.Helper()
-	root := repoRootForTest(t)
-	path := filepath.Join(root, rel)
+	base, ok := conformanceWorkflowsV0DirForTest(t)
+	if !ok {
+		t.Skip("conformance fixtures not available (set MODELRELAY_CONFORMANCE_DIR)")
+	}
+	path := filepath.Join(base, name)
 	b, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read fixture %s: %v", path, err)
+		t.Fatalf("read conformance fixture %s: %v", path, err)
 	}
 	return b
 }
@@ -48,7 +60,7 @@ func canonicalJSON(t *testing.T, b []byte) []byte {
 }
 
 func TestWorkflowBuilderV0_ConformanceParallelAgents(t *testing.T) {
-	fixture := readFixtureBytes(t, "platform/workflow/testdata/workflow_v0_parallel_agents.json")
+	fixture := readConformanceWorkflowV0FixtureBytes(t, "workflow_v0_parallel_agents.json")
 	want := canonicalJSON(t, fixture)
 
 	exec := workflow.ExecutionV0{
@@ -142,7 +154,7 @@ func TestWorkflowBuilderV0_ConformanceParallelAgents(t *testing.T) {
 }
 
 func TestWorkflowBuilderV0_ConformanceBindingsJoinIntoAggregate(t *testing.T) {
-	fixture := readFixtureBytes(t, "platform/workflow/testdata/workflow_v0_bindings_join_into_aggregate.json")
+	fixture := readConformanceWorkflowV0FixtureBytes(t, "workflow_v0_bindings_join_into_aggregate.json")
 	want := canonicalJSON(t, fixture)
 
 	reqA, _, err := (ResponseBuilder{}).
@@ -219,21 +231,21 @@ func TestValidateWorkflowSpecV0_ConformanceFixtures(t *testing.T) {
 		issuesRel string
 	}{
 		{
-			specRel:   "platform/workflow/testdata/workflow_v0_invalid_duplicate_node_id.json",
-			issuesRel: "platform/workflow/testdata/workflow_v0_invalid_duplicate_node_id.issues.json",
+			specRel:   "workflow_v0_invalid_duplicate_node_id.json",
+			issuesRel: "workflow_v0_invalid_duplicate_node_id.issues.json",
 		},
 		{
-			specRel:   "platform/workflow/testdata/workflow_v0_invalid_edge_unknown_node.json",
-			issuesRel: "platform/workflow/testdata/workflow_v0_invalid_edge_unknown_node.issues.json",
+			specRel:   "workflow_v0_invalid_edge_unknown_node.json",
+			issuesRel: "workflow_v0_invalid_edge_unknown_node.issues.json",
 		},
 		{
-			specRel:   "platform/workflow/testdata/workflow_v0_invalid_output_unknown_node.json",
-			issuesRel: "platform/workflow/testdata/workflow_v0_invalid_output_unknown_node.issues.json",
+			specRel:   "workflow_v0_invalid_output_unknown_node.json",
+			issuesRel: "workflow_v0_invalid_output_unknown_node.issues.json",
 		},
 	}
 
 	for _, tc := range cases {
-		specBytes := readFixtureBytes(t, tc.specRel)
+		specBytes := readConformanceWorkflowV0FixtureBytes(t, tc.specRel)
 		var spec workflow.SpecV0
 		if err := json.Unmarshal(specBytes, &spec); err != nil {
 			t.Fatalf("unmarshal %s: %v", tc.specRel, err)
@@ -245,7 +257,7 @@ func TestValidateWorkflowSpecV0_ConformanceFixtures(t *testing.T) {
 		}
 		sort.Strings(gotCodes)
 
-		wantBytes := readFixtureBytes(t, tc.issuesRel)
+		wantBytes := readConformanceWorkflowV0FixtureBytes(t, tc.issuesRel)
 		wantCodes := mapWorkflowIssuesFixtureToSDKCodes(t, wantBytes, tc.issuesRel)
 
 		if len(gotCodes) != len(wantCodes) {
