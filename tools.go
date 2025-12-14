@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	llm "github.com/modelrelay/modelrelay/providers"
+	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
 
 // ============================================================================

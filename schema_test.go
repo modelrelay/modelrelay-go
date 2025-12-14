@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	llm "github.com/modelrelay/modelrelay/providers"
+	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
 
 func TestSchemaFromType(t *testing.T) {

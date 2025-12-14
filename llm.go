@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/modelrelay/modelrelay/platform/headers"
-	"github.com/modelrelay/modelrelay/platform/routes"
-	llm "github.com/modelrelay/modelrelay/providers"
+	"github.com/modelrelay/modelrelay/sdk/go/headers"
+	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
+	"github.com/modelrelay/modelrelay/sdk/go/routes"
 )
 
 // ResponsesClient calls the /responses endpoint.

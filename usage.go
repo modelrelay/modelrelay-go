@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/modelrelay/modelrelay/billing/usage"
+	"github.com/modelrelay/modelrelay/sdk/go/routes"
 )
 
 // UsageClient exposes quota summary helpers backed by the SaaS API.
@@ -14,29 +14,29 @@ type UsageClient struct {
 }
 
 // Summary returns the current usage window for the authenticated project/user.
-func (u *UsageClient) Summary(ctx context.Context) (usage.Summary, error) {
-	req, err := u.client.newJSONRequest(ctx, http.MethodGet, "/llm/usage", nil)
+func (u *UsageClient) Summary(ctx context.Context) (UsageSummary, error) {
+	req, err := u.client.newJSONRequest(ctx, http.MethodGet, routes.LLMUsage, nil)
 	if err != nil {
-		return usage.Summary{}, err
+		return UsageSummary{}, err
 	}
 	resp, _, err := u.client.send(req, nil, nil)
 	if err != nil {
-		return usage.Summary{}, err
+		return UsageSummary{}, err
 	}
 	//nolint:errcheck // best-effort cleanup on return
 	defer func() { _ = resp.Body.Close() }()
 	var payload struct {
-		Summary usage.Summary `json:"summary"`
+		Summary UsageSummary `json:"summary"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return usage.Summary{}, err
+		return UsageSummary{}, err
 	}
 	return payload.Summary, nil
 }
 
 // DailyUsageByKey returns usage broken down by day and API key.
-func (u *UsageClient) DailyUsageByKey(ctx context.Context) ([]usage.UsagePoint, error) {
-	req, err := u.client.newJSONRequest(ctx, http.MethodGet, "/llm/usage/chart", nil)
+func (u *UsageClient) DailyUsageByKey(ctx context.Context) ([]UsagePoint, error) {
+	req, err := u.client.newJSONRequest(ctx, http.MethodGet, routes.LLMUsageChart, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (u *UsageClient) DailyUsageByKey(ctx context.Context) ([]usage.UsagePoint, 
 	//nolint:errcheck // best-effort cleanup on return
 	defer func() { _ = resp.Body.Close() }()
 	var payload struct {
-		Points []usage.UsagePoint `json:"points"`
+		Points []UsagePoint `json:"points"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return nil, err

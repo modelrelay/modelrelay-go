@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modelrelay/modelrelay/platform/routes"
-	llm "github.com/modelrelay/modelrelay/providers"
+	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
+	"github.com/modelrelay/modelrelay/sdk/go/routes"
 )
 
 // ptr is a helper to create string pointers for tests.

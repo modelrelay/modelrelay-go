@@ -1,6 +1,6 @@
 package sdk
 
-import llm "github.com/modelrelay/modelrelay/providers"
+import llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 
 // StreamEvent represents events from the unified NDJSON streaming format.
 type StreamEvent struct {

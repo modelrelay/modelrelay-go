@@ -233,11 +233,24 @@ func IsProvisioningError(err error) bool {
 func decodeAPIError(resp *http.Response, retry *RetryMetadata) error {
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		data = []byte(fmt.Sprintf("[failed to read response body: %v]", err))
+		return APIError{Status: resp.StatusCode, Message: fmt.Sprintf("[failed to read response body: %v]", err), Retry: retry}
 	}
-	apiErr := APIError{Status: resp.StatusCode, Retry: retry}
+	return decodeAPIErrorFromBytes(resp.StatusCode, data, retry)
+}
+
+func decodeAPIErrorFromBytes(status int, data []byte, retry *RetryMetadata) error {
+	// Some endpoints intentionally return a bare workflow validation error shape
+	// (no {code,message} envelope). Surface it as a typed error for callers.
+	if status == http.StatusBadRequest {
+		var wfErr WorkflowValidationError
+		if err := json.Unmarshal(data, &wfErr); err == nil && len(wfErr.Issues) > 0 {
+			return wfErr
+		}
+	}
+
+	apiErr := APIError{Status: status, Retry: retry}
 	if len(data) == 0 {
-		apiErr.Message = resp.Status
+		apiErr.Message = http.StatusText(status)
 		return apiErr
 	}
 
@@ -258,7 +271,7 @@ func decodeAPIError(resp *http.Response, retry *RetryMetadata) error {
 	apiErr.RequestID = payload.RequestID
 	apiErr.Fields = payload.Fields
 	if apiErr.Message == "" {
-		apiErr.Message = resp.Status
+		apiErr.Message = http.StatusText(status)
 	}
 	return apiErr
 }

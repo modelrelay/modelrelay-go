@@ -5,11 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
-	"strings"
 	"testing"
-
-	"github.com/modelrelay/modelrelay/platform/workflow"
 )
 
 func conformanceWorkflowsV0DirForTest(t *testing.T) (string, bool) {
@@ -63,7 +59,7 @@ func TestWorkflowBuilderV0_ConformanceParallelAgents(t *testing.T) {
 	fixture := readConformanceWorkflowV0FixtureBytes(t, "workflow_v0_parallel_agents.json")
 	want := canonicalJSON(t, fixture)
 
-	exec := workflow.ExecutionV0{
+	exec := WorkflowExecutionV0{
 		MaxParallelism: Int64Ptr(3),
 		NodeTimeoutMS:  Int64Ptr(60_000),
 		RunTimeoutMS:   Int64Ptr(180_000),
@@ -192,11 +188,11 @@ func TestWorkflowBuilderV0_ConformanceBindingsJoinIntoAggregate(t *testing.T) {
 		t.Fatalf("add node agent_b: %v", err)
 	}
 	b = b.JoinAllNode("join")
-	b, err = b.LLMResponsesNodeWithBindings("aggregate", reqAgg, nil, []workflow.LLMResponsesBindingV0{
+	b, err = b.LLMResponsesNodeWithBindings("aggregate", reqAgg, nil, []LLMResponsesBindingV0{
 		{
 			From:     "join",
 			To:       "/input/0/content/0/text",
-			Encoding: workflow.LLMResponsesBindingEncodingJSONString,
+			Encoding: LLMResponsesBindingEncodingJSONString,
 		},
 	})
 	if err != nil {
@@ -222,111 +218,5 @@ func TestWorkflowBuilderV0_ConformanceBindingsJoinIntoAggregate(t *testing.T) {
 
 	if string(got) != string(want) {
 		t.Fatalf("spec mismatch\nwant: %s\ngot:  %s", want, got)
-	}
-}
-
-func TestValidateWorkflowSpecV0_ConformanceFixtures(t *testing.T) {
-	cases := []struct {
-		specRel   string
-		issuesRel string
-	}{
-		{
-			specRel:   "workflow_v0_invalid_duplicate_node_id.json",
-			issuesRel: "workflow_v0_invalid_duplicate_node_id.issues.json",
-		},
-		{
-			specRel:   "workflow_v0_invalid_edge_unknown_node.json",
-			issuesRel: "workflow_v0_invalid_edge_unknown_node.issues.json",
-		},
-		{
-			specRel:   "workflow_v0_invalid_output_unknown_node.json",
-			issuesRel: "workflow_v0_invalid_output_unknown_node.issues.json",
-		},
-	}
-
-	for _, tc := range cases {
-		specBytes := readConformanceWorkflowV0FixtureBytes(t, tc.specRel)
-		var spec workflow.SpecV0
-		if err := json.Unmarshal(specBytes, &spec); err != nil {
-			t.Fatalf("unmarshal %s: %v", tc.specRel, err)
-		}
-		gotIssues := ValidateWorkflowSpecV0(spec)
-		gotCodes := make([]string, 0, len(gotIssues))
-		for _, iss := range gotIssues {
-			gotCodes = append(gotCodes, string(iss.Code))
-		}
-		sort.Strings(gotCodes)
-
-		wantBytes := readConformanceWorkflowV0FixtureBytes(t, tc.issuesRel)
-		wantCodes := mapWorkflowIssuesFixtureToSDKCodes(t, wantBytes, tc.issuesRel)
-
-		if len(gotCodes) != len(wantCodes) {
-			t.Fatalf("%s: codes mismatch\nwant: %v\ngot:  %v", tc.specRel, wantCodes, gotCodes)
-		}
-		for i := range gotCodes {
-			if gotCodes[i] != wantCodes[i] {
-				t.Fatalf("%s: codes mismatch\nwant: %v\ngot:  %v", tc.specRel, wantCodes, gotCodes)
-			}
-		}
-	}
-}
-
-func mapWorkflowIssuesFixtureToSDKCodes(t *testing.T, raw []byte, rel string) []string {
-	t.Helper()
-
-	// Legacy fixtures were `[]string` codes. Prefer the new structured `ValidationError{issues[]}`.
-	var legacyCodes []string
-	if err := json.Unmarshal(raw, &legacyCodes); err == nil {
-		sort.Strings(legacyCodes)
-		return legacyCodes
-	}
-
-	var verr workflow.ValidationError
-	if err := json.Unmarshal(raw, &verr); err != nil {
-		t.Fatalf("unmarshal %s: %v", rel, err)
-	}
-
-	out := make([]string, 0, len(verr.Issues))
-	for _, iss := range verr.Issues {
-		code, ok := mapWorkflowIssueToSDKCode(iss)
-		if !ok {
-			// The SDK preflight validator is intentionally lightweight; ignore
-			// semantic issues the server compiler can produce (e.g. join constraints).
-			continue
-		}
-		out = append(out, string(code))
-	}
-	sort.Strings(out)
-	return out
-}
-
-func mapWorkflowIssueToSDKCode(iss workflow.Issue) (WorkflowBuildIssueCode, bool) {
-	switch iss.Code {
-	case workflow.IssueInvalidKind:
-		return WorkflowBuildIssueInvalidKind, true
-	case workflow.IssueInvalidExecution:
-		// SDK validator doesn't currently model execution range checks.
-		return "", false
-	case workflow.IssueMissingNodes:
-		return WorkflowBuildIssueMissingNodes, true
-	case workflow.IssueMissingOutputs:
-		return WorkflowBuildIssueMissingOutputs, true
-	case workflow.IssueDuplicateNodeID:
-		return WorkflowBuildIssueDuplicateNodeID, true
-	case workflow.IssueUnknownEdgeEndpoint:
-		// Disambiguate from/to based on the error path.
-		if strings.HasSuffix(iss.Path, ".from") {
-			return WorkflowBuildIssueEdgeFromUnknownNode, true
-		}
-		if strings.HasSuffix(iss.Path, ".to") {
-			return WorkflowBuildIssueEdgeToUnknownNode, true
-		}
-		return "", false
-	case workflow.IssueDuplicateOutputName:
-		return WorkflowBuildIssueDuplicateOutputName, true
-	case workflow.IssueUnknownOutputNode:
-		return WorkflowBuildIssueOutputFromUnknownNode, true
-	default:
-		return "", false
 	}
 }

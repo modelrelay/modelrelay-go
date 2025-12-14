@@ -42,4 +42,5 @@ package sdk
 // 0.45.0: Add workflow.v0 builder DSL helpers (compile to workflow.v0 DAG) (#567).
 // 0.45.1: Canonicalize workflow specs and add builder helpers.
 // 0.45.3: Add cost_summary to runs get response (/runs/{run_id}).
-const Version = "0.45.3"
+// 0.46.0: Breaking - Remove monorepo module imports; add server-authoritative workflow compilation.
+const Version = "0.46.0"

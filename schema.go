@@ -3,7 +3,7 @@ package sdk
 import (
 	"encoding/json"
 
-	llm "github.com/modelrelay/modelrelay/providers"
+	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
 
 // SchemaFromType generates a JSON Schema from a Go type using reflection.

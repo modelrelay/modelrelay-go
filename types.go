@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/modelrelay/modelrelay/platform/headers"
-	llm "github.com/modelrelay/modelrelay/providers"
+	"github.com/modelrelay/modelrelay/sdk/go/headers"
+	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
 
 // ProviderID is a strongly-typed wrapper around provider identifiers.

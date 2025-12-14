@@ -1,14 +1,12 @@
 package sdk
 
-import "github.com/modelrelay/modelrelay/platform/workflow"
-
 // TransformJSONValue constructs a transform.json value reference.
-func TransformJSONValue(from workflow.NodeID, pointer workflow.JSONPointer) TransformJSONRefV0 {
+func TransformJSONValue(from NodeID, pointer JSONPointer) TransformJSONRefV0 {
 	return TransformJSONRefV0{From: from, Pointer: pointer}
 }
 
 // TransformJSONFieldValue constructs a transform.json object field reference.
-func TransformJSONFieldValue(from workflow.NodeID, pointer workflow.JSONPointer) TransformJSONFieldRefV0 {
+func TransformJSONFieldValue(from NodeID, pointer JSONPointer) TransformJSONFieldRefV0 {
 	return TransformJSONFieldRefV0{From: from, Pointer: pointer}
 }
 
@@ -21,4 +19,3 @@ func TransformJSONObject(fields map[string]TransformJSONFieldRefV0) TransformJSO
 func TransformJSONMerge(items []TransformJSONRefV0) TransformJSONNodeInputV0 {
 	return TransformJSONNodeInputV0{Merge: items}
 }
-

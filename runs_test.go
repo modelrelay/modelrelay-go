@@ -8,13 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modelrelay/modelrelay/platform/routes"
-	"github.com/modelrelay/modelrelay/platform/workflow"
+	"github.com/modelrelay/modelrelay/sdk/go/routes"
 )
 
 func TestRunsCreateGetAndStream(t *testing.T) {
-	runID := workflow.NewRunID()
-	planHash, err := workflow.ParsePlanHash("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	runID := NewRunID()
+	planHash, err := ParsePlanHash("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	if err != nil {
 		t.Fatalf("parse plan hash: %v", err)
 	}
@@ -41,9 +40,9 @@ func TestRunsCreateGetAndStream(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(RunsGetResponse{
 				RunID:       runID,
-				Status:      workflow.RunStatusRunning,
+				Status:      RunStatusRunning,
 				PlanHash:    planHash,
-				CostSummary: workflow.RunCostSummaryV0{LineItems: []workflow.RunCostLineItemV0{}},
+				CostSummary: RunCostSummaryV0{LineItems: []RunCostLineItemV0{}},
 			})
 		case "/runs/" + runID.String() + "/events":
 			if r.Header.Get("Accept") != "application/x-ndjson" {
@@ -52,7 +51,7 @@ func TestRunsCreateGetAndStream(t *testing.T) {
 			w.Header().Set("Content-Type", "application/x-ndjson")
 			ts := time.Now().UTC().Format(time.RFC3339Nano)
 			_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID.String() + `","seq":1,"ts":"` + ts + `","type":"run_started","plan_hash":"` + planHash.String() + `"}` + "\n"))
-			_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID.String() + `","seq":2,"ts":"` + ts + `","type":"run_completed","plan_hash":"` + planHash.String() + `","outputs_artifact_key":"` + workflow.ArtifactKeyRunOutputsV0 + `","outputs_info":{"bytes":17,"sha256":"` + planHash.String() + `","included":false}}` + "\n"))
+			_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID.String() + `","seq":2,"ts":"` + ts + `","type":"run_completed","plan_hash":"` + planHash.String() + `","outputs_artifact_key":"` + ArtifactKeyRunOutputsV0 + `","outputs_info":{"bytes":17,"sha256":"` + planHash.String() + `","included":false}}` + "\n"))
 		default:
 			http.NotFound(w, r)
 		}
@@ -66,13 +65,13 @@ func TestRunsCreateGetAndStream(t *testing.T) {
 
 	spec := WorkflowSpecV0{
 		Kind: WorkflowKindV0,
-		Nodes: []workflow.NodeV0{
+		Nodes: []WorkflowNodeV0{
 			{
 				ID:   "a",
 				Type: WorkflowNodeTypeJoinAll,
 			},
 		},
-		Outputs: []workflow.OutputRefV0{{Name: "result", From: "a"}},
+		Outputs: []WorkflowOutputRefV0{{Name: "result", From: "a"}},
 	}
 
 	created, err := client.Runs.Create(context.Background(), spec)
@@ -105,7 +104,7 @@ func TestRunsCreateGetAndStream(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected RunEventRunStartedV0, got %T", ev1)
 	}
-	if started.EnvelopeVersion != workflow.RunEventEnvelopeVersionV0 {
+	if started.EnvelopeVersion != RunEventEnvelopeVersionV0 {
 		t.Fatalf("unexpected envelope_version %q", started.EnvelopeVersion)
 	}
 	if started.PlanHash != planHash {
@@ -120,13 +119,13 @@ func TestRunsCreateGetAndStream(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected RunEventRunCompletedV0, got %T", ev2)
 	}
-	if completed.EnvelopeVersion != workflow.RunEventEnvelopeVersionV0 {
+	if completed.EnvelopeVersion != RunEventEnvelopeVersionV0 {
 		t.Fatalf("unexpected envelope_version %q", completed.EnvelopeVersion)
 	}
 	if completed.PlanHash != planHash {
 		t.Fatalf("unexpected plan hash %s", completed.PlanHash.String())
 	}
-	if completed.OutputsArtifactKey != workflow.ArtifactKeyRunOutputsV0 {
+	if completed.OutputsArtifactKey != ArtifactKeyRunOutputsV0 {
 		t.Fatalf("unexpected outputs_artifact_key %q", completed.OutputsArtifactKey)
 	}
 	if completed.OutputsInfo.Included {

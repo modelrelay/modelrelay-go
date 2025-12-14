@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/modelrelay/modelrelay/platform/headers"
-	llm "github.com/modelrelay/modelrelay/providers"
+	"github.com/modelrelay/modelrelay/sdk/go/headers"
+	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
 
 // ResponseBuilder is a fluent builder for /responses requests.

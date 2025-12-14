@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	llm "github.com/modelrelay/modelrelay/providers"
+	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
 
 type responseStream struct {

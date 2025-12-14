@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/modelrelay/modelrelay/platform/headers"
+	"github.com/modelrelay/modelrelay/sdk/go/headers"
 )
 
 // MockClient provides an in-memory client for unit tests without hitting the API.

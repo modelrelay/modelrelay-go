@@ -11,31 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/modelrelay/modelrelay/platform/routes"
-	"github.com/modelrelay/modelrelay/platform/workflow"
+	"github.com/modelrelay/modelrelay/sdk/go/routes"
 )
-
-// WorkflowSpecV0 is the request payload shape for workflow.v0.
-//
-// This is a type alias to the server's canonical type, so it cannot drift.
-type WorkflowSpecV0 = workflow.SpecV0
-
-const (
-	WorkflowKindV0 workflow.Kind = workflow.KindWorkflowV0
-
-	WorkflowNodeTypeLLMResponses  workflow.NodeType = workflow.NodeTypeLLMResponses
-	WorkflowNodeTypeJoinAll       workflow.NodeType = workflow.NodeTypeJoinAll
-	WorkflowNodeTypeTransformJSON workflow.NodeType = workflow.NodeTypeTransformJSON
-)
-
-// RunID is the workflow run identifier type.
-type RunID = workflow.RunID
-
-// PlanHash is the hash of a compiled workflow plan.
-type PlanHash = workflow.PlanHash
-
-// RunEventV0Envelope is the stable, append-only wire envelope for workflow run history.
-type RunEventV0Envelope = workflow.RunEventV0
 
 // RunEventV0 is the strongly-typed (discriminated) run event union.
 type RunEventV0 interface {
@@ -63,42 +40,42 @@ type RunEventRunCompletedV0 struct {
 	RunEventV0Base
 	PlanHash           PlanHash
 	OutputsArtifactKey string
-	OutputsInfo        workflow.PayloadInfoV0
+	OutputsInfo        PayloadInfoV0
 }
 
 type RunEventRunFailedV0 struct {
 	RunEventV0Base
 	PlanHash PlanHash
-	Error    workflow.NodeErrorV0
+	Error    NodeErrorV0
 }
 
 type RunEventRunCanceledV0 struct {
 	RunEventV0Base
 	PlanHash PlanHash
-	Error    workflow.NodeErrorV0
+	Error    NodeErrorV0
 }
 
 type RunEventNodeStartedV0 struct {
 	RunEventV0Base
-	NodeID workflow.NodeID
+	NodeID NodeID
 }
 
 type RunEventNodeSucceededV0 struct {
 	RunEventV0Base
-	NodeID workflow.NodeID
+	NodeID NodeID
 }
 
 type RunEventNodeFailedV0 struct {
 	RunEventV0Base
-	NodeID workflow.NodeID
-	Error  workflow.NodeErrorV0
+	NodeID NodeID
+	Error  NodeErrorV0
 }
 
 type RunEventNodeOutputV0 struct {
 	RunEventV0Base
-	NodeID      workflow.NodeID
+	NodeID      NodeID
 	ArtifactKey string
-	OutputInfo  workflow.PayloadInfoV0
+	OutputInfo  PayloadInfoV0
 }
 
 func (RunEventRunCompiledV0) isRunEventV0()   {}
@@ -115,7 +92,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 	if strings.TrimSpace(env.EnvelopeVersion) == "" {
 		return nil, ProtocolError{Message: "run event is missing envelope_version"}
 	}
-	if env.EnvelopeVersion != workflow.RunEventEnvelopeVersionV0 {
+	if env.EnvelopeVersion != RunEventEnvelopeVersionV0 {
 		return nil, ProtocolError{Message: "unsupported run event envelope_version: " + env.EnvelopeVersion}
 	}
 	if !env.RunID.Valid() {
@@ -136,7 +113,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 	}
 
 	switch env.Type {
-	case workflow.RunEventRunCompiled, workflow.RunEventRunStarted, workflow.RunEventRunCompleted, workflow.RunEventRunFailed, workflow.RunEventRunCanceled:
+	case RunEventRunCompiled, RunEventRunStarted, RunEventRunCompleted, RunEventRunFailed, RunEventRunCanceled:
 		if env.NodeID.Valid() {
 			return nil, ProtocolError{Message: "run-scoped event must not include node_id"}
 		}
@@ -146,17 +123,17 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 		planHash := *env.PlanHash
 
 		switch env.Type {
-		case workflow.RunEventRunCompiled:
+		case RunEventRunCompiled:
 			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
 				return nil, ProtocolError{Message: "run_compiled must not include error/output_info/artifact fields"}
 			}
 			return RunEventRunCompiledV0{RunEventV0Base: base, PlanHash: planHash}, nil
-		case workflow.RunEventRunStarted:
+		case RunEventRunStarted:
 			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
 				return nil, ProtocolError{Message: "run_started must not include error/output_info/artifact fields"}
 			}
 			return RunEventRunStartedV0{RunEventV0Base: base, PlanHash: planHash}, nil
-		case workflow.RunEventRunCompleted:
+		case RunEventRunCompleted:
 			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "run_completed must not include error/output_info/node artifact fields"}
 			}
@@ -167,7 +144,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 				return nil, ProtocolError{Message: "run_completed outputs_info.included must be false"}
 			}
 			return RunEventRunCompletedV0{RunEventV0Base: base, PlanHash: planHash, OutputsArtifactKey: env.OutputsArtifactKey, OutputsInfo: *env.OutputsInfo}, nil
-		case workflow.RunEventRunFailed:
+		case RunEventRunFailed:
 			if env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
 				return nil, ProtocolError{Message: "run_failed must not include output_info/artifact fields"}
 			}
@@ -175,7 +152,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 				return nil, ProtocolError{Message: "run_failed must include error"}
 			}
 			return RunEventRunFailedV0{RunEventV0Base: base, PlanHash: planHash, Error: *env.Error}, nil
-		case workflow.RunEventRunCanceled:
+		case RunEventRunCanceled:
 			if env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
 				return nil, ProtocolError{Message: "run_canceled must not include output_info/artifact fields"}
 			}
@@ -187,7 +164,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			return nil, ProtocolError{Message: "unknown run event type"}
 		}
 
-	case workflow.RunEventNodeStarted, workflow.RunEventNodeSucceeded, workflow.RunEventNodeFailed, workflow.RunEventNodeOutput:
+	case RunEventNodeStarted, RunEventNodeSucceeded, RunEventNodeFailed, RunEventNodeOutput:
 		if env.PlanHash != nil {
 			return nil, ProtocolError{Message: "node-scoped event must not include plan_hash"}
 		}
@@ -199,17 +176,17 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 		}
 
 		switch env.Type {
-		case workflow.RunEventNodeStarted:
+		case RunEventNodeStarted:
 			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "node_started must not include error/output_info/artifact_key"}
 			}
 			return RunEventNodeStartedV0{RunEventV0Base: base, NodeID: env.NodeID}, nil
-		case workflow.RunEventNodeSucceeded:
+		case RunEventNodeSucceeded:
 			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "node_succeeded must not include error/output_info/artifact_key"}
 			}
 			return RunEventNodeSucceededV0{RunEventV0Base: base, NodeID: env.NodeID}, nil
-		case workflow.RunEventNodeFailed:
+		case RunEventNodeFailed:
 			if env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "node_failed must not include output_info/artifact_key"}
 			}
@@ -217,7 +194,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 				return nil, ProtocolError{Message: "node_failed must include error"}
 			}
 			return RunEventNodeFailedV0{RunEventV0Base: base, NodeID: env.NodeID, Error: *env.Error}, nil
-		case workflow.RunEventNodeOutput:
+		case RunEventNodeOutput:
 			if env.Error != nil {
 				return nil, ProtocolError{Message: "node_output must not include error"}
 			}
@@ -305,12 +282,12 @@ type RunsCreateResponse struct {
 }
 
 type RunsGetResponse struct {
-	RunID       RunID                                   `json:"run_id"`
-	Status      workflow.RunStatusV0                    `json:"status"`
-	PlanHash    PlanHash                                `json:"plan_hash"`
-	CostSummary workflow.RunCostSummaryV0               `json:"cost_summary"`
-	Nodes       []workflow.NodeResultV0                 `json:"nodes,omitempty"`
-	Outputs     map[workflow.OutputName]json.RawMessage `json:"outputs,omitempty"`
+	RunID       RunID                          `json:"run_id"`
+	Status      RunStatusV0                    `json:"status"`
+	PlanHash    PlanHash                       `json:"plan_hash"`
+	CostSummary RunCostSummaryV0               `json:"cost_summary"`
+	Nodes       []NodeResultV0                 `json:"nodes,omitempty"`
+	Outputs     map[OutputName]json.RawMessage `json:"outputs,omitempty"`
 }
 
 type RunsEventStream struct {
@@ -434,14 +411,24 @@ func (c *RunsClient) Create(ctx context.Context, spec WorkflowSpecV0, opts ...Ru
 	if err != nil {
 		return nil, err
 	}
+	body, readErr := io.ReadAll(resp.Body)
 	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
+	_ = resp.Body.Close()
+	if readErr != nil {
+		return nil, readErr
+	}
 	if resp.StatusCode >= 400 {
-		return nil, decodeAPIError(resp, nil)
+		if resp.StatusCode == http.StatusBadRequest {
+			var verr WorkflowValidationError
+			if err := json.Unmarshal(body, &verr); err == nil && len(verr.Issues) > 0 {
+				return nil, verr
+			}
+		}
+		return nil, decodeAPIErrorFromBytes(resp.StatusCode, body, nil)
 	}
 
 	var out RunsCreateResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.Unmarshal(body, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -474,11 +461,6 @@ func (c *RunsClient) Get(ctx context.Context, runID RunID, opts ...RunGetOption)
 		return nil, err
 	}
 	return &out, nil
-}
-
-// WorkflowV0JSONSchema returns the JSON Schema (draft-07) for workflow.v0 as raw JSON.
-func WorkflowV0JSONSchema() (json.RawMessage, error) {
-	return json.Marshal(workflow.WorkflowV0JSONSchema())
 }
 
 type runCreateOptions struct {
