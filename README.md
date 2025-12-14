@@ -96,95 +96,72 @@ ctx := context.Background()
 key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
 client, _ := sdk.NewClientWithKey(key)
 
-mustJSON := func(v any) json.RawMessage {
-	b, _ := json.Marshal(v)
-	return b
+exec := workflow.ExecutionV0{
+	MaxParallelism: sdk.Int64Ptr(3),
+	NodeTimeoutMS:  sdk.Int64Ptr(60_000),
+	RunTimeoutMS:   sdk.Int64Ptr(180_000),
 }
 
-spec := sdk.WorkflowSpecV0{
-	Kind: sdk.WorkflowKindV0,
-	Nodes: []workflow.NodeV0{
-		{
-			ID:   "agent_a",
-			Type: sdk.WorkflowNodeTypeLLMResponses,
-			Input: mustJSON(map[string]any{
-				"request": map[string]any{
-					"model": "claude-sonnet-4-20250514",
-					"input": []any{
-						map[string]any{"type": "message", "role": "system", "content": []any{map[string]any{"type": "text", "text": "You are Agent A."}}},
-						map[string]any{"type": "message", "role": "user", "content": []any{map[string]any{"type": "text", "text": "Write 3 ideas for a landing page."}}},
-					},
-				},
-			}),
-		},
-		{
-			ID:   "agent_b",
-			Type: sdk.WorkflowNodeTypeLLMResponses,
-			Input: mustJSON(map[string]any{
-				"request": map[string]any{
-					"model": "claude-sonnet-4-20250514",
-					"input": []any{
-						map[string]any{"type": "message", "role": "system", "content": []any{map[string]any{"type": "text", "text": "You are Agent B."}}},
-						map[string]any{"type": "message", "role": "user", "content": []any{map[string]any{"type": "text", "text": "Write 3 objections a user might have."}}},
-					},
-				},
-			}),
-		},
-		{
-			ID:   "agent_c",
-			Type: sdk.WorkflowNodeTypeLLMResponses,
-			Input: mustJSON(map[string]any{
-				"request": map[string]any{
-					"model": "claude-sonnet-4-20250514",
-					"input": []any{
-						map[string]any{"type": "message", "role": "system", "content": []any{map[string]any{"type": "text", "text": "You are Agent C."}}},
-						map[string]any{"type": "message", "role": "user", "content": []any{map[string]any{"type": "text", "text": "Write 3 alternative headlines."}}},
-					},
-				},
-			}),
-		},
-		{ID: "join", Type: sdk.WorkflowNodeTypeJoinAll},
-		{
-			ID:   "aggregate",
-			Type: sdk.WorkflowNodeTypeTransformJSON,
-			Input: mustJSON(map[string]any{
-				"object": map[string]any{
-					"agent_a": map[string]any{"from": "join", "pointer": "/agent_a"},
-					"agent_b": map[string]any{"from": "join", "pointer": "/agent_b"},
-					"agent_c": map[string]any{"from": "join", "pointer": "/agent_c"},
-				},
-			}),
-		},
-	},
-	Edges: []workflow.EdgeV0{
-		{From: "agent_a", To: "join"},
-		{From: "agent_b", To: "join"},
-		{From: "agent_c", To: "join"},
-		{From: "join", To: "aggregate"},
-	},
-	Outputs: []workflow.OutputRefV0{
-		{Name: "result", From: "aggregate"},
-	},
-}
+reqA, _, _ := (sdk.ResponseBuilder{}).
+	Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+	MaxOutputTokens(64).
+	System("You are Agent A.").
+	User("Analyze the question.").
+	Build()
+reqB, _, _ := (sdk.ResponseBuilder{}).
+	Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+	MaxOutputTokens(64).
+	System("You are Agent B.").
+	User("Find edge cases.").
+	Build()
+reqC, _, _ := (sdk.ResponseBuilder{}).
+	Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+	MaxOutputTokens(64).
+	System("You are Agent C.").
+	User("Propose a solution.").
+	Build()
+reqAgg, _, _ := (sdk.ResponseBuilder{}).
+	Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+	MaxOutputTokens(256).
+	System("Synthesize the best answer.").
+	Build()
+
+b := sdk.WorkflowV0().
+	Name("parallel_agents_aggregate").
+	Execution(exec)
+b, _ = b.LLMResponsesNode("agent_a", reqA, sdk.BoolPtr(false))
+b, _ = b.LLMResponsesNode("agent_b", reqB, nil)
+b, _ = b.LLMResponsesNode("agent_c", reqC, nil)
+b = b.JoinAllNode("join")
+b, _ = b.LLMResponsesNode("aggregate", reqAgg, nil)
+b = b.
+	Edge("agent_a", "join").
+	Edge("agent_b", "join").
+	Edge("agent_c", "join").
+	Edge("join", "aggregate").
+	Output("final", "aggregate", "")
+
+spec, _ := b.Build()
 
 created, _ := client.Runs.Create(ctx, spec)
 
 stream, _ := client.Runs.StreamEvents(ctx, created.RunID)
 defer stream.Close()
-	for {
-		ev, ok, _ := stream.Next()
-		if !ok {
-			break
-		}
-		switch e := ev.(type) {
-		case sdk.RunEventRunCompletedV0:
-			_ = e // event includes outputs_artifact_key; fetch the full outputs via /runs/{run_id}
-			status, _ := client.Runs.Get(ctx, created.RunID)
-			b, _ := json.Marshal(status.Outputs)
-			fmt.Printf("outputs: %s\n", string(b))
-		}
+for {
+	ev, ok, _ := stream.Next()
+	if !ok {
+		break
 	}
-	```
+	switch ev.(type) {
+	case sdk.RunEventRunCompletedV0:
+		status, _ := client.Runs.Get(ctx, created.RunID)
+		b, _ := json.MarshalIndent(status.Outputs, "", "  ")
+		fmt.Printf("outputs: %s\n", string(b))
+	}
+}
+```
+
+See the full example in `sdk/go/examples/workflows/main.go`.
 
 ## Structured Outputs
 

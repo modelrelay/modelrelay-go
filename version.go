@@ -39,4 +39,6 @@ package sdk
 // 0.41.0: Streaming robustness + explicit stream timeout options (TTFT/Idle/Total) and typed stream errors.
 // 0.42.0: Breaking - Use typed API key auth values (publishable vs secret) (#505).
 // 0.43.0: Add workflow run helpers (/runs) with NDJSON event streaming (workflow.v0).
-const Version = "0.44.1"
+// 0.45.0: Add workflow.v0 builder DSL helpers (compile to workflow.v0 DAG) (#567).
+// 0.45.1: Canonicalize workflow specs and add builder helpers.
+const Version = "0.45.1"

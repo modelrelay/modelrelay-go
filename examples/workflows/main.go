@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/modelrelay/modelrelay/platform/workflow"
-	llm "github.com/modelrelay/modelrelay/providers"
 	sdk "github.com/modelrelay/modelrelay/sdk/go"
 )
 
@@ -119,85 +118,91 @@ func bootstrapSecretKey(ctx context.Context, apiBaseURL string) (string, error) 
 	return created.APIKey.SecretKey, nil
 }
 
-func multiAgentSpec(model string) workflow.SpecV0 {
+func multiAgentSpec(modelA, modelB, modelC, modelAgg string, runTimeoutMS int64) (workflow.SpecV0, error) {
 	maxPar := int64(3)
 	nodeTimeout := int64(20_000)
-	runTimeout := int64(30_000)
-
-	return workflow.SpecV0{
-		Kind: workflow.KindWorkflowV0,
-		Name: "multi_agent_v0_example",
-		Execution: workflow.ExecutionV0{
-			MaxParallelism: &maxPar,
-			NodeTimeoutMS:  &nodeTimeout,
-			RunTimeoutMS:   &runTimeout,
-		},
-		Nodes: []workflow.NodeV0{
-			{
-				ID:   "agent_a",
-				Type: workflow.NodeTypeLLMResponses,
-				Input: mustJSON(map[string]any{
-					"request": llm.ResponseRequest{
-						Model: model,
-						Input: []llm.InputItem{
-							llm.NewSystemText("You are Agent A."),
-							llm.NewUserText("Write 3 ideas for a landing page."),
-						},
-					},
-				}),
-			},
-			{
-				ID:   "agent_b",
-				Type: workflow.NodeTypeLLMResponses,
-				Input: mustJSON(map[string]any{
-					"request": llm.ResponseRequest{
-						Model: model,
-						Input: []llm.InputItem{
-							llm.NewSystemText("You are Agent B."),
-							llm.NewUserText("Write 3 objections a user might have."),
-						},
-					},
-				}),
-			},
-			{
-				ID:   "agent_c",
-				Type: workflow.NodeTypeLLMResponses,
-				Input: mustJSON(map[string]any{
-					"request": llm.ResponseRequest{
-						Model: model,
-						Input: []llm.InputItem{
-							llm.NewSystemText("You are Agent C."),
-							llm.NewUserText("Write 3 alternative headlines."),
-						},
-					},
-				}),
-			},
-			{ID: "join", Type: workflow.NodeTypeJoinAll},
-			{
-				ID:   "aggregate",
-				Type: workflow.NodeTypeTransformJSON,
-				Input: mustJSON(map[string]any{
-					"object": map[string]any{
-						"agent_a": map[string]any{"from": "join", "pointer": "/agent_a"},
-						"agent_b": map[string]any{"from": "join", "pointer": "/agent_b"},
-						"agent_c": map[string]any{"from": "join", "pointer": "/agent_c"},
-					},
-				}),
-			},
-		},
-		Edges: []workflow.EdgeV0{
-			{From: "agent_a", To: "join"},
-			{From: "agent_b", To: "join"},
-			{From: "agent_c", To: "join"},
-			{From: "join", To: "aggregate"},
-		},
-		Outputs: []workflow.OutputRefV0{
-			{Name: "result", From: "aggregate"},
-		},
+	if runTimeoutMS == 0 {
+		runTimeoutMS = 30_000
 	}
+
+	exec := workflow.ExecutionV0{
+		MaxParallelism: &maxPar,
+		NodeTimeoutMS:  &nodeTimeout,
+		RunTimeoutMS:   &runTimeoutMS,
+	}
+
+	reqA, _, err := (sdk.ResponseBuilder{}).
+		Model(sdk.NewModelID(modelA)).
+		MaxOutputTokens(64).
+		System("You are Agent A.").
+		User("Write 3 ideas for a landing page.").
+		Build()
+	if err != nil {
+		return workflow.SpecV0{}, err
+	}
+	reqB, _, err := (sdk.ResponseBuilder{}).
+		Model(sdk.NewModelID(modelB)).
+		MaxOutputTokens(64).
+		System("You are Agent B.").
+		User("Write 3 objections a user might have.").
+		Build()
+	if err != nil {
+		return workflow.SpecV0{}, err
+	}
+	reqC, _, err := (sdk.ResponseBuilder{}).
+		Model(sdk.NewModelID(modelC)).
+		MaxOutputTokens(64).
+		System("You are Agent C.").
+		User("Write 3 alternative headlines.").
+		Build()
+	if err != nil {
+		return workflow.SpecV0{}, err
+	}
+	reqAgg, _, err := (sdk.ResponseBuilder{}).
+		Model(sdk.NewModelID(modelAgg)).
+		MaxOutputTokens(256).
+		System("Synthesize the best answer.").
+		Build()
+	if err != nil {
+		return workflow.SpecV0{}, err
+	}
+
+	b := sdk.WorkflowV0().
+		Name("multi_agent_v0_example").
+		Execution(exec)
+
+	b, err = b.LLMResponsesNode("agent_a", reqA, sdk.BoolPtr(false))
+	if err != nil {
+		return workflow.SpecV0{}, err
+	}
+	b, err = b.LLMResponsesNode("agent_b", reqB, nil)
+	if err != nil {
+		return workflow.SpecV0{}, err
+	}
+	b, err = b.LLMResponsesNode("agent_c", reqC, nil)
+	if err != nil {
+		return workflow.SpecV0{}, err
+	}
+	b = b.JoinAllNode("join")
+	b, err = b.LLMResponsesNode("aggregate", reqAgg, nil)
+	if err != nil {
+		return workflow.SpecV0{}, err
+	}
+
+	b = b.
+		Edge("agent_a", "join").
+		Edge("agent_b", "join").
+		Edge("agent_c", "join").
+		Edge("join", "aggregate").
+		Output("final", "aggregate", "")
+
+	return b.Build()
 }
 
 func runOnce(ctx context.Context, client *sdk.Client, label string, spec workflow.SpecV0) error {
+	raw, _ := json.MarshalIndent(spec, "", "  ")
+	log.Printf("[%s] compiled workflow.v0: %s", label, string(raw))
+
 	created, err := client.Runs.Create(ctx, spec)
 	if err != nil {
 		return err
@@ -273,39 +278,34 @@ func run() error {
 	}
 
 	// Use per-run contexts so the example doesn't fail due to cumulative wall-clock time.
-	runCtx, runCancel := context.WithTimeout(context.Background(), 45*time.Second)
-	if err := runOnce(runCtx, client, "success", multiAgentSpec(modelOK)); err != nil {
-		runCancel()
+	specSuccess, err := multiAgentSpec(modelOK, modelOK, modelOK, modelOK, 0)
+	if err != nil {
 		return err
-	}
-	runCancel()
+		}
+		runCtx, runCancel := context.WithTimeout(context.Background(), 45*time.Second)
+		if runErr := runOnce(runCtx, client, "success", specSuccess); runErr != nil {
+			runCancel()
+			return runErr
+		}
+		runCancel()
 
 	// Partial failure: one node uses an unknown model; the run fails and cancels downstream work.
-	specFail := multiAgentSpec(modelOK)
-	for i := range specFail.Nodes {
-		if specFail.Nodes[i].ID == "agent_b" {
-			specFail.Nodes[i].Input = mustJSON(map[string]any{
-				"request": llm.ResponseRequest{
-					Model: modelBad,
-					Input: []llm.InputItem{
-						llm.NewSystemText("You are Agent B."),
-						llm.NewUserText("Write 3 objections a user might have."),
-					},
-				},
-			})
-		}
-	}
-	runCtx, runCancel = context.WithTimeout(context.Background(), 45*time.Second)
-	if err := runOnce(runCtx, client, "partial_failure", specFail); err != nil {
-		runCancel()
+	specFail, err := multiAgentSpec(modelOK, modelBad, modelOK, modelOK, 0)
+	if err != nil {
 		return err
-	}
-	runCancel()
+		}
+		runCtx, runCancel = context.WithTimeout(context.Background(), 45*time.Second)
+		if runErr := runOnce(runCtx, client, "partial_failure", specFail); runErr != nil {
+			runCancel()
+			return runErr
+		}
+		runCancel()
 
 	// Cancellation: an unrealistically short run timeout produces run_canceled.
-	specCancel := multiAgentSpec(modelOK)
-	runTimeout := int64(1)
-	specCancel.Execution.RunTimeoutMS = &runTimeout
+	specCancel, err := multiAgentSpec(modelOK, modelOK, modelOK, modelOK, 1)
+	if err != nil {
+		return err
+	}
 	runCtx, runCancel = context.WithTimeout(context.Background(), 45*time.Second)
 	if err := runOnce(runCtx, client, "cancellation", specCancel); err != nil {
 		runCancel()
