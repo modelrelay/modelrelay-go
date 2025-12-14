@@ -124,6 +124,7 @@ reqAgg, _, _ := (sdk.ResponseBuilder{}).
 	Model(sdk.NewModelID("claude-sonnet-4-20250514")).
 	MaxOutputTokens(256).
 	System("Synthesize the best answer.").
+	User(""). // overwritten by bindings
 	Build()
 
 b := sdk.WorkflowV0().
@@ -133,7 +134,13 @@ b, _ = b.LLMResponsesNode("agent_a", reqA, sdk.BoolPtr(false))
 b, _ = b.LLMResponsesNode("agent_b", reqB, nil)
 b, _ = b.LLMResponsesNode("agent_c", reqC, nil)
 b = b.JoinAllNode("join")
-b, _ = b.LLMResponsesNode("aggregate", reqAgg, nil)
+b, _ = b.LLMResponsesNodeWithBindings("aggregate", reqAgg, nil, []workflow.LLMResponsesBindingV0{
+	{
+		From:     "join",
+		To:       "/input/1/content/0/text",
+		Encoding: workflow.LLMResponsesBindingEncodingJSONString,
+	},
+})
 b = b.
 	Edge("agent_a", "join").
 	Edge("agent_b", "join").

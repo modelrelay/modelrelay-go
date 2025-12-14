@@ -161,7 +161,8 @@ func multiAgentSpec(modelA, modelB, modelC, modelAgg string, runTimeoutMS int64)
 	reqAgg, _, err := (sdk.ResponseBuilder{}).
 		Model(sdk.NewModelID(modelAgg)).
 		MaxOutputTokens(256).
-		System("Synthesize the best answer.").
+		System("Synthesize the best answer from the following agent outputs (JSON).").
+		User(""). // overwritten by bindings
 		Build()
 	if err != nil {
 		return workflow.SpecV0{}, err
@@ -184,7 +185,13 @@ func multiAgentSpec(modelA, modelB, modelC, modelAgg string, runTimeoutMS int64)
 		return workflow.SpecV0{}, err
 	}
 	b = b.JoinAllNode("join")
-	b, err = b.LLMResponsesNode("aggregate", reqAgg, nil)
+	b, err = b.LLMResponsesNodeWithBindings("aggregate", reqAgg, nil, []workflow.LLMResponsesBindingV0{
+		{
+			From:     "join",
+			To:       workflow.JSONPointer("/input/1/content/0/text"),
+			Encoding: workflow.LLMResponsesBindingEncodingJSONString,
+		},
+	})
 	if err != nil {
 		return workflow.SpecV0{}, err
 	}
@@ -281,25 +288,25 @@ func run() error {
 	specSuccess, err := multiAgentSpec(modelOK, modelOK, modelOK, modelOK, 0)
 	if err != nil {
 		return err
-		}
-		runCtx, runCancel := context.WithTimeout(context.Background(), 45*time.Second)
-		if runErr := runOnce(runCtx, client, "success", specSuccess); runErr != nil {
-			runCancel()
-			return runErr
-		}
+	}
+	runCtx, runCancel := context.WithTimeout(context.Background(), 45*time.Second)
+	if runErr := runOnce(runCtx, client, "success", specSuccess); runErr != nil {
 		runCancel()
+		return runErr
+	}
+	runCancel()
 
 	// Partial failure: one node uses an unknown model; the run fails and cancels downstream work.
 	specFail, err := multiAgentSpec(modelOK, modelBad, modelOK, modelOK, 0)
 	if err != nil {
 		return err
-		}
-		runCtx, runCancel = context.WithTimeout(context.Background(), 45*time.Second)
-		if runErr := runOnce(runCtx, client, "partial_failure", specFail); runErr != nil {
-			runCancel()
-			return runErr
-		}
+	}
+	runCtx, runCancel = context.WithTimeout(context.Background(), 45*time.Second)
+	if runErr := runOnce(runCtx, client, "partial_failure", specFail); runErr != nil {
 		runCancel()
+		return runErr
+	}
+	runCancel()
 
 	// Cancellation: an unrealistically short run timeout produces run_canceled.
 	specCancel, err := multiAgentSpec(modelOK, modelOK, modelOK, modelOK, 1)

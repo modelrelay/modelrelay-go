@@ -140,6 +140,78 @@ func TestWorkflowBuilderV0_ConformanceParallelAgents(t *testing.T) {
 	}
 }
 
+func TestWorkflowBuilderV0_ConformanceBindingsJoinIntoAggregate(t *testing.T) {
+	fixture := readFixtureBytes(t, "platform/workflow/testdata/workflow_v0_bindings_join_into_aggregate.json")
+	want := canonicalJSON(t, fixture)
+
+	reqA, _, err := (ResponseBuilder{}).
+		Model(NewModelID("echo-1")).
+		User("hello a").
+		Build()
+	if err != nil {
+		t.Fatalf("build agent_a request: %v", err)
+	}
+
+	reqB, _, err := (ResponseBuilder{}).
+		Model(NewModelID("echo-1")).
+		User("hello b").
+		Build()
+	if err != nil {
+		t.Fatalf("build agent_b request: %v", err)
+	}
+
+	reqAgg, _, err := (ResponseBuilder{}).
+		Model(NewModelID("echo-1")).
+		User("").
+		Build()
+	if err != nil {
+		t.Fatalf("build aggregate request: %v", err)
+	}
+
+	b := WorkflowV0().Name("bindings_join_into_aggregate")
+
+	b, err = b.LLMResponsesNode("agent_a", reqA, nil)
+	if err != nil {
+		t.Fatalf("add node agent_a: %v", err)
+	}
+	b, err = b.LLMResponsesNode("agent_b", reqB, nil)
+	if err != nil {
+		t.Fatalf("add node agent_b: %v", err)
+	}
+	b = b.JoinAllNode("join")
+	b, err = b.LLMResponsesNodeWithBindings("aggregate", reqAgg, nil, []workflow.LLMResponsesBindingV0{
+		{
+			From:     "join",
+			To:       "/input/0/content/0/text",
+			Encoding: workflow.LLMResponsesBindingEncodingJSONString,
+		},
+	})
+	if err != nil {
+		t.Fatalf("add node aggregate: %v", err)
+	}
+
+	b = b.
+		Edge("agent_a", "join").
+		Edge("agent_b", "join").
+		Edge("join", "aggregate").
+		Output("final", "aggregate", "/output/0/content/0/text")
+
+	spec, err := b.Build()
+	if err != nil {
+		t.Fatalf("build workflow: %v", err)
+	}
+
+	gotBytes, err := json.Marshal(spec)
+	if err != nil {
+		t.Fatalf("marshal spec: %v", err)
+	}
+	got := canonicalJSON(t, gotBytes)
+
+	if string(got) != string(want) {
+		t.Fatalf("spec mismatch\nwant: %s\ngot:  %s", want, got)
+	}
+}
+
 func TestValidateWorkflowSpecV0_ConformanceFixtures(t *testing.T) {
 	cases := []struct {
 		specRel   string

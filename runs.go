@@ -61,7 +61,7 @@ type RunEventRunStartedV0 struct {
 
 type RunEventRunCompletedV0 struct {
 	RunEventV0Base
-	PlanHash PlanHash
+	PlanHash           PlanHash
 	OutputsArtifactKey string
 	OutputsInfo        workflow.PayloadInfoV0
 }
@@ -96,9 +96,9 @@ type RunEventNodeFailedV0 struct {
 
 type RunEventNodeOutputV0 struct {
 	RunEventV0Base
-	NodeID       workflow.NodeID
-	ArtifactKey  string
-	OutputInfo   workflow.PayloadInfoV0
+	NodeID      workflow.NodeID
+	ArtifactKey string
+	OutputInfo  workflow.PayloadInfoV0
 }
 
 func (RunEventRunCompiledV0) isRunEventV0()   {}
@@ -232,9 +232,9 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			}
 			return RunEventNodeOutputV0{
 				RunEventV0Base: base,
-				NodeID:        env.NodeID,
-				ArtifactKey:   env.ArtifactKey,
-				OutputInfo:    *env.OutputInfo,
+				NodeID:         env.NodeID,
+				ArtifactKey:    env.ArtifactKey,
+				OutputInfo:     *env.OutputInfo,
 			}, nil
 		default:
 			return nil, ProtocolError{Message: "unknown run event type"}
@@ -305,11 +305,12 @@ type RunsCreateResponse struct {
 }
 
 type RunsGetResponse struct {
-	RunID    RunID                                   `json:"run_id"`
-	Status   workflow.RunStatusV0                    `json:"status"`
-	PlanHash PlanHash                                `json:"plan_hash"`
-	Nodes    []workflow.NodeResultV0                 `json:"nodes,omitempty"`
-	Outputs  map[workflow.OutputName]json.RawMessage `json:"outputs,omitempty"`
+	RunID       RunID                                   `json:"run_id"`
+	Status      workflow.RunStatusV0                    `json:"status"`
+	PlanHash    PlanHash                                `json:"plan_hash"`
+	CostSummary workflow.RunCostSummaryV0               `json:"cost_summary"`
+	Nodes       []workflow.NodeResultV0                 `json:"nodes,omitempty"`
+	Outputs     map[workflow.OutputName]json.RawMessage `json:"outputs,omitempty"`
 }
 
 type RunsEventStream struct {

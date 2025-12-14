@@ -154,13 +154,14 @@ func ValidateWorkflowSpecV0(spec workflow.SpecV0) []WorkflowBuildIssue {
 }
 
 type llmResponsesNodeInputV0 struct {
-	Request responseRequestPayload `json:"request"`
-	Stream  *bool                  `json:"stream,omitempty"`
+	Request  responseRequestPayload           `json:"request"`
+	Stream   *bool                            `json:"stream,omitempty"`
+	Bindings []workflow.LLMResponsesBindingV0 `json:"bindings,omitempty"`
 }
 
 type TransformJSONNodeInputV0 struct {
 	Object map[string]TransformJSONFieldRefV0 `json:"object,omitempty"`
-	Merge  []TransformJSONRefV0              `json:"merge,omitempty"`
+	Merge  []TransformJSONRefV0               `json:"merge,omitempty"`
 }
 
 type TransformJSONFieldRefV0 struct {
@@ -204,9 +205,14 @@ func (b WorkflowBuilderV0) Node(node workflow.NodeV0) WorkflowBuilderV0 {
 }
 
 func (b WorkflowBuilderV0) LLMResponsesNode(id workflow.NodeID, req ResponseRequest, stream *bool) (WorkflowBuilderV0, error) {
+	return b.LLMResponsesNodeWithBindings(id, req, stream, nil)
+}
+
+func (b WorkflowBuilderV0) LLMResponsesNodeWithBindings(id workflow.NodeID, req ResponseRequest, stream *bool, bindings []workflow.LLMResponsesBindingV0) (WorkflowBuilderV0, error) {
 	payload := llmResponsesNodeInputV0{
-		Request: newResponseRequestPayload(req),
-		Stream:  stream,
+		Request:  newResponseRequestPayload(req),
+		Stream:   stream,
+		Bindings: append([]workflow.LLMResponsesBindingV0{}, bindings...),
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -263,7 +269,7 @@ func (b WorkflowBuilderV0) Build() (workflow.SpecV0, error) {
 		Outputs: append([]workflow.OutputRefV0(nil), b.outputs...),
 	}
 	if b.execution != nil {
-		spec.Execution = *b.execution
+		spec.Execution = b.execution
 	}
 
 	sort.Slice(spec.Edges, func(i, j int) bool {

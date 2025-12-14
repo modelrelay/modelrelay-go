@@ -40,9 +40,10 @@ func TestRunsCreateGetAndStream(t *testing.T) {
 		case "/runs/" + runID.String():
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(RunsGetResponse{
-				RunID:    runID,
-				Status:   workflow.RunStatusRunning,
-				PlanHash: planHash,
+				RunID:       runID,
+				Status:      workflow.RunStatusRunning,
+				PlanHash:    planHash,
+				CostSummary: workflow.RunCostSummaryV0{LineItems: []workflow.RunCostLineItemV0{}},
 			})
 		case "/runs/" + runID.String() + "/events":
 			if r.Header.Get("Accept") != "application/x-ndjson" {
