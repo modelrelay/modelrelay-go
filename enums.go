@@ -170,6 +170,58 @@ func (e *CustomerExternalID) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// CustomerIdentityProvider identifies an external identity provider namespace (e.g. "oidc", "github", "oidc:https://issuer").
+type CustomerIdentityProvider string
+
+func NewCustomerIdentityProvider(val string) CustomerIdentityProvider {
+	return CustomerIdentityProvider(strings.TrimSpace(val))
+}
+
+func (p CustomerIdentityProvider) IsEmpty() bool {
+	return strings.TrimSpace(string(p)) == ""
+}
+
+func (p CustomerIdentityProvider) String() string { return string(p) }
+
+func (p CustomerIdentityProvider) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(p))
+}
+
+func (p *CustomerIdentityProvider) UnmarshalJSON(data []byte) error {
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*p = NewCustomerIdentityProvider(raw)
+	return nil
+}
+
+// CustomerIdentitySubject is the provider-scoped subject identifier (e.g. OIDC sub).
+type CustomerIdentitySubject string
+
+func NewCustomerIdentitySubject(val string) CustomerIdentitySubject {
+	return CustomerIdentitySubject(strings.TrimSpace(val))
+}
+
+func (s CustomerIdentitySubject) IsEmpty() bool {
+	return strings.TrimSpace(string(s)) == ""
+}
+
+func (s CustomerIdentitySubject) String() string { return string(s) }
+
+func (s CustomerIdentitySubject) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(s))
+}
+
+func (s *CustomerIdentitySubject) UnmarshalJSON(data []byte) error {
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*s = NewCustomerIdentitySubject(raw)
+	return nil
+}
+
 // APIKeyKind encodes the kind of API key.
 type APIKeyKind string
 

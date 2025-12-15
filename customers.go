@@ -55,12 +55,12 @@ type CustomerUpsertRequest struct {
 	Metadata   CustomerMetadata   `json:"metadata,omitempty"`
 }
 
-// CustomerClaimRequest contains the fields to claim a customer by email.
-// Used when a customer subscribes via Stripe Checkout (email only) and later
-// authenticates to the app, needing to link their identity.
+// CustomerClaimRequest contains the fields to link an end-user identity to a customer by email.
+// Used when a customer subscribes via Stripe Checkout (email only) and later authenticates to the app.
 type CustomerClaimRequest struct {
-	Email      string             `json:"email"`
-	ExternalID CustomerExternalID `json:"external_id"`
+	Email    string                   `json:"email"`
+	Provider CustomerIdentityProvider `json:"provider"`
+	Subject  CustomerIdentitySubject  `json:"subject"`
 }
 
 // CheckoutSessionRequest contains the URLs for checkout redirect.
@@ -218,16 +218,14 @@ func (c *CustomersClient) Upsert(ctx context.Context, req CustomerUpsertRequest)
 	return payload.Customer, nil
 }
 
-// Claim claims a customer by email, setting their external_id.
-// Used when a customer subscribes via Stripe Checkout (email only) and later
-// authenticates to the app, needing to link their identity.
+// Claim links an end-user identity (provider + subject) to a customer found by email.
+// Used when a customer subscribes via Stripe Checkout (email only) and later authenticates to the app.
 //
 // This is a user self-service operation that works with publishable keys,
 // allowing CLI tools and frontends to link subscriptions to user identities.
 // Works with both publishable keys (mr_pk_*) and secret keys (mr_sk_*).
 //
-// Returns an error if the customer is not found (404), already claimed, or the
-// external_id is already in use by another customer (409).
+// Returns an error if the customer is not found (404) or the identity is already linked to a different customer (409).
 func (c *CustomersClient) Claim(ctx context.Context, req CustomerClaimRequest) (Customer, error) {
 	if c == nil || c.client == nil {
 		return Customer{}, fmt.Errorf("sdk: customers client not initialized")
@@ -238,8 +236,11 @@ func (c *CustomersClient) Claim(ctx context.Context, req CustomerClaimRequest) (
 	if !isValidEmail(req.Email) {
 		return Customer{}, fmt.Errorf("sdk: invalid email format")
 	}
-	if req.ExternalID.IsEmpty() {
-		return Customer{}, fmt.Errorf("sdk: external_id required")
+	if req.Provider.IsEmpty() {
+		return Customer{}, fmt.Errorf("sdk: provider required")
+	}
+	if req.Subject.IsEmpty() {
+		return Customer{}, fmt.Errorf("sdk: subject required")
 	}
 	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/customers/claim", req)
 	if err != nil {

@@ -44,6 +44,5 @@ package sdk
 // 0.45.3: Add cost_summary to runs get response (/runs/{run_id}).
 // 0.46.0: Breaking - Remove monorepo module imports; add server-authoritative workflow compilation.
 // 0.47.0: Breaking - Customer bearer tokens; /responses and /runs reject publishable keys;
-// add /auth/customer-token; /customers/claim requires secret key.
-// 0.48.0: Add plan_hash to RunsCreateResponse for immediate visibility without extra GET.
-const Version = "0.48.0"
+// add /auth/customer-token with identity mapping + auto-provision support; /customers/claim requires secret key.
+const Version = "0.47.0"
