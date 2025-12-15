@@ -265,6 +265,7 @@ type RunStatusV0 string
 
 const (
 	RunStatusRunning   RunStatusV0 = "running"
+	RunStatusWaiting   RunStatusV0 = "waiting"
 	RunStatusSucceeded RunStatusV0 = "succeeded"
 	RunStatusFailed    RunStatusV0 = "failed"
 	RunStatusCanceled  RunStatusV0 = "canceled"
@@ -275,6 +276,7 @@ type NodeStatusV0 string
 const (
 	NodeStatusPending   NodeStatusV0 = "pending"
 	NodeStatusRunning   NodeStatusV0 = "running"
+	NodeStatusWaiting   NodeStatusV0 = "waiting"
 	NodeStatusSucceeded NodeStatusV0 = "succeeded"
 	NodeStatusFailed    NodeStatusV0 = "failed"
 	NodeStatusCanceled  NodeStatusV0 = "canceled"

@@ -51,4 +51,5 @@ package sdk
 // 0.51.0: Add server-side tool execution events for workflow runs.
 // 0.52.0: Refactor - Extract shared streamTimeoutMonitor; add pure parseStructuredRecord() and buildCompleteFieldsMap() functions;
 // use sync.Once for first-content signaling. Eliminates ~70 lines of duplicate timeout logic.
-const Version = "0.52.0"
+// 0.53.0: Add client-side tool handoff + resume for workflow runs (/runs/{run_id}/tool-results).
+const Version = "0.53.0"

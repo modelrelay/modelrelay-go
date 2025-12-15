@@ -56,6 +56,9 @@ const (
 	// RunsEvents streams the append-only event history for a run.
 	RunsEvents = "/runs/{run_id}/events"
 
+	// RunsToolResults submits tool results for an in-progress run (client tool execution mode).
+	RunsToolResults = "/runs/{run_id}/tool-results"
+
 	// WorkflowsCompile compiles a workflow.v0 spec into a canonical plan and plan_hash.
 	WorkflowsCompile = "/workflows/compile"
 

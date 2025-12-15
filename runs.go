@@ -355,6 +355,21 @@ type RunsGetResponse struct {
 	Outputs     map[OutputName]json.RawMessage `json:"outputs,omitempty"`
 }
 
+type RunsToolResultsRequest struct {
+	NodeID  NodeID                 `json:"node_id"`
+	Results []RunsToolResultItemV0 `json:"results"`
+}
+
+type RunsToolResultItemV0 struct {
+	ToolCallID string `json:"tool_call_id"`
+	Output     string `json:"output"`
+}
+
+type RunsToolResultsResponse struct {
+	Accepted int         `json:"accepted"`
+	Status   RunStatusV0 `json:"status"`
+}
+
 type RunsEventStream struct {
 	body io.ReadCloser
 	dec  *json.Decoder
@@ -528,6 +543,38 @@ func (c *RunsClient) Get(ctx context.Context, runID RunID, opts ...RunGetOption)
 	return &out, nil
 }
 
+// SubmitToolResults submits tool results for a run (client tool execution mode).
+func (c *RunsClient) SubmitToolResults(ctx context.Context, runID RunID, reqPayload RunsToolResultsRequest, opts ...RunToolResultsOption) (*RunsToolResultsResponse, error) {
+	if !runID.Valid() {
+		return nil, ConfigError{Reason: "run id is required"}
+	}
+	if !reqPayload.NodeID.Valid() {
+		return nil, ConfigError{Reason: "node id is required"}
+	}
+	options := buildRunToolResultsOptions(opts)
+
+	path := strings.ReplaceAll(routes.RunsToolResults, "{run_id}", url.PathEscape(runID.String()))
+	req, err := c.client.newJSONRequest(ctx, http.MethodPost, path, reqPayload)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, _, err := c.client.send(req, options.timeout, options.retry)
+	if err != nil {
+		return nil, err
+	}
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode >= 400 {
+		return nil, decodeAPIError(resp, nil)
+	}
+	var out RunsToolResultsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 type runCreateOptions struct {
 	timeout *time.Duration
 	retry   *RetryConfig
@@ -576,6 +623,31 @@ func WithRunGetTimeout(d time.Duration) RunGetOption {
 
 func WithRunGetRetry(cfg RetryConfig) RunGetOption {
 	return func(o *runGetOptions) { o.retry = &cfg }
+}
+
+type runToolResultsOptions struct {
+	timeout *time.Duration
+	retry   *RetryConfig
+}
+
+type RunToolResultsOption func(*runToolResultsOptions)
+
+func buildRunToolResultsOptions(opts []RunToolResultsOption) runToolResultsOptions {
+	var out runToolResultsOptions
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&out)
+		}
+	}
+	return out
+}
+
+func WithRunToolResultsTimeout(d time.Duration) RunToolResultsOption {
+	return func(o *runToolResultsOptions) { o.timeout = &d }
+}
+
+func WithRunToolResultsRetry(cfg RetryConfig) RunToolResultsOption {
+	return func(o *runToolResultsOptions) { o.retry = &cfg }
 }
 
 type runEventsOptions struct {
