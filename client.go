@@ -30,6 +30,7 @@ type Config struct {
 	BaseURL        string
 	APIKey         APIKeyAuth
 	AccessToken    string
+	TokenProvider  TokenProvider
 	HTTPClient     *http.Client
 	Telemetry      TelemetryHooks
 	UserAgent      string
@@ -55,6 +56,7 @@ type clientOptions struct {
 	connectTimeout *time.Duration
 	requestTimeout *time.Duration
 	retry          *RetryConfig
+	tokenProvider  TokenProvider
 }
 
 // WithBaseURL sets a custom API base URL.
@@ -100,6 +102,12 @@ func WithRequestTimeout(d time.Duration) Option {
 // WithRetryConfig sets the retry/backoff policy.
 func WithRetryConfig(cfg RetryConfig) Option {
 	return func(o *clientOptions) { o.retry = &cfg }
+}
+
+// WithTokenProvider configures an optional TokenProvider used to supply bearer tokens.
+// This is primarily intended for data-plane endpoints like /responses and /runs.
+func WithTokenProvider(provider TokenProvider) Option {
+	return func(o *clientOptions) { o.tokenProvider = provider }
 }
 
 // Client provides high-level helpers for interacting with the ModelRelay API.
@@ -158,6 +166,17 @@ func NewClientWithToken(token string, opts ...Option) (*Client, error) {
 	return newClientFromOptions(nil, token, options)
 }
 
+// NewClientWithTokenProvider creates a client that obtains bearer tokens from a TokenProvider.
+// Use functional options to configure additional settings.
+func NewClientWithTokenProvider(provider TokenProvider, opts ...Option) (*Client, error) {
+	if provider == nil {
+		return nil, ConfigError{Reason: "token provider is required"}
+	}
+	opts = append(opts, WithTokenProvider(provider))
+	options := applyOptions(opts)
+	return newClientFromOptions(nil, "", options)
+}
+
 func applyOptions(opts []Option) clientOptions {
 	var options clientOptions
 	for _, opt := range opts {
@@ -188,6 +207,8 @@ func newClientFromOptions(apiKey APIKeyAuth, accessToken string, opts clientOpti
 			token = strings.TrimSpace(token[7:])
 		}
 		auth = append(auth, bearerAuth{token: token})
+	} else if opts.tokenProvider != nil {
+		auth = append(auth, tokenProviderAuth{provider: opts.tokenProvider})
 	}
 	if apiKey != nil {
 		auth = append(auth, apiKeyAuth{key: apiKey})
@@ -236,8 +257,9 @@ func NewClient(cfg Config) (*Client, error) {
 	hasKey := cfg.APIKey != nil && strings.TrimSpace(cfg.APIKey.String()) != ""
 	token := strings.TrimSpace(cfg.AccessToken)
 	hasToken := token != ""
-	if !hasKey && !hasToken {
-		return nil, ConfigError{Reason: "api key or access token required"}
+	hasProvider := cfg.TokenProvider != nil
+	if !hasKey && !hasToken && !hasProvider {
+		return nil, ConfigError{Reason: "api key, access token, or token provider required"}
 	}
 	// Map Config to clientOptions and delegate
 	opts := clientOptions{
@@ -250,6 +272,7 @@ func NewClient(cfg Config) (*Client, error) {
 		connectTimeout: cfg.ConnectTimeout,
 		requestTimeout: cfg.RequestTimeout,
 		retry:          cfg.Retry,
+		tokenProvider:  cfg.TokenProvider,
 	}
 	var apiKey APIKeyAuth
 	if hasKey {
@@ -382,14 +405,16 @@ func (c *Client) newJSONRequest(ctx context.Context, method, path string, payloa
 	return req, nil
 }
 
-func (c *Client) prepare(req *http.Request) {
+func (c *Client) prepare(req *http.Request) error {
 	if c.userAgent != "" {
 		req.Header.Set("User-Agent", c.userAgent)
 	}
 	if c.clientHead != "" && req.Header.Get("X-ModelRelay-Client") == "" {
 		req.Header.Set("X-ModelRelay-Client", c.clientHead)
 	}
-	c.auth.Apply(req)
+	if err := c.auth.Apply(req); err != nil {
+		return err
+	}
 	for key, values := range c.defaultHeaders {
 		if req.Header.Get(key) != "" {
 			continue
@@ -398,6 +423,7 @@ func (c *Client) prepare(req *http.Request) {
 			req.Header.Add(key, value)
 		}
 	}
+	return nil
 }
 
 func (c *Client) send(req *http.Request, timeout *time.Duration, retry *RetryConfig) (*http.Response, *RetryMetadata, error) {
@@ -487,7 +513,10 @@ func (c *Client) sendWithRetry(req *http.Request, cfg RetryConfig) (*http.Respon
 		if err != nil {
 			return nil, &meta, TransportError{Message: "request not rewindable", Cause: err, Retry: &meta}
 		}
-		c.prepare(cloned)
+		prepErr := c.prepare(cloned)
+		if prepErr != nil {
+			return nil, &meta, prepErr
+		}
 		if c.telemetry.OnHTTPRequest != nil {
 			c.telemetry.OnHTTPRequest(cloned.Context(), cloned)
 		}

@@ -300,7 +300,7 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 			}
 			return StructuredJSONEvent[T]{}, false, APIError{
 				Status:    status,
-				Code:      raw.Code,
+				Code:      APIErrorCode(raw.Code),
 				Message:   msg,
 				RequestID: s.requestID,
 				Retry:     s.retry,

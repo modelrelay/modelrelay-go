@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/modelrelay/modelrelay/sdk/go/routes"
 )
 
 // TokenType represents the OAuth2 token type.
@@ -75,7 +76,7 @@ func (a *AuthClient) CustomerToken(ctx context.Context, req CustomerTokenRequest
 	if err := req.Validate(); err != nil {
 		return CustomerToken{}, fmt.Errorf("sdk: %w", err)
 	}
-	httpReq, err := a.client.newJSONRequest(ctx, http.MethodPost, "/auth/customer-token", req)
+	httpReq, err := a.client.newJSONRequest(ctx, http.MethodPost, routes.AuthCustomerToken, req)
 	if err != nil {
 		return CustomerToken{}, err
 	}

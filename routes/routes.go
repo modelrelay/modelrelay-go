@@ -8,6 +8,12 @@ const (
 	// AuthMe returns the current authenticated user's profile.
 	AuthMe = "/auth/me"
 
+	// AuthOIDCExchange exchanges a verified OIDC id_token for a short-lived customer-scoped bearer token.
+	AuthOIDCExchange = "/auth/oidc/exchange"
+
+	// AuthCustomerToken mints a customer-scoped bearer token (requires secret key).
+	AuthCustomerToken = "/auth/customer-token" // #nosec G101 -- route path, not a credential
+
 	// Pricing returns public model pricing information.
 	Pricing = "/pricing"
 

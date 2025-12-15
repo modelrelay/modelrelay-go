@@ -4,6 +4,46 @@
 go get github.com/modelrelay/modelrelay/sdk/go
 ```
 
+## Token Providers (Automatic Bearer Auth)
+
+Use token providers when you want the SDK to automatically obtain/refresh **bearer tokens** for data-plane calls like `/responses` and `/runs`.
+
+### Secret key → customer bearer token (mint)
+
+```go
+ctx := context.Background()
+secret, _ := sdk.ParseSecretKey(os.Getenv("MODELRELAY_API_KEY"))
+
+projectID := uuid.MustParse(os.Getenv("MODELRELAY_PROJECT_ID"))
+customerID := uuid.MustParse(os.Getenv("MODELRELAY_CUSTOMER_ID"))
+
+provider, _ := sdk.NewCustomerTokenProvider(sdk.CustomerTokenProviderConfig{
+    SecretKey: secret,
+    Request:   sdk.NewCustomerTokenRequestForCustomerID(projectID, customerID),
+})
+
+client, _ := sdk.NewClientWithTokenProvider(provider)
+
+text, _ := client.Responses.Text(ctx, sdk.NewModelID("claude-sonnet-4-20250514"), "You are helpful.", "Hello!")
+fmt.Println(text)
+```
+
+### OIDC id_token → customer bearer token (exchange)
+
+```go
+ctx := context.Background()
+key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
+
+provider, _ := sdk.NewOIDCExchangeTokenProvider(sdk.OIDCExchangeTokenProviderConfig{
+    APIKey: key,
+    IDTokenSource: func(ctx context.Context) (string, error) {
+        return os.Getenv("OIDC_ID_TOKEN"), nil
+    },
+})
+
+client, _ := sdk.NewClientWithTokenProvider(provider)
+```
+
 ## Responses (Blocking)
 
 ```go

@@ -82,7 +82,7 @@ func (s *responseStream) CollectWithMetrics(ctx context.Context) (*Response, Res
 			}
 			return nil, metrics, APIError{
 				Status:    ev.ErrorStatus,
-				Code:      strings.TrimSpace(ev.ErrorCode),
+				Code:      APIErrorCode(strings.TrimSpace(ev.ErrorCode)),
 				Message:   msg,
 				RequestID: s.handle.RequestID,
 			}

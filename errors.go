@@ -24,6 +24,20 @@ type ConfigError struct {
 
 func (e ConfigError) Error() string { return "sdk config: " + e.Reason }
 
+// TokenProviderError indicates the SDK could not obtain a bearer token from a TokenProvider.
+type TokenProviderError struct {
+	Cause error
+}
+
+func (e TokenProviderError) Error() string {
+	if e.Cause == nil {
+		return "sdk token provider: failed"
+	}
+	return "sdk token provider: " + e.Cause.Error()
+}
+
+func (e TokenProviderError) Unwrap() error { return e.Cause }
+
 // TransportError wraps network/timeout failures.
 type TransportError struct {
 	Message string
@@ -103,26 +117,37 @@ func (e StreamTimeoutError) Error() string {
 	}
 }
 
+// APIErrorCode is a strongly-typed error code returned by the API.
+// Using a dedicated type instead of raw strings enables compile-time checking
+// and prevents typos in error code comparisons.
+type APIErrorCode string
+
 // API error codes returned by the server.
 // These constants can be used for programmatic error handling.
 const (
-	ErrCodeNotFound         = "NOT_FOUND"
-	ErrCodeValidation       = "VALIDATION_ERROR"
-	ErrCodeRateLimit        = "RATE_LIMIT"
-	ErrCodeUnauthorized     = "UNAUTHORIZED"
-	ErrCodeForbidden        = "FORBIDDEN"
-	ErrCodeConflict         = "CONFLICT"
-	ErrCodeInternal         = "INTERNAL_ERROR"
-	ErrCodeUnavailable      = "SERVICE_UNAVAILABLE"
-	ErrCodeInvalidInput     = "INVALID_INPUT"
-	ErrCodePaymentRequired  = "PAYMENT_REQUIRED"
-	ErrCodeMethodNotAllowed = "METHOD_NOT_ALLOWED"
+	ErrCodeNotFound         APIErrorCode = "NOT_FOUND"
+	ErrCodeValidation       APIErrorCode = "VALIDATION_ERROR"
+	ErrCodeRateLimit        APIErrorCode = "RATE_LIMIT"
+	ErrCodeUnauthorized     APIErrorCode = "UNAUTHORIZED"
+	ErrCodeForbidden        APIErrorCode = "FORBIDDEN"
+	ErrCodeConflict         APIErrorCode = "CONFLICT"
+	ErrCodeInternal         APIErrorCode = "INTERNAL_ERROR"
+	ErrCodeUnavailable      APIErrorCode = "SERVICE_UNAVAILABLE"
+	ErrCodeInvalidInput     APIErrorCode = "INVALID_INPUT"
+	ErrCodePaymentRequired  APIErrorCode = "PAYMENT_REQUIRED"
+	ErrCodeMethodNotAllowed APIErrorCode = "METHOD_NOT_ALLOWED"
+
+	// OIDC exchange error codes
+	ErrCodeEmailRequired              APIErrorCode = "EMAIL_REQUIRED"
+	ErrCodeIdentityRequired           APIErrorCode = "IDENTITY_REQUIRED"
+	ErrCodeAutoProvisionDisabled      APIErrorCode = "AUTO_PROVISION_DISABLED"
+	ErrCodeAutoProvisionMisconfigured APIErrorCode = "AUTO_PROVISION_MISCONFIGURED"
 )
 
 // APIError captures structured SaaS error metadata.
 type APIError struct {
 	Status    int
-	Code      string
+	Code      APIErrorCode
 	Message   string
 	RequestID string
 	Fields    []FieldError
@@ -137,13 +162,15 @@ type FieldError struct {
 
 // Error implements the error interface.
 func (e APIError) Error() string {
-	if e.Code == "" {
-		e.Code = "UNKNOWN"
+	code := e.Code
+	if code == "" {
+		code = "UNKNOWN"
 	}
-	if e.Message == "" {
-		e.Message = fmt.Sprintf("%s (%d)", e.Code, e.Status)
+	msg := e.Message
+	if msg == "" {
+		msg = fmt.Sprintf("%s (%d)", code, e.Status)
 	}
-	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+	return fmt.Sprintf("%s: %s", code, msg)
 }
 
 // IsNotFound returns true if the error is a not found error.
@@ -204,7 +231,7 @@ func decodeAPIErrorFromBytes(status int, data []byte, retry *RetryMetadata) erro
 		apiErr.Message = string(data)
 		return apiErr
 	}
-	apiErr.Code = payload.Code
+	apiErr.Code = APIErrorCode(payload.Code)
 	apiErr.Message = payload.Message
 	apiErr.RequestID = payload.RequestID
 	apiErr.Fields = payload.Fields
