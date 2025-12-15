@@ -59,6 +59,9 @@ const (
 	// RunsToolResults submits tool results for an in-progress run (client tool execution mode).
 	RunsToolResults = "/runs/{run_id}/tool-results"
 
+	// RunsPendingTools returns the currently pending tool calls for an in-progress run.
+	RunsPendingTools = "/runs/{run_id}/pending-tools"
+
 	// WorkflowsCompile compiles a workflow.v0 spec into a canonical plan and plan_hash.
 	WorkflowsCompile = "/workflows/compile"
 

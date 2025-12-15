@@ -164,6 +164,7 @@ const (
 	RunEventNodeLLMCall    RunEventTypeV0 = "node_llm_call"
 	RunEventNodeToolCall   RunEventTypeV0 = "node_tool_call"
 	RunEventNodeToolResult RunEventTypeV0 = "node_tool_result"
+	RunEventNodeWaiting    RunEventTypeV0 = "node_waiting"
 
 	RunEventNodeStarted     RunEventTypeV0 = "node_started"
 	RunEventNodeSucceeded   RunEventTypeV0 = "node_succeeded"
@@ -229,6 +230,19 @@ type NodeToolResultV0 struct {
 	Output     string `json:"output"`
 }
 
+type PendingToolCallV0 struct {
+	ToolCallID string `json:"tool_call_id"`
+	Name       string `json:"name"`
+	Arguments  string `json:"arguments"`
+}
+
+type NodeWaitingV0 struct {
+	Step             int64               `json:"step"`
+	RequestID        string              `json:"request_id"`
+	PendingToolCalls []PendingToolCallV0 `json:"pending_tool_calls"`
+	Reason           string              `json:"reason"`
+}
+
 // RunEventV0Envelope is the stable, append-only wire envelope for workflow run history.
 type RunEventV0Envelope struct {
 	EnvelopeVersion string         `json:"envelope_version"`
@@ -245,6 +259,7 @@ type RunEventV0Envelope struct {
 	LLMCall    *NodeLLMCallV0    `json:"llm_call,omitempty"`
 	ToolCall   *NodeToolCallV0   `json:"tool_call,omitempty"`
 	ToolResult *NodeToolResultV0 `json:"tool_result,omitempty"`
+	Waiting    *NodeWaitingV0    `json:"waiting,omitempty"`
 
 	Delta *NodeOutputDeltaV0 `json:"delta,omitempty"`
 
