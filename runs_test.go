@@ -33,8 +33,9 @@ func TestRunsCreateGetAndStream(t *testing.T) {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(RunsCreateResponse{
-				RunID:  runID,
-				Status: "running",
+				RunID:    runID,
+				Status:   "running",
+				PlanHash: planHash,
 			})
 		case "/runs/" + runID.String():
 			w.Header().Set("Content-Type", "application/json")

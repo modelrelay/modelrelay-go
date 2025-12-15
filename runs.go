@@ -277,8 +277,9 @@ type runsCreateRequest struct {
 }
 
 type RunsCreateResponse struct {
-	RunID  RunID  `json:"run_id"`
-	Status string `json:"status"`
+	RunID    RunID    `json:"run_id"`
+	Status   string   `json:"status"`
+	PlanHash PlanHash `json:"plan_hash"`
 }
 
 type RunsGetResponse struct {

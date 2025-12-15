@@ -45,4 +45,5 @@ package sdk
 // 0.46.0: Breaking - Remove monorepo module imports; add server-authoritative workflow compilation.
 // 0.47.0: Breaking - Customer bearer tokens; /responses and /runs reject publishable keys;
 // add /auth/customer-token; /customers/claim requires secret key.
-const Version = "0.47.0"
+// 0.48.0: Add plan_hash to RunsCreateResponse for immediate visibility without extra GET.
+const Version = "0.48.0"
