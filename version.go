@@ -45,4 +45,5 @@ package sdk
 // 0.46.0: Breaking - Remove monorepo module imports; add server-authoritative workflow compilation.
 // 0.47.0: Breaking - Customer bearer tokens; /responses and /runs reject publishable keys;
 // add /auth/customer-token with identity mapping + auto-provision support; /customers/claim requires secret key.
-const Version = "0.47.0"
+// 0.49.0: Add StreamEventKind type for typed delta event kinds in workflow runs.
+const Version = "0.49.0"

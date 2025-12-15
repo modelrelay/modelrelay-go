@@ -161,11 +161,32 @@ const (
 	RunEventRunFailed    RunEventTypeV0 = "run_failed"
 	RunEventRunCanceled  RunEventTypeV0 = "run_canceled"
 
-	RunEventNodeStarted   RunEventTypeV0 = "node_started"
-	RunEventNodeSucceeded RunEventTypeV0 = "node_succeeded"
-	RunEventNodeFailed    RunEventTypeV0 = "node_failed"
-	RunEventNodeOutput    RunEventTypeV0 = "node_output"
+	RunEventNodeStarted     RunEventTypeV0 = "node_started"
+	RunEventNodeSucceeded   RunEventTypeV0 = "node_succeeded"
+	RunEventNodeFailed      RunEventTypeV0 = "node_failed"
+	RunEventNodeOutputDelta RunEventTypeV0 = "node_output_delta"
+	RunEventNodeOutput      RunEventTypeV0 = "node_output"
 )
+
+// StreamEventKind represents the type of streaming event from an LLM provider.
+type StreamEventKind string
+
+const (
+	StreamEventKindMessageStart StreamEventKind = "message_start"
+	StreamEventKindMessageDelta StreamEventKind = "message_delta"
+	StreamEventKindMessageStop  StreamEventKind = "message_stop"
+	StreamEventKindToolUseStart StreamEventKind = "tool_use_start"
+	StreamEventKindToolUseDelta StreamEventKind = "tool_use_delta"
+	StreamEventKindToolUseStop  StreamEventKind = "tool_use_stop"
+)
+
+type NodeOutputDeltaV0 struct {
+	Kind StreamEventKind `json:"kind"`
+
+	TextDelta  string `json:"text_delta,omitempty"`
+	ResponseID string `json:"response_id,omitempty"`
+	Model      string `json:"model,omitempty"`
+}
 
 // RunEventV0Envelope is the stable, append-only wire envelope for workflow run history.
 type RunEventV0Envelope struct {
@@ -179,6 +200,8 @@ type RunEventV0Envelope struct {
 
 	PlanHash *PlanHash    `json:"plan_hash,omitempty"`
 	Error    *NodeErrorV0 `json:"error,omitempty"`
+
+	Delta *NodeOutputDeltaV0 `json:"delta,omitempty"`
 
 	OutputInfo  *PayloadInfoV0 `json:"output_info,omitempty"`
 	ArtifactKey string         `json:"artifact_key,omitempty"`

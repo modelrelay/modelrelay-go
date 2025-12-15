@@ -71,6 +71,12 @@ type RunEventNodeFailedV0 struct {
 	Error  NodeErrorV0
 }
 
+type RunEventNodeOutputDeltaV0 struct {
+	RunEventV0Base
+	NodeID NodeID
+	Delta  NodeOutputDeltaV0
+}
+
 type RunEventNodeOutputV0 struct {
 	RunEventV0Base
 	NodeID      NodeID
@@ -78,15 +84,16 @@ type RunEventNodeOutputV0 struct {
 	OutputInfo  PayloadInfoV0
 }
 
-func (RunEventRunCompiledV0) isRunEventV0()   {}
-func (RunEventRunStartedV0) isRunEventV0()    {}
-func (RunEventRunCompletedV0) isRunEventV0()  {}
-func (RunEventRunFailedV0) isRunEventV0()     {}
-func (RunEventRunCanceledV0) isRunEventV0()   {}
-func (RunEventNodeStartedV0) isRunEventV0()   {}
-func (RunEventNodeSucceededV0) isRunEventV0() {}
-func (RunEventNodeFailedV0) isRunEventV0()    {}
-func (RunEventNodeOutputV0) isRunEventV0()    {}
+func (RunEventRunCompiledV0) isRunEventV0()     {}
+func (RunEventRunStartedV0) isRunEventV0()      {}
+func (RunEventRunCompletedV0) isRunEventV0()    {}
+func (RunEventRunFailedV0) isRunEventV0()       {}
+func (RunEventRunCanceledV0) isRunEventV0()     {}
+func (RunEventNodeStartedV0) isRunEventV0()     {}
+func (RunEventNodeSucceededV0) isRunEventV0()   {}
+func (RunEventNodeFailedV0) isRunEventV0()      {}
+func (RunEventNodeOutputDeltaV0) isRunEventV0() {}
+func (RunEventNodeOutputV0) isRunEventV0()      {}
 
 func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 	if strings.TrimSpace(env.EnvelopeVersion) == "" {
@@ -124,18 +131,18 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 
 		switch env.Type {
 		case RunEventRunCompiled:
-			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
-				return nil, ProtocolError{Message: "run_compiled must not include error/output_info/artifact fields"}
+			if env.Error != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
+				return nil, ProtocolError{Message: "run_compiled must not include error/delta/output_info/artifact fields"}
 			}
 			return RunEventRunCompiledV0{RunEventV0Base: base, PlanHash: planHash}, nil
 		case RunEventRunStarted:
-			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
-				return nil, ProtocolError{Message: "run_started must not include error/output_info/artifact fields"}
+			if env.Error != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
+				return nil, ProtocolError{Message: "run_started must not include error/delta/output_info/artifact fields"}
 			}
 			return RunEventRunStartedV0{RunEventV0Base: base, PlanHash: planHash}, nil
 		case RunEventRunCompleted:
-			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
-				return nil, ProtocolError{Message: "run_completed must not include error/output_info/node artifact fields"}
+			if env.Error != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
+				return nil, ProtocolError{Message: "run_completed must not include error/delta/output_info/node artifact fields"}
 			}
 			if strings.TrimSpace(env.OutputsArtifactKey) == "" || env.OutputsInfo == nil {
 				return nil, ProtocolError{Message: "run_completed must include outputs_artifact_key and outputs_info"}
@@ -145,16 +152,16 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			}
 			return RunEventRunCompletedV0{RunEventV0Base: base, PlanHash: planHash, OutputsArtifactKey: env.OutputsArtifactKey, OutputsInfo: *env.OutputsInfo}, nil
 		case RunEventRunFailed:
-			if env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
-				return nil, ProtocolError{Message: "run_failed must not include output_info/artifact fields"}
+			if env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
+				return nil, ProtocolError{Message: "run_failed must not include delta/output_info/artifact fields"}
 			}
 			if env.Error == nil || strings.TrimSpace(env.Error.Message) == "" {
 				return nil, ProtocolError{Message: "run_failed must include error"}
 			}
 			return RunEventRunFailedV0{RunEventV0Base: base, PlanHash: planHash, Error: *env.Error}, nil
 		case RunEventRunCanceled:
-			if env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
-				return nil, ProtocolError{Message: "run_canceled must not include output_info/artifact fields"}
+			if env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
+				return nil, ProtocolError{Message: "run_canceled must not include delta/output_info/artifact fields"}
 			}
 			if env.Error == nil || strings.TrimSpace(env.Error.Message) == "" {
 				return nil, ProtocolError{Message: "run_canceled must include error"}
@@ -164,7 +171,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			return nil, ProtocolError{Message: "unknown run event type"}
 		}
 
-	case RunEventNodeStarted, RunEventNodeSucceeded, RunEventNodeFailed, RunEventNodeOutput:
+	case RunEventNodeStarted, RunEventNodeSucceeded, RunEventNodeFailed, RunEventNodeOutputDelta, RunEventNodeOutput:
 		if env.PlanHash != nil {
 			return nil, ProtocolError{Message: "node-scoped event must not include plan_hash"}
 		}
@@ -177,26 +184,38 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 
 		switch env.Type {
 		case RunEventNodeStarted:
-			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
-				return nil, ProtocolError{Message: "node_started must not include error/output_info/artifact_key"}
+			if env.Error != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
+				return nil, ProtocolError{Message: "node_started must not include error/delta/output_info/artifact_key"}
 			}
 			return RunEventNodeStartedV0{RunEventV0Base: base, NodeID: env.NodeID}, nil
 		case RunEventNodeSucceeded:
-			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
-				return nil, ProtocolError{Message: "node_succeeded must not include error/output_info/artifact_key"}
+			if env.Error != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
+				return nil, ProtocolError{Message: "node_succeeded must not include error/delta/output_info/artifact_key"}
 			}
 			return RunEventNodeSucceededV0{RunEventV0Base: base, NodeID: env.NodeID}, nil
 		case RunEventNodeFailed:
-			if env.OutputInfo != nil || env.ArtifactKey != "" {
-				return nil, ProtocolError{Message: "node_failed must not include output_info/artifact_key"}
+			if env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
+				return nil, ProtocolError{Message: "node_failed must not include delta/output_info/artifact_key"}
 			}
 			if env.Error == nil || strings.TrimSpace(env.Error.Message) == "" {
 				return nil, ProtocolError{Message: "node_failed must include error"}
 			}
 			return RunEventNodeFailedV0{RunEventV0Base: base, NodeID: env.NodeID, Error: *env.Error}, nil
+		case RunEventNodeOutputDelta:
+			if env.Error != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
+				return nil, ProtocolError{Message: "node_output_delta must not include error/output_info/artifact_key"}
+			}
+			if env.Delta == nil || strings.TrimSpace(string(env.Delta.Kind)) == "" {
+				return nil, ProtocolError{Message: "node_output_delta must include delta.kind"}
+			}
+			return RunEventNodeOutputDeltaV0{
+				RunEventV0Base: base,
+				NodeID:         env.NodeID,
+				Delta:          *env.Delta,
+			}, nil
 		case RunEventNodeOutput:
-			if env.Error != nil {
-				return nil, ProtocolError{Message: "node_output must not include error"}
+			if env.Error != nil || env.Delta != nil {
+				return nil, ProtocolError{Message: "node_output must not include error/delta"}
 			}
 			if env.OutputInfo == nil {
 				return nil, ProtocolError{Message: "node_output must include output_info"}
