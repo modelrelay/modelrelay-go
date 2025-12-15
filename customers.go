@@ -95,8 +95,7 @@ type customerResponse struct {
 }
 
 // CustomersClient provides methods to manage customers in a project.
-// Most operations require a secret key (mr_sk_*) for authentication.
-// Exception: Claim works with both publishable and secret keys.
+// Customer operations require a secret key (mr_sk_*) for authentication.
 type CustomersClient struct {
 	client *Client
 }

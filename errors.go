@@ -117,17 +117,6 @@ const (
 	ErrCodeInvalidInput     = "INVALID_INPUT"
 	ErrCodePaymentRequired  = "PAYMENT_REQUIRED"
 	ErrCodeMethodNotAllowed = "METHOD_NOT_ALLOWED"
-	// ErrCodeNoTiers indicates no tiers are configured for the project.
-	// To resolve: create at least one tier in your project dashboard.
-	ErrCodeNoTiers = "NO_TIERS"
-	// ErrCodeNoFreeTier indicates no free tier is available for auto-provisioning.
-	// To resolve: either create a free tier for automatic customer creation,
-	// or use the checkout flow to create paying customers first.
-	ErrCodeNoFreeTier = "NO_FREE_TIER"
-	// ErrCodeEmailRequired indicates email is required for auto-provisioning a new customer.
-	// To resolve: provide the 'email' field in FrontendTokenRequest, or create the
-	// customer via the dashboard/API before requesting a frontend token.
-	ErrCodeEmailRequired = "EMAIL_REQUIRED"
 )
 
 // APIError captures structured SaaS error metadata.
@@ -177,58 +166,7 @@ func (e APIError) IsForbidden() bool { return e.Code == ErrCodeForbidden }
 // IsUnavailable returns true if the error is a service unavailable error.
 func (e APIError) IsUnavailable() bool { return e.Code == ErrCodeUnavailable }
 
-// IsNoTiers returns true if no tiers are configured for the project.
-// To resolve: create at least one tier in your project dashboard.
-func (e APIError) IsNoTiers() bool { return e.Code == ErrCodeNoTiers }
-
-// IsNoFreeTier returns true if no free tier is available for auto-provisioning.
-// To resolve: either create a free tier or use the checkout flow.
-func (e APIError) IsNoFreeTier() bool { return e.Code == ErrCodeNoFreeTier }
-
-// IsEmailRequired returns true if email is required for auto-provisioning.
-// To resolve: provide the 'email' field in FrontendTokenRequest.
-func (e APIError) IsEmailRequired() bool { return e.Code == ErrCodeEmailRequired }
-
-// IsProvisioningError returns true if this is a customer provisioning error.
-// These errors occur when calling FrontendToken with a customer that doesn't exist
-// and automatic provisioning cannot complete.
-func (e APIError) IsProvisioningError() bool {
-	return e.IsNoTiers() || e.IsNoFreeTier() || e.IsEmailRequired()
-}
-
 // Package-level helper functions for checking error types.
-
-// IsEmailRequired returns true if the error indicates email is required for auto-provisioning.
-func IsEmailRequired(err error) bool {
-	if apiErr, ok := err.(APIError); ok {
-		return apiErr.IsEmailRequired()
-	}
-	return false
-}
-
-// IsNoFreeTier returns true if the error indicates no free tier is available.
-func IsNoFreeTier(err error) bool {
-	if apiErr, ok := err.(APIError); ok {
-		return apiErr.IsNoFreeTier()
-	}
-	return false
-}
-
-// IsNoTiers returns true if the error indicates no tiers are configured.
-func IsNoTiers(err error) bool {
-	if apiErr, ok := err.(APIError); ok {
-		return apiErr.IsNoTiers()
-	}
-	return false
-}
-
-// IsProvisioningError returns true if the error is a customer provisioning error.
-func IsProvisioningError(err error) bool {
-	if apiErr, ok := err.(APIError); ok {
-		return apiErr.IsProvisioningError()
-	}
-	return false
-}
 
 func decodeAPIError(resp *http.Response, retry *RetryMetadata) error {
 	data, err := io.ReadAll(resp.Body)

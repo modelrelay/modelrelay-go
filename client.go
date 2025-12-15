@@ -149,7 +149,7 @@ func NewClientWithKey(key APIKeyAuth, opts ...Option) (*Client, error) {
 // Example:
 //
 //	client, err := sdk.NewClientWithToken("eyJ...")
-//	client, err := sdk.NewClientWithToken(frontendToken, sdk.WithBaseURL("https://custom.api.com"))
+//	client, err := sdk.NewClientWithToken(customerToken, sdk.WithBaseURL("https://custom.api.com"))
 func NewClientWithToken(token string, opts ...Option) (*Client, error) {
 	if strings.TrimSpace(token) == "" {
 		return nil, ConfigError{Reason: "access token is required"}

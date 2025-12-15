@@ -33,6 +33,9 @@ func (c *ResponsesClient) Create(ctx context.Context, req ResponseRequest, optio
 	}
 
 	requireModel := callOpts.headers == nil || strings.TrimSpace(callOpts.headers.Get(headers.CustomerID)) == ""
+	if requireModel && c.client != nil && c.client.hasJWTAccessToken() {
+		requireModel = false
+	}
 	if err := req.validate(requireModel); err != nil {
 		return nil, err
 	}
@@ -208,6 +211,9 @@ func (c *ResponsesClient) Stream(ctx context.Context, req ResponseRequest, optio
 	}
 
 	requireModel := callOpts.headers == nil || strings.TrimSpace(callOpts.headers.Get(headers.CustomerID)) == ""
+	if requireModel && c.client != nil && c.client.hasJWTAccessToken() {
+		requireModel = false
+	}
 	if err := req.validate(requireModel); err != nil {
 		return nil, err
 	}
@@ -262,6 +268,9 @@ func StreamJSON[T any](ctx context.Context, c *ResponsesClient, req ResponseRequ
 	}
 
 	requireModel := callOpts.headers == nil || strings.TrimSpace(callOpts.headers.Get(headers.CustomerID)) == ""
+	if requireModel && c.client != nil && c.client.hasJWTAccessToken() {
+		requireModel = false
+	}
 	if err := req.validate(requireModel); err != nil {
 		return nil, err
 	}

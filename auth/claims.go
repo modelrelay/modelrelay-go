@@ -14,7 +14,7 @@ type Claims struct {
 	KeyID     string `json:"key_id,omitempty"`
 
 	// Typed fields instead of encoded strings in scope array.
-	// These are used for frontend tokens issued via publishable keys.
+	// These are used for customer bearer tokens minted via secret keys.
 	ProjectID        string `json:"pid,omitempty"`  // Project UUID
 	CustomerID       string `json:"cid,omitempty"`  // Internal customer UUID
 	CustomerExternal string `json:"cext,omitempty"` // External customer identifier

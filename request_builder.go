@@ -15,7 +15,8 @@ import (
 // It is the primary way to construct a ResponseRequest, since ResponseRequest is
 // intentionally opaque.
 type ResponseBuilder struct {
-	req ResponseRequest
+	client *Client
+	req    ResponseRequest
 
 	requestID  string
 	customerID string
@@ -27,7 +28,7 @@ type ResponseBuilder struct {
 
 // New returns a fresh builder. Set either Model(...) or CustomerID(...).
 func (c *ResponsesClient) New() ResponseBuilder {
-	return ResponseBuilder{}
+	return ResponseBuilder{client: c.client}
 }
 
 func (b ResponseBuilder) Provider(provider ProviderID) ResponseBuilder {
@@ -229,6 +230,9 @@ func (b ResponseBuilder) Build() (ResponseRequest, []ResponseOption, error) {
 	opts := b.buildOptions()
 	callOpts := buildResponseCallOptions(opts)
 	requireModel := strings.TrimSpace(callOpts.headers.Get(headers.CustomerID)) == ""
+	if requireModel && b.client != nil && b.client.hasJWTAccessToken() {
+		requireModel = false
+	}
 	if err := b.req.validate(requireModel); err != nil {
 		return ResponseRequest{}, nil, err
 	}

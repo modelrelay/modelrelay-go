@@ -18,7 +18,7 @@ type APIKeyAuth interface {
 	String() string
 }
 
-// PublishableKey is an API key that can be exchanged for frontend tokens (mr_pk_*).
+// PublishableKey is an API key intended for public/frontend use (mr_pk_*).
 type PublishableKey string
 
 func (k PublishableKey) apiKeyAuth()      {}

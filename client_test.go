@@ -220,8 +220,8 @@ func TestNewClientWithKey(t *testing.T) {
 func TestNewClientWithToken(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
-		if auth != "Bearer my-frontend-token" {
-			t.Errorf("Expected 'Bearer my-frontend-token', got '%s'", auth)
+		if auth != "Bearer my-customer-token" {
+			t.Errorf("Expected 'Bearer my-customer-token', got '%s'", auth)
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -239,7 +239,7 @@ func TestNewClientWithToken(t *testing.T) {
 	})
 
 	t.Run("WithOptions", func(t *testing.T) {
-		client, err := NewClientWithToken("my-frontend-token", WithBaseURL(srv.URL))
+		client, err := NewClientWithToken("my-customer-token", WithBaseURL(srv.URL))
 		if err != nil {
 			t.Fatalf("NewClientWithToken failed: %v", err)
 		}
@@ -251,7 +251,7 @@ func TestNewClientWithToken(t *testing.T) {
 	})
 
 	t.Run("TokenWithBearerPrefix", func(t *testing.T) {
-		client, err := NewClientWithToken("Bearer my-frontend-token", WithBaseURL(srv.URL))
+		client, err := NewClientWithToken("Bearer my-customer-token", WithBaseURL(srv.URL))
 		if err != nil {
 			t.Fatalf("NewClientWithToken failed: %v", err)
 		}

@@ -32,7 +32,7 @@ package sdk
 // 0.34.0: Breaking - Remove unused Metadata field from responses requests and builder methods.
 // Metadata was accepted but never used by providers or stored.
 // 0.24.0: Add package-level error helpers: IsEmailRequired, IsNoFreeTier, IsNoTiers, IsProvisioningError.
-// 0.23.0: Breaking - FrontendTokenRequest requires customer_id, add EMAIL_REQUIRED error code,
+// 0.23.0: Breaking - Token mint request requires customer_id, add EMAIL_REQUIRED error code,
 // Rich Hickey-style design with separate types for auto-provisioning.
 // 0.35.0: CustomersClient.Claim now works with publishable keys (mr_pk_*) for user self-service.
 // Enables CLI tools and frontends to link Stripe subscriptions to user identities.
@@ -43,4 +43,6 @@ package sdk
 // 0.45.1: Canonicalize workflow specs and add builder helpers.
 // 0.45.3: Add cost_summary to runs get response (/runs/{run_id}).
 // 0.46.0: Breaking - Remove monorepo module imports; add server-authoritative workflow compilation.
-const Version = "0.46.0"
+// 0.47.0: Breaking - Customer bearer tokens; /responses and /runs reject publishable keys;
+// add /auth/customer-token; /customers/claim requires secret key.
+const Version = "0.47.0"
