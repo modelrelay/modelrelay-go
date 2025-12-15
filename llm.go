@@ -355,11 +355,7 @@ type ndjsonStream struct {
 	mu        sync.Mutex
 	done      chan struct{}
 
-	timeouts     StreamTimeouts
-	activity     chan struct{}
-	firstEvent   chan struct{} // closed on first non-empty text delta
-	timeoutErrMu sync.Mutex
-	timeoutErr   error
+	monitor *streamTimeoutMonitor
 
 	// Metadata from start record propagated to subsequent events
 	startRequestID string
@@ -382,18 +378,17 @@ func newNDJSONStream(
 		startedAt = time.Now()
 	}
 	streamCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
 	stream := &ndjsonStream{
 		ctx:        streamCtx,
 		cancel:     cancel,
 		reader:     bufio.NewReader(body),
 		body:       body,
 		telemetry:  telemetry,
-		done:       make(chan struct{}),
+		done:       done,
 		startedAt:  startedAt,
 		requestCtx: reqCtx,
-		timeouts:   timeouts,
-		activity:   make(chan struct{}, 1),
-		firstEvent: make(chan struct{}),
+		monitor:    newStreamTimeoutMonitor(streamCtx, timeouts, done, cancel),
 	}
 	go func() {
 		select {
@@ -404,103 +399,8 @@ func newNDJSONStream(
 			return
 		}
 	}()
-	stream.startTimeoutMonitor()
+	stream.monitor.Start()
 	return stream
-}
-
-func (s *ndjsonStream) startTimeoutMonitor() {
-	if s.timeouts.TTFT <= 0 && s.timeouts.Idle <= 0 && s.timeouts.Total <= 0 {
-		return
-	}
-
-	go func() {
-		var ttftTimer *time.Timer
-		var ttftC <-chan time.Time
-		if s.timeouts.TTFT > 0 {
-			ttftTimer = time.NewTimer(s.timeouts.TTFT)
-			ttftC = ttftTimer.C
-		}
-
-		var idleTimer *time.Timer
-		var idleC <-chan time.Time
-		if s.timeouts.Idle > 0 {
-			idleTimer = time.NewTimer(s.timeouts.Idle)
-			idleC = idleTimer.C
-		}
-
-		var totalTimer *time.Timer
-		var totalC <-chan time.Time
-		if s.timeouts.Total > 0 {
-			totalTimer = time.NewTimer(s.timeouts.Total)
-			totalC = totalTimer.C
-		}
-
-		firstCh := s.firstEvent
-
-		defer func() {
-			if ttftTimer != nil {
-				ttftTimer.Stop()
-			}
-			if idleTimer != nil {
-				idleTimer.Stop()
-			}
-			if totalTimer != nil {
-				totalTimer.Stop()
-			}
-		}()
-
-		for {
-			select {
-			case <-s.done:
-				return
-			case <-s.ctx.Done():
-				return
-			case <-firstCh:
-				firstCh = nil
-				if ttftTimer != nil {
-					ttftTimer.Stop()
-					ttftC = nil
-				}
-			case <-s.activity:
-				if idleTimer != nil {
-					if !idleTimer.Stop() {
-						select {
-						case <-idleTimer.C:
-						default:
-						}
-					}
-					idleTimer.Reset(s.timeouts.Idle)
-					idleC = idleTimer.C
-				}
-			case <-ttftC:
-				s.setTimeoutErr(StreamTimeoutError{Kind: StreamTimeoutTTFT, Timeout: s.timeouts.TTFT})
-				s.cancel()
-				return
-			case <-idleC:
-				s.setTimeoutErr(StreamTimeoutError{Kind: StreamTimeoutIdle, Timeout: s.timeouts.Idle})
-				s.cancel()
-				return
-			case <-totalC:
-				s.setTimeoutErr(StreamTimeoutError{Kind: StreamTimeoutTotal, Timeout: s.timeouts.Total})
-				s.cancel()
-				return
-			}
-		}
-	}()
-}
-
-func (s *ndjsonStream) setTimeoutErr(err error) {
-	s.timeoutErrMu.Lock()
-	defer s.timeoutErrMu.Unlock()
-	if s.timeoutErr == nil {
-		s.timeoutErr = err
-	}
-}
-
-func (s *ndjsonStream) getTimeoutErr() error {
-	s.timeoutErrMu.Lock()
-	defer s.timeoutErrMu.Unlock()
-	return s.timeoutErr
 }
 
 func (s *ndjsonStream) Next() (StreamEvent, bool, error) {
@@ -510,7 +410,7 @@ func (s *ndjsonStream) Next() (StreamEvent, bool, error) {
 	for {
 		line, err := s.reader.ReadBytes('\n')
 		if err != nil {
-			if terr := s.getTimeoutErr(); terr != nil && s.ctx.Err() != nil {
+			if terr := s.monitor.GetTimeoutErr(); terr != nil && s.ctx.Err() != nil {
 				//nolint:errcheck // best-effort cleanup after timeout
 				_ = s.Close()
 				return StreamEvent{}, false, terr
@@ -518,13 +418,13 @@ func (s *ndjsonStream) Next() (StreamEvent, bool, error) {
 			if errors.Is(err, io.EOF) && len(line) == 0 {
 				//nolint:errcheck // best-effort cleanup on EOF
 				_ = s.Close()
-				if terr := s.getTimeoutErr(); terr != nil {
+				if terr := s.monitor.GetTimeoutErr(); terr != nil {
 					return StreamEvent{}, false, terr
 				}
 				return StreamEvent{}, false, nil
 			}
 			if errors.Is(err, context.Canceled) {
-				if terr := s.getTimeoutErr(); terr != nil {
+				if terr := s.monitor.GetTimeoutErr(); terr != nil {
 					return StreamEvent{}, false, terr
 				}
 				return StreamEvent{}, false, nil
@@ -584,16 +484,9 @@ func (s *ndjsonStream) Next() (StreamEvent, bool, error) {
 		}
 		s.telemetry.metric(s.ctx, "sdk_stream_events_total", 1, map[string]string{"event": event.EventName()})
 		if streamEventCountsForTTFT(event) {
-			select {
-			case <-s.firstEvent:
-			default:
-				close(s.firstEvent)
-			}
+			s.monitor.SignalFirstContent()
 		}
-		select {
-		case s.activity <- struct{}{}:
-		default:
-		}
+		s.monitor.SignalActivity()
 		return event, true, nil
 	}
 }

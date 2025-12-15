@@ -49,4 +49,6 @@ package sdk
 // 0.49.0: Add StreamEventKind type for typed delta event kinds in workflow runs.
 // 0.50.0: Breaking - Add typed APIErrorCode and shared apierrors.Code for compile-time error code checking; add OIDC exchange error codes.
 // 0.51.0: Add server-side tool execution events for workflow runs.
-const Version = "0.51.0"
+// 0.52.0: Refactor - Extract shared streamTimeoutMonitor; add pure parseStructuredRecord() and buildCompleteFieldsMap() functions;
+// use sync.Once for first-content signaling. Eliminates ~70 lines of duplicate timeout logic.
+const Version = "0.52.0"

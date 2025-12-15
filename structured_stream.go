@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 )
 
 // StructuredRecordType identifies the NDJSON record kind in structured
@@ -47,11 +46,7 @@ type StructuredJSONStream[T any] struct {
 	requestID string
 	retry     *RetryMetadata
 
-	timeouts     StreamTimeouts
-	activity     chan struct{}
-	firstContent chan struct{} // closed on first update/completion/error record
-	timeoutErrMu sync.Mutex
-	timeoutErr   error
+	monitor *streamTimeoutMonitor
 
 	mu        sync.Mutex
 	closed    bool
@@ -62,6 +57,7 @@ type StructuredJSONStream[T any] struct {
 
 func newStructuredJSONStream[T any](ctx context.Context, body io.ReadCloser, requestID string, retry *RetryMetadata, timeouts StreamTimeouts) *StructuredJSONStream[T] {
 	streamCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
 	stream := &StructuredJSONStream[T]{
 		ctx:       streamCtx,
 		cancel:    cancel,
@@ -69,11 +65,8 @@ func newStructuredJSONStream[T any](ctx context.Context, body io.ReadCloser, req
 		body:      body,
 		requestID: requestID,
 		retry:     retry,
-		done:      make(chan struct{}),
-		timeouts:  timeouts,
-		activity:  make(chan struct{}, 1),
-		// firstContent is only used when TTFT is configured.
-		firstContent: make(chan struct{}),
+		done:      done,
+		monitor:   newStreamTimeoutMonitor(streamCtx, timeouts, done, cancel),
 	}
 	go func() {
 		select {
@@ -84,103 +77,56 @@ func newStructuredJSONStream[T any](ctx context.Context, body io.ReadCloser, req
 			return
 		}
 	}()
-	stream.startTimeoutMonitor()
+	stream.monitor.Start()
 	return stream
 }
 
-func (s *StructuredJSONStream[T]) startTimeoutMonitor() {
-	if s.timeouts.TTFT <= 0 && s.timeouts.Idle <= 0 && s.timeouts.Total <= 0 {
-		return
-	}
-
-	go func() {
-		var ttftTimer *time.Timer
-		var ttftC <-chan time.Time
-		if s.timeouts.TTFT > 0 {
-			ttftTimer = time.NewTimer(s.timeouts.TTFT)
-			ttftC = ttftTimer.C
-		}
-
-		var idleTimer *time.Timer
-		var idleC <-chan time.Time
-		if s.timeouts.Idle > 0 {
-			idleTimer = time.NewTimer(s.timeouts.Idle)
-			idleC = idleTimer.C
-		}
-
-		var totalTimer *time.Timer
-		var totalC <-chan time.Time
-		if s.timeouts.Total > 0 {
-			totalTimer = time.NewTimer(s.timeouts.Total)
-			totalC = totalTimer.C
-		}
-
-		firstCh := s.firstContent
-
-		defer func() {
-			if ttftTimer != nil {
-				ttftTimer.Stop()
-			}
-			if idleTimer != nil {
-				idleTimer.Stop()
-			}
-			if totalTimer != nil {
-				totalTimer.Stop()
-			}
-		}()
-
-		for {
-			select {
-			case <-s.done:
-				return
-			case <-s.ctx.Done():
-				return
-			case <-firstCh:
-				firstCh = nil
-				if ttftTimer != nil {
-					ttftTimer.Stop()
-					ttftC = nil
-				}
-			case <-s.activity:
-				if idleTimer != nil {
-					if !idleTimer.Stop() {
-						select {
-						case <-idleTimer.C:
-						default:
-						}
-					}
-					idleTimer.Reset(s.timeouts.Idle)
-					idleC = idleTimer.C
-				}
-			case <-ttftC:
-				s.setTimeoutErr(StreamTimeoutError{Kind: StreamTimeoutTTFT, Timeout: s.timeouts.TTFT})
-				s.cancel()
-				return
-			case <-idleC:
-				s.setTimeoutErr(StreamTimeoutError{Kind: StreamTimeoutIdle, Timeout: s.timeouts.Idle})
-				s.cancel()
-				return
-			case <-totalC:
-				s.setTimeoutErr(StreamTimeoutError{Kind: StreamTimeoutTotal, Timeout: s.timeouts.Total})
-				s.cancel()
-				return
-			}
-		}
-	}()
+// structuredRecord holds the parsed fields from a structured NDJSON record.
+// This is a pure data structure used for intermediate parsing.
+type structuredRecord struct {
+	recordType     StructuredRecordType
+	payload        json.RawMessage
+	completeFields []string
+	code           string
+	message        string
+	status         int
 }
 
-func (s *StructuredJSONStream[T]) setTimeoutErr(err error) {
-	s.timeoutErrMu.Lock()
-	defer s.timeoutErrMu.Unlock()
-	if s.timeoutErr == nil {
-		s.timeoutErr = err
+// parseStructuredRecord parses a single NDJSON line into a typed record.
+// This is a pure function with no side effects.
+func parseStructuredRecord(line []byte) (structuredRecord, error) {
+	var raw struct {
+		Type           string          `json:"type"`
+		Payload        json.RawMessage `json:"payload,omitempty"`
+		CompleteFields []string        `json:"complete_fields,omitempty"`
+		Code           string          `json:"code,omitempty"`
+		Message        string          `json:"message,omitempty"`
+		Status         int             `json:"status,omitempty"`
 	}
+	if err := json.Unmarshal(line, &raw); err != nil {
+		return structuredRecord{}, err
+	}
+	return structuredRecord{
+		recordType:     StructuredRecordType(strings.TrimSpace(strings.ToLower(raw.Type))),
+		payload:        raw.Payload,
+		completeFields: raw.CompleteFields,
+		code:           raw.Code,
+		message:        raw.Message,
+		status:         raw.Status,
+	}, nil
 }
 
-func (s *StructuredJSONStream[T]) getTimeoutErr() error {
-	s.timeoutErrMu.Lock()
-	defer s.timeoutErrMu.Unlock()
-	return s.timeoutErr
+// buildCompleteFieldsMap converts a complete_fields array to a map for O(1) lookups.
+// This is a pure function with no side effects.
+func buildCompleteFieldsMap(fields []string) map[string]bool {
+	result := make(map[string]bool, len(fields))
+	for _, field := range fields {
+		field = strings.TrimSpace(field)
+		if field != "" {
+			result[field] = true
+		}
+	}
+	return result
 }
 
 // Next advances the stream and decodes the next update or completion record.
@@ -194,7 +140,7 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 	for {
 		line, err := s.reader.ReadBytes('\n')
 		if err != nil {
-			if terr := s.getTimeoutErr(); terr != nil && s.ctx.Err() != nil {
+			if terr := s.monitor.GetTimeoutErr(); terr != nil && s.ctx.Err() != nil {
 				//nolint:errcheck // best-effort cleanup after timeout
 				_ = s.Close()
 				return StructuredJSONEvent[T]{}, false, terr
@@ -221,24 +167,14 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 		if len(line) == 0 {
 			continue
 		}
-		select {
-		case s.activity <- struct{}{}:
-		default:
-		}
+		s.monitor.SignalActivity()
 
-		var raw struct {
-			Type           string          `json:"type"`
-			Payload        json.RawMessage `json:"payload,omitempty"`
-			CompleteFields []string        `json:"complete_fields,omitempty"`
-			Code           string          `json:"code,omitempty"`
-			Message        string          `json:"message,omitempty"`
-			Status         int             `json:"status,omitempty"`
-		}
-		if err := json.Unmarshal(line, &raw); err != nil {
+		record, err := parseStructuredRecord(line)
+		if err != nil {
 			return StructuredJSONEvent[T]{}, false, s.transportError("invalid structured stream record", err)
 		}
-		recordType := StructuredRecordType(strings.TrimSpace(strings.ToLower(raw.Type)))
-		switch recordType {
+
+		switch record.recordType {
 		case StructuredRecordTypeStart:
 			// Ignore warm-up records; continue reading.
 			continue
@@ -249,58 +185,41 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 			// They are used to keep long-lived connections from timing out.
 			continue
 		case StructuredRecordTypeUpdate, StructuredRecordTypeCompletion:
-			if len(bytes.TrimSpace(raw.Payload)) == 0 {
+			if len(bytes.TrimSpace(record.payload)) == 0 {
 				return StructuredJSONEvent[T]{}, false, s.protocolError("structured stream record missing payload")
 			}
 			var payload T
-			if err := json.Unmarshal(raw.Payload, &payload); err != nil {
+			if err := json.Unmarshal(record.payload, &payload); err != nil {
 				return StructuredJSONEvent[T]{}, false, s.transportError("failed to decode structured payload", err)
 			}
-			select {
-			case <-s.firstContent:
-			default:
-				close(s.firstContent)
-			}
-			if recordType == StructuredRecordTypeCompletion {
+			s.monitor.SignalFirstContent()
+			if record.recordType == StructuredRecordTypeCompletion {
 				s.markTerminal()
 				//nolint:errcheck // best-effort cleanup after completion
 				_ = s.Close()
 			}
-			// Convert complete_fields array to map for O(1) lookups.
-			// Skip empty strings and trim whitespace for robustness.
-			completeFields := make(map[string]bool, len(raw.CompleteFields))
-			for _, field := range raw.CompleteFields {
-				field = strings.TrimSpace(field)
-				if field != "" {
-					completeFields[field] = true
-				}
-			}
 			return StructuredJSONEvent[T]{
-				Type:           recordType,
+				Type:           record.recordType,
 				Payload:        &payload,
 				RequestID:      s.requestID,
-				CompleteFields: completeFields,
+				CompleteFields: buildCompleteFieldsMap(record.completeFields),
 			}, true, nil
 		case StructuredRecordTypeError:
-			select {
-			case <-s.firstContent:
-			default:
-				close(s.firstContent)
-			}
+			s.monitor.SignalFirstContent()
 			s.markTerminal()
 			//nolint:errcheck // best-effort cleanup after error
 			_ = s.Close()
-			status := raw.Status
+			status := record.status
 			if status == 0 {
 				status = http.StatusInternalServerError
 			}
-			msg := strings.TrimSpace(raw.Message)
+			msg := strings.TrimSpace(record.message)
 			if msg == "" {
 				msg = "structured stream error"
 			}
 			return StructuredJSONEvent[T]{}, false, APIError{
 				Status:    status,
-				Code:      APIErrorCode(raw.Code),
+				Code:      APIErrorCode(record.code),
 				Message:   msg,
 				RequestID: s.requestID,
 				Retry:     s.retry,
