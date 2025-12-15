@@ -161,6 +161,10 @@ const (
 	RunEventRunFailed    RunEventTypeV0 = "run_failed"
 	RunEventRunCanceled  RunEventTypeV0 = "run_canceled"
 
+	RunEventNodeLLMCall    RunEventTypeV0 = "node_llm_call"
+	RunEventNodeToolCall   RunEventTypeV0 = "node_tool_call"
+	RunEventNodeToolResult RunEventTypeV0 = "node_tool_result"
+
 	RunEventNodeStarted     RunEventTypeV0 = "node_started"
 	RunEventNodeSucceeded   RunEventTypeV0 = "node_succeeded"
 	RunEventNodeFailed      RunEventTypeV0 = "node_failed"
@@ -188,6 +192,43 @@ type NodeOutputDeltaV0 struct {
 	Model      string `json:"model,omitempty"`
 }
 
+type TokenUsageV0 struct {
+	InputTokens  int64 `json:"input_tokens,omitempty"`
+	OutputTokens int64 `json:"output_tokens,omitempty"`
+	TotalTokens  int64 `json:"total_tokens,omitempty"`
+}
+
+type NodeLLMCallV0 struct {
+	Step      int64  `json:"step"`
+	RequestID string `json:"request_id"`
+
+	Provider   string       `json:"provider,omitempty"`
+	Model      string       `json:"model,omitempty"`
+	ResponseID string       `json:"response_id,omitempty"`
+	StopReason string       `json:"stop_reason,omitempty"`
+	Usage      TokenUsageV0 `json:"usage,omitempty"`
+}
+
+type FunctionToolCallV0 struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
+type NodeToolCallV0 struct {
+	Step      int64              `json:"step"`
+	RequestID string             `json:"request_id"`
+	ToolCall  FunctionToolCallV0 `json:"tool_call"`
+}
+
+type NodeToolResultV0 struct {
+	Step       int64  `json:"step"`
+	RequestID  string `json:"request_id"`
+	ToolCallID string `json:"tool_call_id"`
+	Name       string `json:"name"`
+	Output     string `json:"output"`
+}
+
 // RunEventV0Envelope is the stable, append-only wire envelope for workflow run history.
 type RunEventV0Envelope struct {
 	EnvelopeVersion string         `json:"envelope_version"`
@@ -200,6 +241,10 @@ type RunEventV0Envelope struct {
 
 	PlanHash *PlanHash    `json:"plan_hash,omitempty"`
 	Error    *NodeErrorV0 `json:"error,omitempty"`
+
+	LLMCall    *NodeLLMCallV0    `json:"llm_call,omitempty"`
+	ToolCall   *NodeToolCallV0   `json:"tool_call,omitempty"`
+	ToolResult *NodeToolResultV0 `json:"tool_result,omitempty"`
 
 	Delta *NodeOutputDeltaV0 `json:"delta,omitempty"`
 

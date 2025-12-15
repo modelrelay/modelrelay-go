@@ -48,4 +48,5 @@ package sdk
 // 0.48.0: Add token providers for automatic bearer auth (customer token + OIDC exchange).
 // 0.49.0: Add StreamEventKind type for typed delta event kinds in workflow runs.
 // 0.50.0: Breaking - Add typed APIErrorCode and shared apierrors.Code for compile-time error code checking; add OIDC exchange error codes.
-const Version = "0.50.0"
+// 0.51.0: Add server-side tool execution events for workflow runs.
+const Version = "0.51.0"
