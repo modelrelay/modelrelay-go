@@ -7,9 +7,17 @@ import (
 )
 
 type llmResponsesNodeInputV0 struct {
-	Request  responseRequestPayload  `json:"request"`
-	Stream   *bool                   `json:"stream,omitempty"`
-	Bindings []LLMResponsesBindingV0 `json:"bindings,omitempty"`
+	Request       responseRequestPayload    `json:"request"`
+	Stream        *bool                     `json:"stream,omitempty"`
+	ToolExecution *ToolExecutionV0          `json:"tool_execution,omitempty"`
+	ToolLimits    *LLMResponsesToolLimitsV0 `json:"tool_limits,omitempty"`
+	Bindings      []LLMResponsesBindingV0   `json:"bindings,omitempty"`
+}
+
+type LLMResponsesNodeOptionsV0 struct {
+	ToolExecution *ToolExecutionV0
+	ToolLimits    *LLMResponsesToolLimitsV0
+	Bindings      []LLMResponsesBindingV0
 }
 
 type TransformJSONNodeInputV0 struct {
@@ -62,10 +70,16 @@ func (b WorkflowBuilderV0) LLMResponsesNode(id NodeID, req ResponseRequest, stre
 }
 
 func (b WorkflowBuilderV0) LLMResponsesNodeWithBindings(id NodeID, req ResponseRequest, stream *bool, bindings []LLMResponsesBindingV0) (WorkflowBuilderV0, error) {
+	return b.LLMResponsesNodeWithOptions(id, req, stream, LLMResponsesNodeOptionsV0{Bindings: bindings})
+}
+
+func (b WorkflowBuilderV0) LLMResponsesNodeWithOptions(id NodeID, req ResponseRequest, stream *bool, opts LLMResponsesNodeOptionsV0) (WorkflowBuilderV0, error) {
 	payload := llmResponsesNodeInputV0{
-		Request:  newResponseRequestPayload(req),
-		Stream:   stream,
-		Bindings: append([]LLMResponsesBindingV0{}, bindings...),
+		Request:       newResponseRequestPayload(req),
+		Stream:        stream,
+		ToolExecution: opts.ToolExecution,
+		ToolLimits:    opts.ToolLimits,
+		Bindings:      append([]LLMResponsesBindingV0{}, opts.Bindings...),
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {

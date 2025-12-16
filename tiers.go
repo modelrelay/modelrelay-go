@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -65,23 +64,21 @@ type TiersClient struct {
 	client *Client
 }
 
+// ensureInitialized returns an error if the client is not properly initialized.
+func (c *TiersClient) ensureInitialized() error {
+	if c == nil || c.client == nil {
+		return fmt.Errorf("sdk: tiers client not initialized")
+	}
+	return nil
+}
+
 // List returns all tiers in the project.
 func (c *TiersClient) List(ctx context.Context) ([]Tier, error) {
-	if c == nil || c.client == nil {
-		return nil, fmt.Errorf("sdk: tiers client not initialized")
-	}
-	req, err := c.client.newJSONRequest(ctx, http.MethodGet, "/tiers", nil)
-	if err != nil {
+	if err := c.ensureInitialized(); err != nil {
 		return nil, err
 	}
-	resp, _, err := c.client.send(req, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
 	var payload tierListResponse
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := c.client.sendAndDecode(ctx, http.MethodGet, "/tiers", nil, &payload); err != nil {
 		return nil, err
 	}
 	return payload.Tiers, nil
@@ -89,25 +86,14 @@ func (c *TiersClient) List(ctx context.Context) ([]Tier, error) {
 
 // Get retrieves a tier by ID.
 func (c *TiersClient) Get(ctx context.Context, tierID uuid.UUID) (Tier, error) {
-	if c == nil || c.client == nil {
-		return Tier{}, fmt.Errorf("sdk: tiers client not initialized")
+	if err := c.ensureInitialized(); err != nil {
+		return Tier{}, err
 	}
 	if tierID == uuid.Nil {
 		return Tier{}, fmt.Errorf("sdk: tier_id required")
 	}
-	path := fmt.Sprintf("/tiers/%s", tierID.String())
-	req, err := c.client.newJSONRequest(ctx, http.MethodGet, path, nil)
-	if err != nil {
-		return Tier{}, err
-	}
-	resp, _, err := c.client.send(req, nil, nil)
-	if err != nil {
-		return Tier{}, err
-	}
-	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
 	var payload tierResponse
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := c.client.sendAndDecode(ctx, http.MethodGet, fmt.Sprintf("/tiers/%s", tierID.String()), nil, &payload); err != nil {
 		return Tier{}, err
 	}
 	return payload.Tier, nil
@@ -121,8 +107,8 @@ func (c *TiersClient) Get(ctx context.Context, tierID uuid.UUID) (Tier, error) {
 //
 // Requires a secret key (mr_sk_*).
 func (c *TiersClient) Checkout(ctx context.Context, tierID uuid.UUID, req TierCheckoutRequest) (TierCheckoutSession, error) {
-	if c == nil || c.client == nil {
-		return TierCheckoutSession{}, fmt.Errorf("sdk: tiers client not initialized")
+	if err := c.ensureInitialized(); err != nil {
+		return TierCheckoutSession{}, err
 	}
 	if !c.client.isSecretKey() {
 		return TierCheckoutSession{}, fmt.Errorf("sdk: checkout requires secret key (mr_sk_*)")
@@ -133,21 +119,8 @@ func (c *TiersClient) Checkout(ctx context.Context, tierID uuid.UUID, req TierCh
 	if req.SuccessURL == "" || req.CancelURL == "" {
 		return TierCheckoutSession{}, fmt.Errorf("sdk: success_url and cancel_url required")
 	}
-
-	path := fmt.Sprintf("/tiers/%s/checkout", tierID.String())
-	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, path, req)
-	if err != nil {
-		return TierCheckoutSession{}, err
-	}
-	resp, _, err := c.client.send(httpReq, nil, nil)
-	if err != nil {
-		return TierCheckoutSession{}, err
-	}
-	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
-
 	var session TierCheckoutSession
-	if err := json.NewDecoder(resp.Body).Decode(&session); err != nil {
+	if err := c.client.sendAndDecode(ctx, http.MethodPost, fmt.Sprintf("/tiers/%s/checkout", tierID.String()), req, &session); err != nil {
 		return TierCheckoutSession{}, err
 	}
 	return session, nil

@@ -478,6 +478,22 @@ func (c *Client) sendStreaming(req *http.Request, retry *RetryConfig) (*http.Res
 	return resp, meta, nil
 }
 
+// sendAndDecode sends a JSON request and decodes the response body into result.
+// This helper reduces boilerplate for simple request/response patterns.
+func (c *Client) sendAndDecode(ctx context.Context, method, path string, payload, result any) error {
+	req, err := c.newJSONRequest(ctx, method, path, payload)
+	if err != nil {
+		return err
+	}
+	resp, _, err := c.send(req, nil, nil)
+	if err != nil {
+		return err
+	}
+	//nolint:errcheck // best-effort cleanup on return
+	defer func() { _ = resp.Body.Close() }()
+	return json.NewDecoder(resp.Body).Decode(result)
+}
+
 type cancelOnCloseReadCloser struct {
 	rc     io.ReadCloser
 	cancel context.CancelFunc

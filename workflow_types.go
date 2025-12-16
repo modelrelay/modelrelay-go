@@ -51,6 +51,23 @@ const (
 	WorkflowNodeTypeTransformJSON WorkflowNodeType = "transform.json"
 )
 
+type ToolExecutionModeV0 string
+
+const (
+	ToolExecutionModeServer ToolExecutionModeV0 = "server"
+	ToolExecutionModeClient ToolExecutionModeV0 = "client"
+)
+
+type ToolExecutionV0 struct {
+	Mode ToolExecutionModeV0 `json:"mode"`
+}
+
+type LLMResponsesToolLimitsV0 struct {
+	MaxLLMCallsPerNode  *int64 `json:"max_llm_calls,omitempty"`
+	MaxToolCallsPerStep *int64 `json:"max_tool_calls_per_step,omitempty"`
+	WaitTTLMS           *int64 `json:"wait_ttl_ms,omitempty"`
+}
+
 type LLMResponsesBindingEncodingV0 string
 
 const (

@@ -53,4 +53,5 @@ package sdk
 // use sync.Once for first-content signaling. Eliminates ~70 lines of duplicate timeout logic.
 // 0.53.0: Add client-side tool handoff + resume for workflow runs (/runs/{run_id}/tool-results).
 // 0.55.0: Breaking - Tool-results submission now requires step/request_id + tool name; server persists tool-loop checkpoints.
-const Version = "0.55.0"
+// 0.56.0: Add per-node tool_limits for workflow tool loops (max_llm_calls/max_tool_calls_per_step/wait_ttl_ms).
+const Version = "0.56.0"

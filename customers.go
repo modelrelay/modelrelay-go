@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/mail"
@@ -16,6 +15,17 @@ import (
 func isValidEmail(email string) bool {
 	_, err := mail.ParseAddress(email)
 	return err == nil
+}
+
+// validateEmail validates an email address and returns a descriptive error if invalid.
+func validateEmail(email string) error {
+	if strings.TrimSpace(email) == "" {
+		return fmt.Errorf("sdk: email required")
+	}
+	if !isValidEmail(email) {
+		return fmt.Errorf("sdk: invalid email format")
+	}
+	return nil
 }
 
 // CustomerMetadata holds arbitrary customer metadata.
@@ -100,23 +110,21 @@ type CustomersClient struct {
 	client *Client
 }
 
+// ensureInitialized returns an error if the client is not properly initialized.
+func (c *CustomersClient) ensureInitialized() error {
+	if c == nil || c.client == nil {
+		return fmt.Errorf("sdk: customers client not initialized")
+	}
+	return nil
+}
+
 // List returns all customers in the project.
 func (c *CustomersClient) List(ctx context.Context) ([]Customer, error) {
-	if c == nil || c.client == nil {
-		return nil, fmt.Errorf("sdk: customers client not initialized")
-	}
-	req, err := c.client.newJSONRequest(ctx, http.MethodGet, "/customers", nil)
-	if err != nil {
+	if err := c.ensureInitialized(); err != nil {
 		return nil, err
 	}
-	resp, _, err := c.client.send(req, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
 	var payload customerListResponse
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := c.client.sendAndDecode(ctx, http.MethodGet, "/customers", nil, &payload); err != nil {
 		return nil, err
 	}
 	return payload.Customers, nil
@@ -124,8 +132,8 @@ func (c *CustomersClient) List(ctx context.Context) ([]Customer, error) {
 
 // Create creates a new customer in the project.
 func (c *CustomersClient) Create(ctx context.Context, req CustomerCreateRequest) (Customer, error) {
-	if c == nil || c.client == nil {
-		return Customer{}, fmt.Errorf("sdk: customers client not initialized")
+	if err := c.ensureInitialized(); err != nil {
+		return Customer{}, err
 	}
 	if req.TierID == uuid.Nil {
 		return Customer{}, fmt.Errorf("sdk: tier_id required")
@@ -133,24 +141,11 @@ func (c *CustomersClient) Create(ctx context.Context, req CustomerCreateRequest)
 	if req.ExternalID.IsEmpty() {
 		return Customer{}, fmt.Errorf("sdk: external_id required")
 	}
-	if strings.TrimSpace(req.Email) == "" {
-		return Customer{}, fmt.Errorf("sdk: email required")
-	}
-	if !isValidEmail(req.Email) {
-		return Customer{}, fmt.Errorf("sdk: invalid email format")
-	}
-	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/customers", req)
-	if err != nil {
+	if err := validateEmail(req.Email); err != nil {
 		return Customer{}, err
 	}
-	resp, _, err := c.client.send(httpReq, nil, nil)
-	if err != nil {
-		return Customer{}, err
-	}
-	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
 	var payload customerResponse
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := c.client.sendAndDecode(ctx, http.MethodPost, "/customers", req, &payload); err != nil {
 		return Customer{}, err
 	}
 	return payload.Customer, nil
@@ -158,25 +153,14 @@ func (c *CustomersClient) Create(ctx context.Context, req CustomerCreateRequest)
 
 // Get retrieves a customer by ID.
 func (c *CustomersClient) Get(ctx context.Context, customerID uuid.UUID) (Customer, error) {
-	if c == nil || c.client == nil {
-		return Customer{}, fmt.Errorf("sdk: customers client not initialized")
+	if err := c.ensureInitialized(); err != nil {
+		return Customer{}, err
 	}
 	if customerID == uuid.Nil {
 		return Customer{}, fmt.Errorf("sdk: customer_id required")
 	}
-	path := fmt.Sprintf("/customers/%s", customerID.String())
-	req, err := c.client.newJSONRequest(ctx, http.MethodGet, path, nil)
-	if err != nil {
-		return Customer{}, err
-	}
-	resp, _, err := c.client.send(req, nil, nil)
-	if err != nil {
-		return Customer{}, err
-	}
-	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
 	var payload customerResponse
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := c.client.sendAndDecode(ctx, http.MethodGet, fmt.Sprintf("/customers/%s", customerID.String()), nil, &payload); err != nil {
 		return Customer{}, err
 	}
 	return payload.Customer, nil
@@ -186,8 +170,8 @@ func (c *CustomersClient) Get(ctx context.Context, customerID uuid.UUID) (Custom
 // If a customer with the given external_id exists, it is updated.
 // Otherwise, a new customer is created.
 func (c *CustomersClient) Upsert(ctx context.Context, req CustomerUpsertRequest) (Customer, error) {
-	if c == nil || c.client == nil {
-		return Customer{}, fmt.Errorf("sdk: customers client not initialized")
+	if err := c.ensureInitialized(); err != nil {
+		return Customer{}, err
 	}
 	if req.TierID == uuid.Nil {
 		return Customer{}, fmt.Errorf("sdk: tier_id required")
@@ -195,24 +179,11 @@ func (c *CustomersClient) Upsert(ctx context.Context, req CustomerUpsertRequest)
 	if req.ExternalID.IsEmpty() {
 		return Customer{}, fmt.Errorf("sdk: external_id required")
 	}
-	if strings.TrimSpace(req.Email) == "" {
-		return Customer{}, fmt.Errorf("sdk: email required")
-	}
-	if !isValidEmail(req.Email) {
-		return Customer{}, fmt.Errorf("sdk: invalid email format")
-	}
-	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPut, "/customers", req)
-	if err != nil {
+	if err := validateEmail(req.Email); err != nil {
 		return Customer{}, err
 	}
-	resp, _, err := c.client.send(httpReq, nil, nil)
-	if err != nil {
-		return Customer{}, err
-	}
-	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
 	var payload customerResponse
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := c.client.sendAndDecode(ctx, http.MethodPut, "/customers", req, &payload); err != nil {
 		return Customer{}, err
 	}
 	return payload.Customer, nil
@@ -227,14 +198,11 @@ func (c *CustomersClient) Upsert(ctx context.Context, req CustomerUpsertRequest)
 //
 // Returns an error if the customer is not found (404) or the identity is already linked to a different customer (409).
 func (c *CustomersClient) Claim(ctx context.Context, req CustomerClaimRequest) (Customer, error) {
-	if c == nil || c.client == nil {
-		return Customer{}, fmt.Errorf("sdk: customers client not initialized")
+	if err := c.ensureInitialized(); err != nil {
+		return Customer{}, err
 	}
-	if strings.TrimSpace(req.Email) == "" {
-		return Customer{}, fmt.Errorf("sdk: email required")
-	}
-	if !isValidEmail(req.Email) {
-		return Customer{}, fmt.Errorf("sdk: invalid email format")
+	if err := validateEmail(req.Email); err != nil {
+		return Customer{}, err
 	}
 	if req.Provider.IsEmpty() {
 		return Customer{}, fmt.Errorf("sdk: provider required")
@@ -242,18 +210,8 @@ func (c *CustomersClient) Claim(ctx context.Context, req CustomerClaimRequest) (
 	if req.Subject.IsEmpty() {
 		return Customer{}, fmt.Errorf("sdk: subject required")
 	}
-	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, "/customers/claim", req)
-	if err != nil {
-		return Customer{}, err
-	}
-	resp, _, err := c.client.send(httpReq, nil, nil)
-	if err != nil {
-		return Customer{}, err
-	}
-	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
 	var payload customerResponse
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := c.client.sendAndDecode(ctx, http.MethodPost, "/customers/claim", req, &payload); err != nil {
 		return Customer{}, err
 	}
 	return payload.Customer, nil
@@ -261,14 +219,13 @@ func (c *CustomersClient) Claim(ctx context.Context, req CustomerClaimRequest) (
 
 // Delete removes a customer by ID.
 func (c *CustomersClient) Delete(ctx context.Context, customerID uuid.UUID) error {
-	if c == nil || c.client == nil {
-		return fmt.Errorf("sdk: customers client not initialized")
+	if err := c.ensureInitialized(); err != nil {
+		return err
 	}
 	if customerID == uuid.Nil {
 		return fmt.Errorf("sdk: customer_id required")
 	}
-	path := fmt.Sprintf("/customers/%s", customerID.String())
-	req, err := c.client.newJSONRequest(ctx, http.MethodDelete, path, nil)
+	req, err := c.client.newJSONRequest(ctx, http.MethodDelete, fmt.Sprintf("/customers/%s", customerID.String()), nil)
 	if err != nil {
 		return err
 	}
@@ -283,8 +240,8 @@ func (c *CustomersClient) Delete(ctx context.Context, customerID uuid.UUID) erro
 
 // CreateCheckoutSession creates a Stripe checkout session for a customer.
 func (c *CustomersClient) CreateCheckoutSession(ctx context.Context, customerID uuid.UUID, req CheckoutSessionRequest) (CheckoutSession, error) {
-	if c == nil || c.client == nil {
-		return CheckoutSession{}, fmt.Errorf("sdk: customers client not initialized")
+	if err := c.ensureInitialized(); err != nil {
+		return CheckoutSession{}, err
 	}
 	if customerID == uuid.Nil {
 		return CheckoutSession{}, fmt.Errorf("sdk: customer_id required")
@@ -292,19 +249,8 @@ func (c *CustomersClient) CreateCheckoutSession(ctx context.Context, customerID 
 	if strings.TrimSpace(req.SuccessURL) == "" || strings.TrimSpace(req.CancelURL) == "" {
 		return CheckoutSession{}, fmt.Errorf("sdk: success_url and cancel_url required")
 	}
-	path := fmt.Sprintf("/customers/%s/checkout", customerID.String())
-	httpReq, err := c.client.newJSONRequest(ctx, http.MethodPost, path, req)
-	if err != nil {
-		return CheckoutSession{}, err
-	}
-	resp, _, err := c.client.send(httpReq, nil, nil)
-	if err != nil {
-		return CheckoutSession{}, err
-	}
-	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
 	var payload CheckoutSession
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := c.client.sendAndDecode(ctx, http.MethodPost, fmt.Sprintf("/customers/%s/checkout", customerID.String()), req, &payload); err != nil {
 		return CheckoutSession{}, err
 	}
 	return payload, nil
@@ -312,25 +258,14 @@ func (c *CustomersClient) CreateCheckoutSession(ctx context.Context, customerID 
 
 // GetSubscription returns the subscription status for a customer.
 func (c *CustomersClient) GetSubscription(ctx context.Context, customerID uuid.UUID) (SubscriptionStatus, error) {
-	if c == nil || c.client == nil {
-		return SubscriptionStatus{}, fmt.Errorf("sdk: customers client not initialized")
+	if err := c.ensureInitialized(); err != nil {
+		return SubscriptionStatus{}, err
 	}
 	if customerID == uuid.Nil {
 		return SubscriptionStatus{}, fmt.Errorf("sdk: customer_id required")
 	}
-	path := fmt.Sprintf("/customers/%s/subscription", customerID.String())
-	req, err := c.client.newJSONRequest(ctx, http.MethodGet, path, nil)
-	if err != nil {
-		return SubscriptionStatus{}, err
-	}
-	resp, _, err := c.client.send(req, nil, nil)
-	if err != nil {
-		return SubscriptionStatus{}, err
-	}
-	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
 	var payload SubscriptionStatus
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := c.client.sendAndDecode(ctx, http.MethodGet, fmt.Sprintf("/customers/%s/subscription", customerID.String()), nil, &payload); err != nil {
 		return SubscriptionStatus{}, err
 	}
 	return payload, nil
