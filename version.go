@@ -52,4 +52,5 @@ package sdk
 // 0.52.0: Refactor - Extract shared streamTimeoutMonitor; add pure parseStructuredRecord() and buildCompleteFieldsMap() functions;
 // use sync.Once for first-content signaling. Eliminates ~70 lines of duplicate timeout logic.
 // 0.53.0: Add client-side tool handoff + resume for workflow runs (/runs/{run_id}/tool-results).
-const Version = "0.54.0"
+// 0.55.0: Breaking - Tool-results submission now requires step/request_id + tool name; server persists tool-loop checkpoints.
+const Version = "0.55.0"

@@ -371,12 +371,15 @@ type RunsGetResponse struct {
 }
 
 type RunsToolResultsRequest struct {
-	NodeID  NodeID                 `json:"node_id"`
-	Results []RunsToolResultItemV0 `json:"results"`
+	NodeID    NodeID                 `json:"node_id"`
+	Step      int64                  `json:"step"`
+	RequestID string                 `json:"request_id"`
+	Results   []RunsToolResultItemV0 `json:"results"`
 }
 
 type RunsToolResultItemV0 struct {
 	ToolCallID string `json:"tool_call_id"`
+	Name       string `json:"name"`
 	Output     string `json:"output"`
 }
 
