@@ -1,0 +1,10 @@
+# oapi-codegen configuration for generating types from OpenAPI spec
+# Run: go generate ./... (or just generate-sdk-types)
+package: generated
+generate:
+  models: true
+  client: false
+  chi-server: false
+  strict-server: false
+  embedded-spec: false
+output: generated/api_types.go

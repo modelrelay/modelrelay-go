@@ -54,4 +54,5 @@ package sdk
 // 0.53.0: Add client-side tool handoff + resume for workflow runs (/runs/{run_id}/tool-results).
 // 0.55.0: Breaking - Tool-results submission now requires step/request_id + tool name; server persists tool-loop checkpoints.
 // 0.56.0: Add per-node tool_limits for workflow tool loops (max_llm_calls/max_tool_calls_per_step/wait_ttl_ms).
-const Version = "0.56.0"
+// 0.57.0: Add generated types from OpenAPI spec (sdk/go/generated package).
+const Version = "0.57.0"
