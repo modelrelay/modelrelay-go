@@ -19,11 +19,6 @@ const (
 	ContentPartTypeText ContentPartType = "text"
 )
 
-// Defines values for CustomerTokenResponseTokenType.
-const (
-	Bearer CustomerTokenResponseTokenType = "Bearer"
-)
-
 // Defines values for InputItemType.
 const (
 	InputItemTypeMessage InputItemType = "message"
@@ -44,6 +39,14 @@ const (
 	NodeStatusV0Pending   NodeStatusV0 = "pending"
 	NodeStatusV0Running   NodeStatusV0 = "running"
 	NodeStatusV0Succeeded NodeStatusV0 = "succeeded"
+	NodeStatusV0Waiting   NodeStatusV0 = "waiting"
+)
+
+// Defines values for NodeTypeV0.
+const (
+	JoinAll       NodeTypeV0 = "join.all"
+	LlmResponses  NodeTypeV0 = "llm.responses"
+	TransformJson NodeTypeV0 = "transform.json"
 )
 
 // Defines values for OutputFormatType.
@@ -57,10 +60,24 @@ const (
 	OutputItemTypeMessage OutputItemType = "message"
 )
 
+// Defines values for PriceInterval.
+const (
+	Month PriceInterval = "month"
+	Year  PriceInterval = "year"
+)
+
 // Defines values for ProjectCustomerOauthProviders.
 const (
 	ProjectCustomerOauthProvidersGithub ProjectCustomerOauthProviders = "github"
 	ProjectCustomerOauthProvidersGoogle ProjectCustomerOauthProviders = "google"
+)
+
+// Defines values for ProviderId.
+const (
+	Anthropic      ProviderId = "anthropic"
+	GoogleAiStudio ProviderId = "google-ai-studio"
+	Openai         ProviderId = "openai"
+	Xai            ProviderId = "xai"
 )
 
 // Defines values for RunStatusV0.
@@ -69,6 +86,7 @@ const (
 	RunStatusV0Failed    RunStatusV0 = "failed"
 	RunStatusV0Running   RunStatusV0 = "running"
 	RunStatusV0Succeeded RunStatusV0 = "succeeded"
+	RunStatusV0Waiting   RunStatusV0 = "waiting"
 )
 
 // Defines values for ToolType.
@@ -94,10 +112,17 @@ const (
 	Required ToolChoiceType = "required"
 )
 
+// Defines values for ClaimCustomerJSONBodyProvider.
+const (
+	ClaimCustomerJSONBodyProviderGithub ClaimCustomerJSONBodyProvider = "github"
+	ClaimCustomerJSONBodyProviderGoogle ClaimCustomerJSONBodyProvider = "google"
+	ClaimCustomerJSONBodyProviderOidc   ClaimCustomerJSONBodyProvider = "oidc"
+)
+
 // Defines values for UpdateProjectJSONBodyCustomerOauthProviders.
 const (
-	UpdateProjectJSONBodyCustomerOauthProvidersGithub UpdateProjectJSONBodyCustomerOauthProviders = "github"
-	UpdateProjectJSONBodyCustomerOauthProvidersGoogle UpdateProjectJSONBodyCustomerOauthProviders = "google"
+	Github UpdateProjectJSONBodyCustomerOauthProviders = "github"
+	Google UpdateProjectJSONBodyCustomerOauthProviders = "google"
 )
 
 // APIError defines model for APIError.
@@ -139,19 +164,44 @@ type ContentPartType string
 
 // Customer defines model for Customer.
 type Customer struct {
-	CreatedAt  *time.Time              `json:"created_at,omitempty"`
-	Email      *string                 `json:"email,omitempty"`
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+
+	// CurrentPeriodEnd End of the current billing period
+	CurrentPeriodEnd *time.Time `json:"current_period_end,omitempty"`
+
+	// CurrentPeriodStart Start of the current billing period
+	CurrentPeriodStart *time.Time `json:"current_period_start,omitempty"`
+
+	// Email Customer email address
+	Email *openapi_types.Email `json:"email,omitempty"`
+
+	// ExternalId External customer identifier from your system
 	ExternalId *string                 `json:"external_id,omitempty"`
 	Id         *openapi_types.UUID     `json:"id,omitempty"`
 	Metadata   *map[string]interface{} `json:"metadata,omitempty"`
 	ProjectId  *openapi_types.UUID     `json:"project_id,omitempty"`
-	TierId     *openapi_types.UUID     `json:"tier_id,omitempty"`
-	UpdatedAt  *time.Time              `json:"updated_at,omitempty"`
+
+	// StripeCustomerId Stripe customer ID
+	StripeCustomerId *string `json:"stripe_customer_id,omitempty"`
+
+	// StripeSubscriptionId Stripe subscription ID
+	StripeSubscriptionId *string `json:"stripe_subscription_id,omitempty"`
+
+	// SubscriptionStatus Subscription status (active, past_due, canceled, etc.)
+	SubscriptionStatus *string `json:"subscription_status,omitempty"`
+
+	// TierCode Tier code identifier (e.g., free, pro, enterprise).
+	TierCode  *TierCode           `json:"tier_code,omitempty"`
+	TierId    *openapi_types.UUID `json:"tier_id,omitempty"`
+	UpdatedAt *time.Time          `json:"updated_at,omitempty"`
 }
 
 // CustomerCreate defines model for CustomerCreate.
 type CustomerCreate struct {
-	Email      *string                 `json:"email,omitempty"`
+	// Email Customer email address
+	Email *openapi_types.Email `json:"email,omitempty"`
+
+	// ExternalId External customer identifier from your system
 	ExternalId string                  `json:"external_id"`
 	Metadata   *map[string]interface{} `json:"metadata,omitempty"`
 	TierId     openapi_types.UUID      `json:"tier_id"`
@@ -169,23 +219,17 @@ type CustomerTokenResponse struct {
 	ExpiresAt time.Time `json:"expires_at"`
 
 	// ExpiresIn Seconds until token expires
-	ExpiresIn int `json:"expires_in"`
+	ExpiresIn uint32 `json:"expires_in"`
 
 	// ProjectId Project the token is scoped to
 	ProjectId openapi_types.UUID `json:"project_id"`
 
-	// TierCode Customer's tier code
-	TierCode string `json:"tier_code"`
+	// TierCode Tier code identifier (e.g., free, pro, enterprise).
+	TierCode TierCode `json:"tier_code"`
 
 	// Token The customer bearer token
 	Token string `json:"token"`
-
-	// TokenType Always "Bearer"
-	TokenType CustomerTokenResponseTokenType `json:"token_type"`
 }
-
-// CustomerTokenResponseTokenType Always "Bearer"
-type CustomerTokenResponseTokenType string
 
 // DeviceStartResponse defines model for DeviceStartResponse.
 type DeviceStartResponse struct {
@@ -193,10 +237,10 @@ type DeviceStartResponse struct {
 	DeviceCode string `json:"device_code"`
 
 	// ExpiresIn Seconds until the device code expires
-	ExpiresIn int `json:"expires_in"`
+	ExpiresIn uint32 `json:"expires_in"`
 
 	// Interval Minimum polling interval in seconds
-	Interval int `json:"interval"`
+	Interval uint32 `json:"interval"`
 
 	// UserCode Human-enterable code shown to the user
 	UserCode string `json:"user_code"`
@@ -217,7 +261,7 @@ type DeviceTokenError struct {
 	ErrorDescription *string `json:"error_description,omitempty"`
 
 	// Interval Updated recommended polling interval in seconds (when error is slow_down)
-	Interval *int `json:"interval,omitempty"`
+	Interval *uint32 `json:"interval,omitempty"`
 }
 
 // InputItem defines model for InputItem.
@@ -243,25 +287,38 @@ type JSONSchemaFormat struct {
 // MessageRole defines model for MessageRole.
 type MessageRole string
 
+// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+type ModelId = string
+
 // NodeErrorV0 defines model for NodeErrorV0.
 type NodeErrorV0 struct {
 	Code    *string `json:"code,omitempty"`
 	Message string  `json:"message"`
 }
 
+// NodeId Workflow node identifier. Must start with a lowercase letter and contain only lowercase letters, numbers, and underscores.
+type NodeId = string
+
 // NodeResultV0 defines model for NodeResultV0.
 type NodeResultV0 struct {
-	EndedAt   *time.Time              `json:"ended_at,omitempty"`
-	Error     *NodeErrorV0            `json:"error,omitempty"`
-	Id        string                  `json:"id"`
+	EndedAt *time.Time   `json:"ended_at,omitempty"`
+	Error   *NodeErrorV0 `json:"error,omitempty"`
+
+	// Id Workflow node identifier. Must start with a lowercase letter and contain only lowercase letters, numbers, and underscores.
+	Id        NodeId                  `json:"id"`
 	Output    *map[string]interface{} `json:"output,omitempty"`
 	StartedAt *time.Time              `json:"started_at,omitempty"`
 	Status    NodeStatusV0            `json:"status"`
-	Type      string                  `json:"type"`
+
+	// Type Type of workflow node.
+	Type NodeTypeV0 `json:"type"`
 }
 
 // NodeStatusV0 defines model for NodeStatusV0.
 type NodeStatusV0 string
+
+// NodeTypeV0 Type of workflow node.
+type NodeTypeV0 string
 
 // OutputFormat defines model for OutputFormat.
 type OutputFormat struct {
@@ -283,6 +340,12 @@ type OutputItem struct {
 // OutputItemType defines model for OutputItem.Type.
 type OutputItemType string
 
+// PlanHash SHA-256 hash of the compiled workflow plan (64 hex characters).
+type PlanHash = string
+
+// PriceInterval Billing interval for a tier.
+type PriceInterval string
+
 // Project defines model for Project.
 type Project struct {
 	CreatedAt                   *time.Time                       `json:"created_at,omitempty"`
@@ -302,6 +365,9 @@ type Project struct {
 
 // ProjectCustomerOauthProviders defines model for Project.CustomerOauthProviders.
 type ProjectCustomerOauthProviders string
+
+// ProviderId LLM provider identifier.
+type ProviderId string
 
 // ResponsesBatchError defines model for ResponsesBatchError.
 type ResponsesBatchError struct {
@@ -335,15 +401,19 @@ type ResponsesBatchResult struct {
 
 // ResponsesRequest defines model for ResponsesRequest.
 type ResponsesRequest struct {
-	Input           []InputItem   `json:"input"`
-	MaxOutputTokens *int          `json:"max_output_tokens,omitempty"`
-	Model           *string       `json:"model,omitempty"`
-	OutputFormat    *OutputFormat `json:"output_format,omitempty"`
-	Provider        *string       `json:"provider,omitempty"`
-	Stop            *[]string     `json:"stop,omitempty"`
-	Temperature     *float32      `json:"temperature,omitempty"`
-	ToolChoice      *ToolChoice   `json:"tool_choice,omitempty"`
-	Tools           *[]Tool       `json:"tools,omitempty"`
+	Input           []InputItem `json:"input"`
+	MaxOutputTokens *uint32     `json:"max_output_tokens,omitempty"`
+
+	// Model LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	Model        *ModelId      `json:"model,omitempty"`
+	OutputFormat *OutputFormat `json:"output_format,omitempty"`
+
+	// Provider LLM provider identifier.
+	Provider    *ProviderId `json:"provider,omitempty"`
+	Stop        *[]string   `json:"stop,omitempty"`
+	Temperature *float32    `json:"temperature,omitempty"`
+	ToolChoice  *ToolChoice `json:"tool_choice,omitempty"`
+	Tools       *[]Tool     `json:"tools,omitempty"`
 }
 
 // ResponsesResponse defines model for ResponsesResponse.
@@ -354,33 +424,42 @@ type ResponsesResponse struct {
 	// Id Response identifier from the provider
 	Id string `json:"id"`
 
-	// Model Model that generated the response
-	Model  string       `json:"model"`
+	// Model LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	Model  ModelId      `json:"model"`
 	Output []OutputItem `json:"output"`
 
-	// Provider Provider that handled the request
-	Provider *string `json:"provider,omitempty"`
+	// Provider LLM provider identifier.
+	Provider *ProviderId `json:"provider,omitempty"`
 
 	// StopReason Why generation stopped (stop, max_tokens, tool_use, etc.)
 	StopReason *string `json:"stop_reason,omitempty"`
-	Usage      Usage   `json:"usage"`
+
+	// Usage Token usage statistics. All fields default to 0 if not present.
+	Usage Usage `json:"usage"`
 }
 
 // RunCostLineItemV0 defines model for RunCostLineItemV0.
 type RunCostLineItemV0 struct {
-	InputTokens  int64  `json:"input_tokens"`
-	Model        string `json:"model"`
-	OutputTokens int64  `json:"output_tokens"`
-	ProviderId   string `json:"provider_id"`
-	Requests     int64  `json:"requests"`
-	UsdCents     int64  `json:"usd_cents"`
+	InputTokens uint64 `json:"input_tokens"`
+
+	// Model LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	Model        ModelId `json:"model"`
+	OutputTokens uint64  `json:"output_tokens"`
+
+	// ProviderId LLM provider identifier.
+	ProviderId ProviderId `json:"provider_id"`
+	Requests   uint64     `json:"requests"`
+	UsdCents   uint64     `json:"usd_cents"`
 }
 
 // RunCostSummaryV0 defines model for RunCostSummaryV0.
 type RunCostSummaryV0 struct {
-	LineItems     []RunCostLineItemV0 `json:"line_items"`
-	TotalUsdCents int64               `json:"total_usd_cents"`
+	LineItems     *[]RunCostLineItemV0 `json:"line_items,omitempty"`
+	TotalUsdCents uint64               `json:"total_usd_cents"`
 }
+
+// RunId Unique identifier for a workflow run.
+type RunId = openapi_types.UUID
 
 // RunStatusV0 defines model for RunStatusV0.
 type RunStatusV0 string
@@ -402,10 +481,12 @@ type RunsCreateRequest struct {
 
 // RunsCreateResponse defines model for RunsCreateResponse.
 type RunsCreateResponse struct {
-	// PlanHash SHA-256 hash of the canonical compiled plan
-	PlanHash string             `json:"plan_hash"`
-	RunId    openapi_types.UUID `json:"run_id"`
-	Status   RunStatusV0        `json:"status"`
+	// PlanHash SHA-256 hash of the compiled workflow plan (64 hex characters).
+	PlanHash PlanHash `json:"plan_hash"`
+
+	// RunId Unique identifier for a workflow run.
+	RunId  RunId       `json:"run_id"`
+	Status RunStatusV0 `json:"status"`
 }
 
 // RunsGetResponse defines model for RunsGetResponse.
@@ -414,32 +495,65 @@ type RunsGetResponse struct {
 	Nodes       *[]NodeResultV0         `json:"nodes,omitempty"`
 	Outputs     *map[string]interface{} `json:"outputs,omitempty"`
 
-	// PlanHash SHA-256 hash of the compiled plan (hex).
-	PlanHash string             `json:"plan_hash"`
-	RunId    openapi_types.UUID `json:"run_id"`
-	Status   RunStatusV0        `json:"status"`
+	// PlanHash SHA-256 hash of the compiled workflow plan (64 hex characters).
+	PlanHash PlanHash `json:"plan_hash"`
+
+	// RunId Unique identifier for a workflow run.
+	RunId  RunId       `json:"run_id"`
+	Status RunStatusV0 `json:"status"`
 }
 
 // Tier defines model for Tier.
 type Tier struct {
-	CreatedAt   *time.Time          `json:"created_at,omitempty"`
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+
+	// DisplayName Human-readable tier name
 	DisplayName *string             `json:"display_name,omitempty"`
 	Id          *openapi_types.UUID `json:"id,omitempty"`
-	ProjectId   *openapi_types.UUID `json:"project_id,omitempty"`
+
+	// InputPricePerMillionCents Input token price in cents per million (e.g., 300 = $3.00/1M tokens)
+	InputPricePerMillionCents *uint64 `json:"input_price_per_million_cents,omitempty"`
+
+	// OutputPricePerMillionCents Output token price in cents per million (e.g., 1500 = $15.00/1M tokens)
+	OutputPricePerMillionCents *uint64 `json:"output_price_per_million_cents,omitempty"`
+
+	// PriceAmount Subscription price amount in cents
+	PriceAmount *uint64 `json:"price_amount,omitempty"`
+
+	// PriceCurrency Currency code for the price (e.g., 'usd')
+	PriceCurrency *string `json:"price_currency,omitempty"`
+
+	// PriceInterval Billing interval for a tier.
+	PriceInterval *PriceInterval      `json:"price_interval,omitempty"`
+	ProjectId     *openapi_types.UUID `json:"project_id,omitempty"`
 
 	// SpendLimitCents Monthly spend limit in cents (e.g., 2000 = $20/month). Must be positive.
-	SpendLimitCents *int       `json:"spend_limit_cents,omitempty"`
-	TierCode        *string    `json:"tier_code,omitempty"`
-	UpdatedAt       *time.Time `json:"updated_at,omitempty"`
+	SpendLimitCents *uint64 `json:"spend_limit_cents,omitempty"`
+
+	// StripePriceId Stripe price ID for this tier
+	StripePriceId *string `json:"stripe_price_id,omitempty"`
+
+	// TierCode Tier code identifier (e.g., free, pro, enterprise).
+	TierCode *TierCode `json:"tier_code,omitempty"`
+
+	// TrialDays Number of trial days for new subscriptions
+	TrialDays *uint32    `json:"trial_days,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
+
+// TierCode Tier code identifier (e.g., free, pro, enterprise).
+type TierCode = string
 
 // TierCreate defines model for TierCreate.
 type TierCreate struct {
+	// DisplayName Human-readable tier name
 	DisplayName string `json:"display_name"`
 
 	// SpendLimitCents Monthly spend limit in cents (e.g., 2000 = $20/month). Must be positive.
-	SpendLimitCents int    `json:"spend_limit_cents"`
-	TierCode        string `json:"tier_code"`
+	SpendLimitCents uint64 `json:"spend_limit_cents"`
+
+	// TierCode Tier code identifier (e.g., free, pro, enterprise).
+	TierCode TierCode `json:"tier_code"`
 }
 
 // Tool defines model for Tool.
@@ -481,11 +595,11 @@ type ToolChoice struct {
 // ToolChoiceType defines model for ToolChoice.Type.
 type ToolChoiceType string
 
-// Usage defines model for Usage.
+// Usage Token usage statistics. All fields default to 0 if not present.
 type Usage struct {
-	InputTokens  int `json:"input_tokens"`
-	OutputTokens int `json:"output_tokens"`
-	TotalTokens  int `json:"total_tokens"`
+	InputTokens  *uint64 `json:"input_tokens,omitempty"`
+	OutputTokens *uint64 `json:"output_tokens,omitempty"`
+	TotalTokens  *uint64 `json:"total_tokens,omitempty"`
 }
 
 // User defines model for User.
@@ -513,7 +627,7 @@ type MintCustomerTokenJSONBody struct {
 	ProjectId openapi_types.UUID `json:"project_id"`
 
 	// TtlSeconds Requested token TTL in seconds (server may cap this)
-	TtlSeconds *int `json:"ttl_seconds,omitempty"`
+	TtlSeconds *uint32 `json:"ttl_seconds,omitempty"`
 }
 
 // PollDeviceTokenJSONBody defines parameters for PollDeviceToken.
@@ -555,10 +669,17 @@ type RegisterOwnerJSONBody struct {
 
 // ClaimCustomerJSONBody defines parameters for ClaimCustomer.
 type ClaimCustomerJSONBody struct {
-	Email    openapi_types.Email `json:"email"`
-	Provider string              `json:"provider"`
-	Subject  string              `json:"subject"`
+	Email openapi_types.Email `json:"email"`
+
+	// Provider Identity provider (must match project's enabled providers)
+	Provider ClaimCustomerJSONBodyProvider `json:"provider"`
+
+	// Subject OAuth/OIDC subject claim from the identity provider
+	Subject string `json:"subject"`
 }
+
+// ClaimCustomerJSONBodyProvider defines parameters for ClaimCustomer.
+type ClaimCustomerJSONBodyProvider string
 
 // CreateProjectJSONBody defines parameters for CreateProject.
 type CreateProjectJSONBody struct {
