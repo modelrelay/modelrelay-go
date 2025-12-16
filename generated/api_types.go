@@ -379,8 +379,8 @@ type ResponsesBatchError struct {
 // ResponsesBatchRequest defines model for ResponsesBatchRequest.
 type ResponsesBatchRequest struct {
 	Options *struct {
-		AbortOnError   *bool `json:"abort_on_error,omitempty"`
-		MaxParallelism *int  `json:"max_parallelism,omitempty"`
+		AbortOnError   *bool   `json:"abort_on_error,omitempty"`
+		MaxParallelism *uint32 `json:"max_parallelism,omitempty"`
 	} `json:"options,omitempty"`
 	Requests []ResponsesRequest `json:"requests"`
 }
@@ -394,7 +394,7 @@ type ResponsesBatchResponse struct {
 // ResponsesBatchResult defines model for ResponsesBatchResult.
 type ResponsesBatchResult struct {
 	Error    *ResponsesBatchError `json:"error,omitempty"`
-	Index    int                  `json:"index"`
+	Index    uint32               `json:"index"`
 	Ok       bool                 `json:"ok"`
 	Response *ResponsesResponse   `json:"response,omitempty"`
 }
@@ -706,13 +706,13 @@ type UpdateProjectJSONBodyCustomerOauthProviders string
 // StreamRunEventsParams defines parameters for StreamRunEvents.
 type StreamRunEventsParams struct {
 	// AfterSeq Returns events where `seq > after_seq`.
-	AfterSeq *int `form:"after_seq,omitempty" json:"after_seq,omitempty"`
+	AfterSeq *uint64 `form:"after_seq,omitempty" json:"after_seq,omitempty"`
 
 	// Wait When false, returns currently available events then closes.
 	Wait *bool `form:"wait,omitempty" json:"wait,omitempty"`
 
 	// Limit Maximum number of events to send before closing.
-	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+	Limit *uint32 `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // MintCustomerTokenJSONRequestBody defines body for MintCustomerToken for application/json ContentType.

@@ -57,4 +57,5 @@ package sdk
 // 0.57.0: Add generated types from OpenAPI spec (sdk/go/generated package).
 // 0.58.0: Add device flow methods (DeviceStart, DeviceToken) for RFC 8628 device authorization.
 // 0.59.0: Refactor device flow to use generated types (generated.DeviceStartResponse, etc).
-const Version = "0.59.0"
+// 0.60.0: Use unsigned integers (uint32/uint64) for semantically non-negative fields (token counts, costs, seq, limits).
+const Version = "0.60.0"
