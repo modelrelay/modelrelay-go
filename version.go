@@ -55,4 +55,6 @@ package sdk
 // 0.55.0: Breaking - Tool-results submission now requires step/request_id + tool name; server persists tool-loop checkpoints.
 // 0.56.0: Add per-node tool_limits for workflow tool loops (max_llm_calls/max_tool_calls_per_step/wait_ttl_ms).
 // 0.57.0: Add generated types from OpenAPI spec (sdk/go/generated package).
-const Version = "0.57.0"
+// 0.58.0: Add device flow methods (DeviceStart, DeviceToken) for RFC 8628 device authorization.
+// 0.59.0: Refactor device flow to use generated types (generated.DeviceStartResponse, etc).
+const Version = "0.59.0"

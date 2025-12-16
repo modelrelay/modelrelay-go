@@ -14,6 +14,12 @@ const (
 	// AuthCustomerToken mints a customer-scoped bearer token (requires secret key).
 	AuthCustomerToken = "/auth/customer-token" // #nosec G101 -- route path, not a credential
 
+	// AuthDeviceStart initiates a device authorization flow (RFC 8628).
+	AuthDeviceStart = "/auth/device/start"
+
+	// AuthDeviceToken polls for device authorization completion.
+	AuthDeviceToken = "/auth/device/token" // #nosec G101 -- route path, not a credential
+
 	// Pricing returns public model pricing information.
 	Pricing = "/pricing"
 
