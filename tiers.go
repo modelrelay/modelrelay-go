@@ -22,6 +22,7 @@ type TierModel struct {
 	ID                         uuid.UUID `json:"id"`
 	TierID                     uuid.UUID `json:"tier_id"`
 	ModelID                    ModelID   `json:"model_id"`
+	ModelDisplayName           string    `json:"model_display_name,omitempty"`
 	InputPricePerMillionCents  int64     `json:"input_price_per_million_cents"`
 	OutputPricePerMillionCents int64     `json:"output_price_per_million_cents"`
 	IsDefault                  bool      `json:"is_default"`

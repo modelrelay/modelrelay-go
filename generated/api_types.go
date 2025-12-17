@@ -207,6 +207,46 @@ type CustomerCreate struct {
 	TierId     openapi_types.UUID      `json:"tier_id"`
 }
 
+// CustomerMe defines model for CustomerMe.
+type CustomerMe struct {
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+
+	// CurrentPeriodEnd End of the current billing period
+	CurrentPeriodEnd *time.Time `json:"current_period_end,omitempty"`
+
+	// CurrentPeriodStart Start of the current billing period
+	CurrentPeriodStart *time.Time `json:"current_period_start,omitempty"`
+
+	// Email Customer email address
+	Email *openapi_types.Email `json:"email,omitempty"`
+
+	// ExternalId External customer identifier from your system
+	ExternalId *string                 `json:"external_id,omitempty"`
+	Id         *openapi_types.UUID     `json:"id,omitempty"`
+	Metadata   *map[string]interface{} `json:"metadata,omitempty"`
+	ProjectId  *openapi_types.UUID     `json:"project_id,omitempty"`
+
+	// StripeCustomerId Stripe customer ID
+	StripeCustomerId *string `json:"stripe_customer_id,omitempty"`
+
+	// StripeSubscriptionId Stripe subscription ID
+	StripeSubscriptionId *string `json:"stripe_subscription_id,omitempty"`
+
+	// SubscriptionStatus Subscription status (active, past_due, canceled, etc.)
+	SubscriptionStatus *string `json:"subscription_status,omitempty"`
+	Tier               Tier    `json:"tier"`
+
+	// TierCode Tier code identifier (e.g., free, pro, enterprise).
+	TierCode  *TierCode           `json:"tier_code,omitempty"`
+	TierId    *openapi_types.UUID `json:"tier_id,omitempty"`
+	UpdatedAt *time.Time          `json:"updated_at,omitempty"`
+}
+
+// CustomerMeResponse defines model for CustomerMeResponse.
+type CustomerMeResponse struct {
+	Customer CustomerMe `json:"customer"`
+}
+
 // CustomerTokenResponse defines model for CustomerTokenResponse.
 type CustomerTokenResponse struct {
 	// CustomerExternalId External customer identifier
@@ -572,8 +612,11 @@ type TierModel struct {
 	// IsDefault Whether this is the default model for the tier
 	IsDefault *bool `json:"is_default,omitempty"`
 
-	// ModelId Model ID (e.g., 'gpt-4o', 'claude-sonnet-4-20250514')
-	ModelId *string `json:"model_id,omitempty"`
+	// ModelDisplayName Human-friendly model name resolved from pricing (e.g., 'GPT-4o Mini')
+	ModelDisplayName *string `json:"model_display_name,omitempty"`
+
+	// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	ModelId *ModelId `json:"model_id,omitempty"`
 
 	// OutputPricePerMillionCents Output token price in cents per million (e.g., 1500 = $15.00/1M tokens)
 	OutputPricePerMillionCents *uint64             `json:"output_price_per_million_cents,omitempty"`
@@ -583,10 +626,12 @@ type TierModel struct {
 
 // TierModelCreate defines model for TierModelCreate.
 type TierModelCreate struct {
-	InputPricePerMillionCents  uint64 `json:"input_price_per_million_cents"`
-	IsDefault                  *bool  `json:"is_default,omitempty"`
-	ModelId                    string `json:"model_id"`
-	OutputPricePerMillionCents uint64 `json:"output_price_per_million_cents"`
+	InputPricePerMillionCents uint64 `json:"input_price_per_million_cents"`
+	IsDefault                 *bool  `json:"is_default,omitempty"`
+
+	// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	ModelId                    ModelId `json:"model_id"`
+	OutputPricePerMillionCents uint64  `json:"output_price_per_million_cents"`
 }
 
 // TierUpdate defines model for TierUpdate.

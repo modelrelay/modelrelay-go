@@ -59,4 +59,6 @@ package sdk
 // 0.59.0: Refactor device flow to use generated types (generated.DeviceStartResponse, etc).
 // 0.60.0: Use unsigned integers (uint32/uint64) for semantically non-negative fields (token counts, costs, seq, limits).
 // 0.61.0: Breaking - Multi-model tiers with per-model pricing (#676).
-const Version = "0.61.0"
+// 0.62.0: Add customer self-discovery endpoint wrapper (GET /customers/me) (#680).
+// 0.63.0: Use strong ModelId and TierCode types from OpenAPI spec; regenerate SDK types.
+const Version = "0.63.0"

@@ -38,6 +38,9 @@ const (
 	// CustomersClaim claims a customer by email, setting their external_id.
 	CustomersClaim = "/customers/claim"
 
+	// CustomersMe returns the current authenticated customer (customer bearer token only).
+	CustomersMe = "/customers/me"
+
 	// Models is the public models page.
 	Models = "/models"
 
