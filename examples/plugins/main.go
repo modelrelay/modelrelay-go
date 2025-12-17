@@ -108,13 +108,13 @@ func writeFileTool(args map[string]any, _ llm.ToolCall) (any, error) {
 	if !ok {
 		return nil, &sdk.ToolArgsError{Message: "path must be a string"}
 	}
-	contentVal, exists := args["content"]
+	contentVal, exists := args["contents"]
 	if !exists {
-		return nil, &sdk.ToolArgsError{Message: "content is required"}
+		return nil, &sdk.ToolArgsError{Message: "contents is required"}
 	}
 	rawContent, ok := contentVal.(string)
 	if !ok {
-		return nil, &sdk.ToolArgsError{Message: "content must be a string"}
+		return nil, &sdk.ToolArgsError{Message: "contents must be a string"}
 	}
 	p := strings.TrimSpace(rawPath)
 	if p == "" {

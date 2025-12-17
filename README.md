@@ -303,7 +303,7 @@ status, _ := client.Customers.GetSubscription(ctx, customer.ID)
 
 ## Plugins (Workflows)
 
-Plugins are GitHub-hosted markdown agents that the **API server** converts to `workflow.v0` using an LLM, then executes via `/runs` with automatic client-side tool handoff.
+Plugins are GitHub-hosted markdown agents that the Go SDK loads from GitHub, converts to `workflow.v0` via `/responses`, then executes via `/runs` with automatic client-side tool handoff.
 
 ```go
 ctx := context.Background()
