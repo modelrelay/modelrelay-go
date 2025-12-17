@@ -510,15 +510,10 @@ type Tier struct {
 	// DisplayName Human-readable tier name
 	DisplayName *string             `json:"display_name,omitempty"`
 	Id          *openapi_types.UUID `json:"id,omitempty"`
+	Models      *[]TierModel        `json:"models,omitempty"`
 
-	// InputPricePerMillionCents Input token price in cents per million (e.g., 300 = $3.00/1M tokens)
-	InputPricePerMillionCents *uint64 `json:"input_price_per_million_cents,omitempty"`
-
-	// OutputPricePerMillionCents Output token price in cents per million (e.g., 1500 = $15.00/1M tokens)
-	OutputPricePerMillionCents *uint64 `json:"output_price_per_million_cents,omitempty"`
-
-	// PriceAmount Subscription price amount in cents
-	PriceAmount *uint64 `json:"price_amount,omitempty"`
+	// PriceAmountCents Subscription price amount in cents
+	PriceAmountCents *uint64 `json:"price_amount_cents,omitempty"`
 
 	// PriceCurrency Currency code for the price (e.g., 'usd')
 	PriceCurrency *string `json:"price_currency,omitempty"`
@@ -527,7 +522,7 @@ type Tier struct {
 	PriceInterval *PriceInterval      `json:"price_interval,omitempty"`
 	ProjectId     *openapi_types.UUID `json:"project_id,omitempty"`
 
-	// SpendLimitCents Monthly spend limit in cents (e.g., 2000 = $20/month). Must be positive.
+	// SpendLimitCents Monthly spend limit in cents (e.g., 2000 = $20/month). Must be non-negative.
 	SpendLimitCents *uint64 `json:"spend_limit_cents,omitempty"`
 
 	// StripePriceId Stripe price ID for this tier
@@ -547,13 +542,73 @@ type TierCode = string
 // TierCreate defines model for TierCreate.
 type TierCreate struct {
 	// DisplayName Human-readable tier name
-	DisplayName string `json:"display_name"`
+	DisplayName string            `json:"display_name"`
+	Models      []TierModelCreate `json:"models"`
 
-	// SpendLimitCents Monthly spend limit in cents (e.g., 2000 = $20/month). Must be positive.
+	// PriceAmountCents Subscription price amount in cents (paid tiers)
+	PriceAmountCents *uint64 `json:"price_amount_cents,omitempty"`
+
+	// PriceInterval Billing interval for a tier.
+	PriceInterval *PriceInterval `json:"price_interval,omitempty"`
+
+	// SpendLimitCents Monthly spend limit in cents (e.g., 2000 = $20/month). Must be non-negative.
 	SpendLimitCents uint64 `json:"spend_limit_cents"`
 
 	// TierCode Tier code identifier (e.g., free, pro, enterprise).
 	TierCode TierCode `json:"tier_code"`
+
+	// TrialDays Number of trial days for new subscriptions (paid tiers)
+	TrialDays *uint32 `json:"trial_days,omitempty"`
+}
+
+// TierModel defines model for TierModel.
+type TierModel struct {
+	CreatedAt *time.Time          `json:"created_at,omitempty"`
+	Id        *openapi_types.UUID `json:"id,omitempty"`
+
+	// InputPricePerMillionCents Input token price in cents per million (e.g., 300 = $3.00/1M tokens)
+	InputPricePerMillionCents *uint64 `json:"input_price_per_million_cents,omitempty"`
+
+	// IsDefault Whether this is the default model for the tier
+	IsDefault *bool `json:"is_default,omitempty"`
+
+	// ModelId Model ID (e.g., 'gpt-4o', 'claude-sonnet-4-20250514')
+	ModelId *string `json:"model_id,omitempty"`
+
+	// OutputPricePerMillionCents Output token price in cents per million (e.g., 1500 = $15.00/1M tokens)
+	OutputPricePerMillionCents *uint64             `json:"output_price_per_million_cents,omitempty"`
+	TierId                     *openapi_types.UUID `json:"tier_id,omitempty"`
+	UpdatedAt                  *time.Time          `json:"updated_at,omitempty"`
+}
+
+// TierModelCreate defines model for TierModelCreate.
+type TierModelCreate struct {
+	InputPricePerMillionCents  uint64 `json:"input_price_per_million_cents"`
+	IsDefault                  *bool  `json:"is_default,omitempty"`
+	ModelId                    string `json:"model_id"`
+	OutputPricePerMillionCents uint64 `json:"output_price_per_million_cents"`
+}
+
+// TierUpdate defines model for TierUpdate.
+type TierUpdate struct {
+	// DisplayName Human-readable tier name
+	DisplayName string             `json:"display_name"`
+	Models      *[]TierModelCreate `json:"models,omitempty"`
+
+	// PriceAmountCents Subscription price amount in cents (paid tiers)
+	PriceAmountCents *uint64 `json:"price_amount_cents,omitempty"`
+
+	// PriceInterval Billing interval for a tier.
+	PriceInterval *PriceInterval `json:"price_interval,omitempty"`
+
+	// SpendLimitCents Monthly spend limit in cents (e.g., 2000 = $20/month). Must be non-negative.
+	SpendLimitCents uint64 `json:"spend_limit_cents"`
+
+	// TierCode Tier code identifier (e.g., free, pro, enterprise).
+	TierCode TierCode `json:"tier_code"`
+
+	// TrialDays Number of trial days for new subscriptions (paid tiers)
+	TrialDays *uint32 `json:"trial_days,omitempty"`
 }
 
 // Tool defines model for Tool.
@@ -755,7 +810,7 @@ type UpdateCustomerJSONRequestBody = CustomerCreate
 type CreateTierJSONRequestBody = TierCreate
 
 // UpdateTierJSONRequestBody defines body for UpdateTier for application/json ContentType.
-type UpdateTierJSONRequestBody = TierCreate
+type UpdateTierJSONRequestBody = TierUpdate
 
 // CreateResponseJSONRequestBody defines body for CreateResponse for application/json ContentType.
 type CreateResponseJSONRequestBody = ResponsesRequest
