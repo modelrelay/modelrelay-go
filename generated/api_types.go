@@ -383,6 +383,98 @@ type OutputItemType string
 // PlanHash SHA-256 hash of the compiled workflow plan (64 hex characters).
 type PlanHash = string
 
+// PluginAgentV0 defines model for PluginAgentV0.
+type PluginAgentV0 struct {
+	Name         string `json:"name"`
+	SystemPrompt string `json:"system_prompt"`
+}
+
+// PluginCommandV0 defines model for PluginCommandV0.
+type PluginCommandV0 struct {
+	AgentRefs *[]string `json:"agent_refs,omitempty"`
+	Name      string    `json:"name"`
+	Prompt    string    `json:"prompt"`
+}
+
+// PluginGitHubRefV0 defines model for PluginGitHubRefV0.
+type PluginGitHubRefV0 struct {
+	Owner *string `json:"owner,omitempty"`
+	Path  *string `json:"path,omitempty"`
+	Ref   *string `json:"ref,omitempty"`
+	Repo  *string `json:"repo,omitempty"`
+}
+
+// PluginManifestV0 defines model for PluginManifestV0.
+type PluginManifestV0 struct {
+	Agents      *[]string `json:"agents,omitempty"`
+	Commands    *[]string `json:"commands,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	Name        *string   `json:"name,omitempty"`
+	Version     *string   `json:"version,omitempty"`
+}
+
+// PluginsLoadRequest defines model for PluginsLoadRequest.
+type PluginsLoadRequest struct {
+	// SourceUrl GitHub URL for the plugin root (or a file within the plugin).
+	SourceUrl string `json:"source_url"`
+}
+
+// PluginsLoadResponseV0 defines model for PluginsLoadResponseV0.
+type PluginsLoadResponseV0 struct {
+	Agents   map[string]PluginAgentV0   `json:"agents"`
+	Commands map[string]PluginCommandV0 `json:"commands"`
+
+	// Id Stable plugin identifier (owner/repo/path).
+	Id       string            `json:"id"`
+	LoadedAt time.Time         `json:"loaded_at"`
+	Manifest PluginManifestV0  `json:"manifest"`
+	RawFiles map[string]string `json:"raw_files"`
+	Ref      PluginGitHubRefV0 `json:"ref"`
+
+	// Url Canonical plugin URL (github.com/owner/repo@ref/path).
+	Url string `json:"url"`
+}
+
+// PluginsRunRequest defines model for PluginsRunRequest.
+type PluginsRunRequest struct {
+	// Command Plugin command name (from commands/*.md).
+	Command string `json:"command"`
+
+	// ConverterModel Model used for plugin→workflow conversion. Defaults server-side when omitted.
+	ConverterModel *ModelId `json:"converter_model,omitempty"`
+
+	// IdempotencyKey Optional idempotency key for run creation.
+	IdempotencyKey *string `json:"idempotency_key,omitempty"`
+
+	// Model Execution model override for workflow llm.responses nodes. Optional for customer-attributed requests.
+	Model *ModelId `json:"model,omitempty"`
+
+	// SourceUrl GitHub URL for the plugin root (or a file within the plugin).
+	SourceUrl string `json:"source_url"`
+
+	// UserTask User task/prompt for the plugin.
+	UserTask string `json:"user_task"`
+}
+
+// PluginsRunResponseV0 defines model for PluginsRunResponseV0.
+type PluginsRunResponseV0 struct {
+	// ConversionModel LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	ConversionModel      *ModelId `json:"conversion_model,omitempty"`
+	ConversionResponseId *string  `json:"conversion_response_id,omitempty"`
+
+	// ConversionUsage Token usage statistics. All fields default to 0 if not present.
+	ConversionUsage *Usage `json:"conversion_usage,omitempty"`
+
+	// PlanHash SHA-256 hash of the compiled workflow plan (64 hex characters).
+	PlanHash  PlanHash `json:"plan_hash"`
+	PluginId  string   `json:"plugin_id"`
+	PluginUrl string   `json:"plugin_url"`
+
+	// RunId Unique identifier for a workflow run.
+	RunId  RunId       `json:"run_id"`
+	Status RunStatusV0 `json:"status"`
+}
+
 // PriceInterval Billing interval for a tier.
 type PriceInterval string
 
@@ -838,6 +930,12 @@ type RegisterOwnerJSONRequestBody RegisterOwnerJSONBody
 
 // ClaimCustomerJSONRequestBody defines body for ClaimCustomer for application/json ContentType.
 type ClaimCustomerJSONRequestBody ClaimCustomerJSONBody
+
+// PluginsLoadJSONRequestBody defines body for PluginsLoad for application/json ContentType.
+type PluginsLoadJSONRequestBody = PluginsLoadRequest
+
+// PluginsRunJSONRequestBody defines body for PluginsRun for application/json ContentType.
+type PluginsRunJSONRequestBody = PluginsRunRequest
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody CreateProjectJSONBody

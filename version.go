@@ -61,4 +61,5 @@ package sdk
 // 0.61.0: Breaking - Multi-model tiers with per-model pricing (#676).
 // 0.62.0: Add customer self-discovery endpoint wrapper (GET /customers/me) (#680).
 // 0.63.0: Use strong ModelId and TierCode types from OpenAPI spec; regenerate SDK types.
-const Version = "0.63.0"
+// 0.64.0: Add plugin execution helpers (PluginsClient) via workflows (#664).
+const Version = "0.64.0"

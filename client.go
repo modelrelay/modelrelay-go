@@ -131,6 +131,9 @@ type Client struct {
 	Auth      *AuthClient
 	Customers *CustomersClient
 	Tiers     *TiersClient
+
+	pluginsOnce sync.Once
+	plugins     *PluginsClient
 }
 
 // NewClientWithKey creates a client authenticated with an API key.

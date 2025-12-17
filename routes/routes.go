@@ -71,6 +71,12 @@ const (
 	// RunsPendingTools returns the currently pending tool calls for an in-progress run.
 	RunsPendingTools = "/runs/{run_id}/pending-tools"
 
+	// PluginsLoad loads a plugin from a GitHub URL (server-side).
+	PluginsLoad = "/plugins/load"
+
+	// PluginsRuns loads a plugin, converts it to workflow.v0 via LLM, and starts a run.
+	PluginsRuns = "/plugins/runs"
+
 	// WorkflowsCompile compiles a workflow.v0 spec into a canonical plan and plan_hash.
 	WorkflowsCompile = "/workflows/compile"
 

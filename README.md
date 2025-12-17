@@ -301,6 +301,35 @@ session, _ := client.Customers.CreateCheckoutSession(ctx, customer.ID, sdk.Check
 status, _ := client.Customers.GetSubscription(ctx, customer.ID)
 ```
 
+## Plugins (Workflows)
+
+Plugins are GitHub-hosted markdown agents that the **API server** converts to `workflow.v0` using an LLM, then executes via `/runs` with automatic client-side tool handoff.
+
+```go
+ctx := context.Background()
+key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
+client, _ := sdk.NewClientWithKey(key)
+
+registry := sdk.NewToolRegistry().
+    Register("bash", func(args map[string]any, call llm.ToolCall) (any, error) {
+        return "ok", nil
+    })
+
+result, err := client.Plugins().QuickRun(
+    ctx,
+    "github.com/org/repo/my-plugin",
+    "analyze",
+    "Review the authentication module",
+    sdk.WithToolRegistry(registry),
+    sdk.WithPluginModel("claude-opus-4-5-20251101"),
+    sdk.WithConverterModel("claude-3-5-haiku-latest"),
+)
+_ = result
+_ = err
+```
+
+See `docs/guides/PLUGIN_QUICKSTART.md` for a step-by-step guide.
+
 ## Configuration
 
 ```go
