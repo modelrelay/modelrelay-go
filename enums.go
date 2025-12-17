@@ -3,6 +3,8 @@ package sdk
 import (
 	"encoding/json"
 	"strings"
+
+	"github.com/modelrelay/modelrelay/sdk/go/generated"
 )
 
 // StopReason encodes the reason a generation ended.
@@ -112,6 +114,38 @@ func (m *ModelID) UnmarshalJSON(data []byte) error {
 	}
 	*m = NewModelID(raw)
 	return nil
+}
+
+// ModelCapability is a workflow-critical model capability identifier.
+//
+// This aliases the generated OpenAPI type to avoid drift between SDK and API.
+type ModelCapability = generated.ModelCapability
+
+const (
+	ModelCapabilityTools       ModelCapability = "tools"
+	ModelCapabilityVision      ModelCapability = "vision"
+	ModelCapabilityWebSearch   ModelCapability = "web_search"
+	ModelCapabilityComputerUse ModelCapability = "computer_use"
+	ModelCapabilityCodeExec    ModelCapability = "code_execution"
+)
+
+// ParseModelCapability trims whitespace and preserves the raw value.
+func ParseModelCapability(val string) ModelCapability {
+	return ModelCapability(strings.TrimSpace(val))
+}
+
+// IsKnownModelCapability reports whether the capability is one of the known constants.
+func IsKnownModelCapability(c ModelCapability) bool {
+	switch c {
+	case ModelCapabilityTools,
+		ModelCapabilityVision,
+		ModelCapabilityWebSearch,
+		ModelCapabilityComputerUse,
+		ModelCapabilityCodeExec:
+		return true
+	default:
+		return strings.TrimSpace(string(c)) != ""
+	}
 }
 
 // TierCode is a strongly-typed wrapper around tier codes (e.g., "free").

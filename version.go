@@ -64,4 +64,5 @@ package sdk
 // 0.64.0: Add plugin execution helpers (PluginsClient) via workflows (#664).
 // 0.65.0: Add plugin GitHub loader + core plugin types (#665).
 // 0.66.0: Breaking - strengthen plugin identifier types (names, URLs, repo paths) (#665).
-const Version = "0.66.0"
+// 0.67.0: Add /models catalog methods and model metadata on tiers (#685).
+const Version = "0.67.0"

@@ -32,6 +32,15 @@ const (
 	MessageRoleUser      MessageRole = "user"
 )
 
+// Defines values for ModelCapability.
+const (
+	ModelCapabilityCodeExecution ModelCapability = "code_execution"
+	ModelCapabilityComputerUse   ModelCapability = "computer_use"
+	ModelCapabilityTools         ModelCapability = "tools"
+	ModelCapabilityVision        ModelCapability = "vision"
+	ModelCapabilityWebSearch     ModelCapability = "web_search"
+)
+
 // Defines values for NodeStatusV0.
 const (
 	NodeStatusV0Canceled  NodeStatusV0 = "canceled"
@@ -99,10 +108,10 @@ const (
 
 // Defines values for ToolCallType.
 const (
-	ToolCallTypeCodeExecution ToolCallType = "code_execution"
-	ToolCallTypeFunction      ToolCallType = "function"
-	ToolCallTypeWeb           ToolCallType = "web"
-	ToolCallTypeXSearch       ToolCallType = "x_search"
+	CodeExecution ToolCallType = "code_execution"
+	Function      ToolCallType = "function"
+	Web           ToolCallType = "web"
+	XSearch       ToolCallType = "x_search"
 )
 
 // Defines values for ToolChoiceType.
@@ -327,8 +336,38 @@ type JSONSchemaFormat struct {
 // MessageRole defines model for MessageRole.
 type MessageRole string
 
+// Model defines model for Model.
+type Model struct {
+	Capabilities             []ModelCapability `json:"capabilities"`
+	ContextWindow            int32             `json:"context_window"`
+	Deprecated               bool              `json:"deprecated"`
+	DeprecationMessage       string            `json:"deprecation_message"`
+	Description              string            `json:"description"`
+	DisplayName              string            `json:"display_name"`
+	InputCostPerMillionCents uint64            `json:"input_cost_per_million_cents"`
+	MaxOutputTokens          int32             `json:"max_output_tokens"`
+
+	// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	ModelId                   ModelId `json:"model_id"`
+	OutputCostPerMillionCents uint64  `json:"output_cost_per_million_cents"`
+
+	// Provider LLM provider identifier.
+	Provider ProviderId `json:"provider"`
+
+	// TrainingCutoff Training cutoff in YYYY-MM format
+	TrainingCutoff string `json:"training_cutoff"`
+}
+
+// ModelCapability Workflow-critical model capability identifier.
+type ModelCapability string
+
 // ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
 type ModelId = string
+
+// ModelsResponse defines model for ModelsResponse.
+type ModelsResponse struct {
+	Models []Model `json:"models"`
+}
 
 // NodeErrorV0 defines model for NodeErrorV0.
 type NodeErrorV0 struct {
@@ -695,25 +734,39 @@ type TierCreate struct {
 
 // TierModel defines model for TierModel.
 type TierModel struct {
-	CreatedAt *time.Time          `json:"created_at,omitempty"`
-	Id        *openapi_types.UUID `json:"id,omitempty"`
+	// Capabilities Workflow-critical capability flags for the model
+	Capabilities []ModelCapability `json:"capabilities"`
+
+	// ContextWindow Maximum supported context window in tokens (if known)
+	ContextWindow int32     `json:"context_window"`
+	CreatedAt     time.Time `json:"created_at"`
+
+	// Deprecated Whether the model is deprecated
+	Deprecated bool `json:"deprecated"`
+
+	// Description Human-friendly description of what the model is good at
+	Description string             `json:"description"`
+	Id          openapi_types.UUID `json:"id"`
 
 	// InputPricePerMillionCents Input token price in cents per million (e.g., 300 = $3.00/1M tokens)
-	InputPricePerMillionCents *uint64 `json:"input_price_per_million_cents,omitempty"`
+	InputPricePerMillionCents uint64 `json:"input_price_per_million_cents"`
 
 	// IsDefault Whether this is the default model for the tier
-	IsDefault *bool `json:"is_default,omitempty"`
+	IsDefault bool `json:"is_default"`
+
+	// MaxOutputTokens Maximum supported output tokens (if known)
+	MaxOutputTokens int32 `json:"max_output_tokens"`
 
 	// ModelDisplayName Human-friendly model name resolved from pricing (e.g., 'GPT-4o Mini')
-	ModelDisplayName *string `json:"model_display_name,omitempty"`
+	ModelDisplayName string `json:"model_display_name"`
 
 	// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
-	ModelId *ModelId `json:"model_id,omitempty"`
+	ModelId ModelId `json:"model_id"`
 
 	// OutputPricePerMillionCents Output token price in cents per million (e.g., 1500 = $15.00/1M tokens)
-	OutputPricePerMillionCents *uint64             `json:"output_price_per_million_cents,omitempty"`
-	TierId                     *openapi_types.UUID `json:"tier_id,omitempty"`
-	UpdatedAt                  *time.Time          `json:"updated_at,omitempty"`
+	OutputPricePerMillionCents uint64             `json:"output_price_per_million_cents"`
+	TierId                     openapi_types.UUID `json:"tier_id"`
+	UpdatedAt                  time.Time          `json:"updated_at"`
 }
 
 // TierModelCreate defines model for TierModelCreate.
@@ -872,6 +925,15 @@ type ClaimCustomerJSONBody struct {
 
 // ClaimCustomerJSONBodyProvider defines parameters for ClaimCustomer.
 type ClaimCustomerJSONBodyProvider string
+
+// ListModelsParams defines parameters for ListModels.
+type ListModelsParams struct {
+	// Provider Filter results to a specific provider
+	Provider *ProviderId `form:"provider,omitempty" json:"provider,omitempty"`
+
+	// Capability Filter results to models that support a capability
+	Capability *ModelCapability `form:"capability,omitempty" json:"capability,omitempty"`
+}
 
 // CreateProjectJSONBody defines parameters for CreateProject.
 type CreateProjectJSONBody struct {

@@ -19,15 +19,20 @@ const (
 
 // TierModel represents per-model pricing within a tier.
 type TierModel struct {
-	ID                         uuid.UUID `json:"id"`
-	TierID                     uuid.UUID `json:"tier_id"`
-	ModelID                    ModelID   `json:"model_id"`
-	ModelDisplayName           string    `json:"model_display_name,omitempty"`
-	InputPricePerMillionCents  int64     `json:"input_price_per_million_cents"`
-	OutputPricePerMillionCents int64     `json:"output_price_per_million_cents"`
-	IsDefault                  bool      `json:"is_default"`
-	CreatedAt                  time.Time `json:"created_at"`
-	UpdatedAt                  time.Time `json:"updated_at"`
+	ID                         uuid.UUID         `json:"id"`
+	TierID                     uuid.UUID         `json:"tier_id"`
+	ModelID                    ModelID           `json:"model_id"`
+	ModelDisplayName           string            `json:"model_display_name"`
+	Description                string            `json:"description"`
+	Capabilities               []ModelCapability `json:"capabilities"`
+	ContextWindow              int32             `json:"context_window"`
+	MaxOutputTokens            int32             `json:"max_output_tokens"`
+	Deprecated                 bool              `json:"deprecated"`
+	InputPricePerMillionCents  int64             `json:"input_price_per_million_cents"`
+	OutputPricePerMillionCents int64             `json:"output_price_per_million_cents"`
+	IsDefault                  bool              `json:"is_default"`
+	CreatedAt                  time.Time         `json:"created_at"`
+	UpdatedAt                  time.Time         `json:"updated_at"`
 }
 
 // Tier represents a pricing tier in a ModelRelay project.
