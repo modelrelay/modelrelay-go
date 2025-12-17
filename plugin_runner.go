@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
@@ -91,6 +92,10 @@ func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfi
 		poll = 150 * time.Millisecond
 	}
 
+	var allEvents []RunEventV0
+	var lastSeq int64
+	handledToolCallIDs := make(map[string]struct{})
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -98,37 +103,66 @@ func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfi
 		default:
 		}
 
-		snap, err := r.client.Runs.Get(ctx, runID)
+		events, err := r.client.Runs.ListEvents(ctx, runID, WithRunEventsAfterSeq(lastSeq))
 		if err != nil {
 			return nil, err
 		}
 
-		switch snap.Status {
+		var status RunStatusV0
+		var waiting []RunEventNodeWaitingV0
+	for _, ev := range events {
+			allEvents = append(allEvents, ev)
+			if seq, ok := ev.(interface{ seqNum() int64 }); ok {
+				lastSeq = maxInt64(lastSeq, seq.seqNum())
+			}
+
+			switch e := ev.(type) {
+			case RunEventRunCompletedV0:
+				status = RunStatusSucceeded
+			case RunEventRunFailedV0:
+				status = RunStatusFailed
+			case RunEventRunCanceledV0:
+				status = RunStatusCanceled
+			case RunEventNodeWaitingV0:
+				waiting = append(waiting, e)
+				status = RunStatusWaiting
+			case RunEventNodeToolResultV0:
+				if strings.TrimSpace(e.ToolResult.ToolCallID) != "" {
+					handledToolCallIDs[e.ToolResult.ToolCallID] = struct{}{}
+				}
+			}
+		}
+
+		switch status {
 		case RunStatusSucceeded:
-			events, _ := r.client.Runs.ListEvents(ctx, runID)
+			snap, err := r.client.Runs.Get(ctx, runID)
+			if err != nil {
+				return nil, err
+			}
 			return &PluginRunResult{
 				RunID:       snap.RunID,
 				Status:      snap.Status,
 				Outputs:     snap.Outputs,
 				CostSummary: snap.CostSummary,
-				Events:      events,
+				Events:      allEvents,
 			}, nil
 		case RunStatusFailed, RunStatusCanceled:
-			events, _ := r.client.Runs.ListEvents(ctx, runID)
 			return nil, &PluginRunError{
-				RunID:  snap.RunID,
-				Status: snap.Status,
-				Events: events,
+				RunID:  runID,
+				Status: status,
+				Events: allEvents,
 			}
 		case RunStatusWaiting:
 			if cfg.ToolHandler == nil {
 				return nil, errors.New("plugin runner: tool handler required for client tool execution (run is waiting)")
 			}
-			if err := r.handlePendingTools(ctx, runID, cfg.ToolHandler); err != nil {
+			if err := r.handleWaitingEvents(ctx, runID, waiting, cfg.ToolHandler, handledToolCallIDs); err != nil {
 				return nil, err
 			}
+			// Tools submitted; poll again immediately.
+			continue
 		default:
-			// pending/running: just wait
+			// pending/running/no new events: just wait
 		}
 
 		timer := time.NewTimer(poll)
@@ -141,43 +175,61 @@ func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfi
 	}
 }
 
-func (r *PluginRunner) handlePendingTools(ctx context.Context, runID RunID, registry *ToolRegistry) error {
-	pending, err := r.client.Runs.PendingTools(ctx, runID)
-	if err != nil {
-		return err
-	}
-	for _, node := range pending.Pending {
-		if node.NodeID.String() == "" || node.Step < 0 || node.RequestID == "" {
+func (r *PluginRunner) handleWaitingEvents(ctx context.Context, runID RunID, waiting []RunEventNodeWaitingV0, registry *ToolRegistry, handled map[string]struct{}) error {
+	for i := range waiting {
+		ev := waiting[i]
+		if !ev.NodeID.Valid() {
 			continue
 		}
+		if ev.Waiting.Step < 0 || strings.TrimSpace(ev.Waiting.RequestID) == "" {
+			continue
+		}
+		if len(ev.Waiting.PendingToolCalls) == 0 {
+			continue
+		}
+
 		var results []RunsToolResultItemV0
-		for _, call := range node.ToolCalls {
+		for _, call := range ev.Waiting.PendingToolCalls {
+			toolCallID := strings.TrimSpace(call.ToolCallID)
+			if toolCallID == "" {
+				continue
+			}
+			if _, ok := handled[toolCallID]; ok {
+				continue
+			}
+			name := strings.TrimSpace(call.Name)
+			if name == "" {
+				continue
+			}
+
 			tc := llm.ToolCall{
-				ID:   call.ToolCallID,
-				Type: llm.ToolTypeFunction,
-				Function: &llm.FunctionCall{
-					Name:      call.Name,
-					Arguments: call.Arguments,
-				},
+				ID:       toolCallID,
+				Type:     llm.ToolTypeFunction,
+				Function: &llm.FunctionCall{Name: name, Arguments: call.Arguments},
 			}
 			execRes := registry.Execute(tc)
 			results = append(results, RunsToolResultItemV0{
-				ToolCallID: call.ToolCallID,
-				Name:       call.Name,
+				ToolCallID: toolCallID,
+				Name:       name,
 				Output:     toolExecutionOutput(execRes),
 			})
 		}
 		if len(results) == 0 {
 			continue
 		}
-		_, err := r.client.Runs.SubmitToolResults(ctx, runID, RunsToolResultsRequest{
-			NodeID:    node.NodeID,
-			Step:      node.Step,
-			RequestID: node.RequestID,
+
+		if _, err := r.client.Runs.SubmitToolResults(ctx, runID, RunsToolResultsRequest{
+			NodeID:    ev.NodeID,
+			Step:      ev.Waiting.Step,
+			RequestID: ev.Waiting.RequestID,
 			Results:   results,
-		})
-		if err != nil {
+		}); err != nil {
 			return err
+		}
+		for _, res := range results {
+			if strings.TrimSpace(res.ToolCallID) != "" {
+				handled[res.ToolCallID] = struct{}{}
+			}
 		}
 	}
 	return nil
@@ -200,4 +252,11 @@ func toolExecutionOutput(res ToolExecutionResult) string {
 		}
 		return string(b)
 	}
+}
+
+func maxInt64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
 }

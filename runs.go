@@ -26,6 +26,8 @@ type RunEventV0Base struct {
 	TS              time.Time
 }
 
+func (b RunEventV0Base) seqNum() int64 { return b.Seq }
+
 type RunEventRunCompiledV0 struct {
 	RunEventV0Base
 	PlanHash PlanHash
