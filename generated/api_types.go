@@ -371,7 +371,10 @@ type ModelsResponse struct {
 
 // NodeErrorV0 defines model for NodeErrorV0.
 type NodeErrorV0 struct {
-	Code    *string `json:"code,omitempty"`
+	Code *string `json:"code,omitempty"`
+
+	// Detail Raw error details from the provider
+	Detail  *string `json:"detail,omitempty"`
 	Message string  `json:"message"`
 }
 
@@ -542,7 +545,10 @@ type ProviderId string
 
 // ResponsesBatchError defines model for ResponsesBatchError.
 type ResponsesBatchError struct {
-	Code    *string `json:"code,omitempty"`
+	Code *string `json:"code,omitempty"`
+
+	// Detail Raw error details from the provider
+	Detail  *string `json:"detail,omitempty"`
 	Message string  `json:"message"`
 	Status  int     `json:"status"`
 }

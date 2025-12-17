@@ -334,6 +334,7 @@ const (
 type NodeErrorV0 struct {
 	Code    string `json:"code,omitempty"`
 	Message string `json:"message"`
+	Detail  string `json:"detail,omitempty"` // Raw error details from the provider
 }
 
 type NodeResultV0 struct {

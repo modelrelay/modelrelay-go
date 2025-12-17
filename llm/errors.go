@@ -38,12 +38,16 @@ type ProviderError struct {
 	Status            int
 	Code              string
 	Message           string
+	Detail            string // Raw error details from the provider (e.g., Anthropic's error JSON)
 	ProviderRequestID string
 	Provider          string
 }
 
 // Error satisfies the error interface.
 func (e ProviderError) Error() string {
+	if e.Detail != "" {
+		return e.Detail
+	}
 	if e.Message != "" {
 		return e.Message
 	}
