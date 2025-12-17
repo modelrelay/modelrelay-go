@@ -65,4 +65,5 @@ package sdk
 // 0.65.0: Add plugin GitHub loader + core plugin types (#665).
 // 0.66.0: Breaking - strengthen plugin identifier types (names, URLs, repo paths) (#665).
 // 0.67.0: Add /models catalog methods and model metadata on tiers (#685).
-const Version = "0.67.0"
+// 0.68.0: Add PluginConverter for local plugin→workflow conversion (#666).
+const Version = "0.68.0"
