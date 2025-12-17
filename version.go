@@ -67,4 +67,5 @@ package sdk
 // 0.67.0: Add /models catalog methods and model metadata on tiers (#685).
 // 0.68.0: Add PluginConverter for local plugin→workflow conversion (#666).
 // 0.69.0: PluginsClient now loads/converts plugins locally via PluginLoader + PluginConverter (#668).
-const Version = "0.69.0"
+// 0.70.0: Add Detail field to ProviderError and NodeErrorV0 for raw provider error messages.
+const Version = "0.70.0"
