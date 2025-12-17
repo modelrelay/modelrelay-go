@@ -62,4 +62,6 @@ package sdk
 // 0.62.0: Add customer self-discovery endpoint wrapper (GET /customers/me) (#680).
 // 0.63.0: Use strong ModelId and TierCode types from OpenAPI spec; regenerate SDK types.
 // 0.64.0: Add plugin execution helpers (PluginsClient) via workflows (#664).
-const Version = "0.64.0"
+// 0.65.0: Add plugin GitHub loader + core plugin types (#665).
+// 0.66.0: Breaking - strengthen plugin identifier types (names, URLs, repo paths) (#665).
+const Version = "0.66.0"

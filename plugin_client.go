@@ -105,11 +105,11 @@ func (p *PluginsClient) Load(ctx context.Context, pluginURL string) (*Plugin, er
 	}
 
 	payload := generated.PluginsLoadRequest{SourceUrl: pluginURL}
-	var out generated.PluginsLoadResponseV0
+	var out Plugin
 	if err := p.client.doJSONPost(ctx, routes.PluginsLoad, payload, &out); err != nil {
 		return nil, err
 	}
-	return (*Plugin)(&out), nil
+	return &out, nil
 }
 
 func (p *PluginsClient) Run(ctx context.Context, plugin *Plugin, command string, cfg PluginRunConfig) (*PluginRunResult, error) {
@@ -128,16 +128,16 @@ func (p *PluginsClient) Run(ctx context.Context, plugin *Plugin, command string,
 		return nil, errors.New("plugins client: user task required")
 	}
 
-	sourceURL := strings.TrimSpace(plugin.Url)
+	sourceURL := strings.TrimSpace(plugin.URL.String())
 	if sourceURL == "" {
 		return nil, errors.New("plugins client: plugin url missing (load plugin from server first)")
 	}
 
 	runReq := generated.PluginsRunRequest{
-		SourceUrl: sourceURL,
-		Command:   command,
-		UserTask:  cfg.UserTask,
-		Model:     optionalModelID(cfg.Model),
+		SourceUrl:      sourceURL,
+		Command:        command,
+		UserTask:       cfg.UserTask,
+		Model:          optionalModelID(cfg.Model),
 		ConverterModel: optionalModelID(cfg.ConverterModel),
 	}
 	var start generated.PluginsRunResponseV0
