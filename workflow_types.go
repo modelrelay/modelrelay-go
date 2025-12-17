@@ -138,6 +138,23 @@ func ParseRunID(raw string) (RunID, error) {
 	return RunID(raw), nil
 }
 
+// ResponseID is a stable identifier for a /responses completion.
+//
+// Response IDs are opaque strings and should be treated as such.
+type ResponseID string
+
+func (id ResponseID) String() string { return string(id) }
+
+func (id ResponseID) Valid() bool { return strings.TrimSpace(string(id)) != "" }
+
+func ParseResponseID(raw string) (ResponseID, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", errors.New("response_id required")
+	}
+	return ResponseID(raw), nil
+}
+
 // PlanHash is the hash of a compiled workflow plan (hex-encoded sha256).
 type PlanHash string
 

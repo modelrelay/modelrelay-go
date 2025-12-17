@@ -305,6 +305,8 @@ status, _ := client.Customers.GetSubscription(ctx, customer.ID)
 
 Plugins are GitHub-hosted markdown agents that the Go SDK loads from GitHub, converts to `workflow.v0` via `/responses`, then executes via `/runs` with automatic client-side tool handoff.
 
+Plugin manifests can be `PLUGIN.md` or `SKILL.md`, and plugin URLs can be GitHub `tree/blob/raw` URLs or `github.com/owner/repo@ref/path` canonical URLs.
+
 ```go
 ctx := context.Background()
 key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
@@ -328,7 +330,23 @@ _ = result
 _ = err
 ```
 
-See `docs/guides/PLUGIN_QUICKSTART.md` for a step-by-step guide.
+If you prefer server-driven plugin execution (API server loads/converts/starts via `/plugins/runs`), use `QuickRunServer`:
+
+```go
+result, err := client.Plugins().QuickRunServer(
+    ctx,
+    "github.com/org/repo/my-plugin",
+    "analyze",
+    "Review the authentication module",
+    sdk.WithToolRegistry(registry),
+    sdk.WithPluginModel("claude-opus-4-5-20251101"),
+    sdk.WithConverterModel("claude-3-5-haiku-latest"),
+)
+_ = result
+_ = err
+```
+
+See `docs/guides/PLUGIN_QUICKSTART.md` for a step-by-step guide, and `docs/architecture/plugins.md` for architecture details. The runnable example lives at `sdk/go/examples/plugins/main.go`.
 
 ## Configuration
 
