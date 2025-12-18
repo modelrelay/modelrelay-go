@@ -16,6 +16,16 @@ type PluginConverter struct {
 	converterModel ModelID
 }
 
+type ToolsV0ToolName string
+
+const (
+	ToolsV0FSReadFile  ToolsV0ToolName = "fs.read_file"
+	ToolsV0FSListFiles ToolsV0ToolName = "fs.list_files"
+	ToolsV0FSSearch    ToolsV0ToolName = "fs.search"
+	ToolsV0Bash        ToolsV0ToolName = "bash"
+	ToolsV0WriteFile   ToolsV0ToolName = "write_file"
+)
+
 type PluginConverterOption func(*PluginConverter)
 
 // WithPluginConverterModel overrides the default model used for plugin → workflow conversion.
@@ -100,6 +110,9 @@ func (c *PluginConverter) ToWorkflow(ctx context.Context, plugin *Plugin, cmd st
 	if err := normalizeWorkflowToolExecutionModes(&spec); err != nil {
 		return nil, err
 	}
+	if err := validatePluginWorkflowTargetsToolsV0(&spec); err != nil {
+		return nil, err
+	}
 	return &spec, nil
 }
 
@@ -111,8 +124,14 @@ Rules:
 - Use a DAG with parallelism when multiple agents are independent.
 - Use join.all to aggregate parallel branches and then a final synthesizer node.
 - Bind node outputs using bindings when passing data forward.
-- Tools:
-  - Client tools: fs.read_file, fs.list_files, fs.search, bash, write_file, and any other custom tools (tool_execution.mode="client")
+- Tool contract:
+  - Target tools.v0 client tools (see docs/reference/tools-v0.md).
+  - Workspace access MUST use these exact function tool names:
+    - fs.read_file, fs.list_files, fs.search, bash, write_file
+  - Prefer fs.* tools for reading/listing/searching the workspace (use bash only when necessary).
+  - Do NOT invent ad-hoc tool names (no repo.*, github.*, filesystem.*, etc.).
+  - All client tools MUST be represented as type="function" tools.
+  - Any node that includes request.tools MUST set tool_execution.mode="client".
 - Prefer minimal nodes needed to satisfy the task.
 `
 
@@ -218,11 +237,56 @@ func desiredToolExecutionMode(tools []llm.Tool) (ToolExecutionModeV0, error) {
 
 func toolNameMode(name string) ToolExecutionModeV0 {
 	switch strings.TrimSpace(name) {
-	case "bash", "write_file":
+	case ToolsV0Bash.String(), ToolsV0WriteFile.String():
 		return ToolExecutionModeClient
-	case "fs.read_file", "fs.search", "fs.list_files":
+	case ToolsV0FSReadFile.String(), ToolsV0FSSearch.String(), ToolsV0FSListFiles.String():
 		return ToolExecutionModeClient
 	default:
 		return ToolExecutionModeClient
 	}
+}
+
+func (n ToolsV0ToolName) String() string { return string(n) }
+
+func validatePluginWorkflowTargetsToolsV0(spec *WorkflowSpecV0) error {
+	if spec == nil {
+		return errors.New("workflow spec required")
+	}
+
+	allowed := map[ToolsV0ToolName]struct{}{
+		ToolsV0FSReadFile:  {},
+		ToolsV0FSListFiles: {},
+		ToolsV0FSSearch:    {},
+		ToolsV0Bash:        {},
+		ToolsV0WriteFile:   {},
+	}
+
+	for i := range spec.Nodes {
+		if spec.Nodes[i].Type != WorkflowNodeTypeLLMResponses {
+			continue
+		}
+		var input llmResponsesNodeInputV0
+		if err := json.Unmarshal(spec.Nodes[i].Input, &input); err != nil {
+			return fmt.Errorf("node %q: invalid input JSON: %w", spec.Nodes[i].ID, err)
+		}
+		if len(input.Request.Tools) == 0 {
+			continue
+		}
+		if input.ToolExecution == nil || input.ToolExecution.Mode != ToolExecutionModeClient {
+			return ProtocolError{Message: fmt.Sprintf("node %q: tool_execution.mode must be %q for plugin conversion", spec.Nodes[i].ID, ToolExecutionModeClient)}
+		}
+		for _, tool := range input.Request.Tools {
+			if tool.Type != llm.ToolTypeFunction || tool.Function == nil {
+				return ProtocolError{Message: fmt.Sprintf("node %q: plugin conversion only supports tools.v0 function tools (got type=%q)", spec.Nodes[i].ID, tool.Type)}
+			}
+			name := strings.TrimSpace(tool.Function.Name)
+			if name == "" {
+				return ProtocolError{Message: fmt.Sprintf("node %q: tool name required", spec.Nodes[i].ID)}
+			}
+			if _, ok := allowed[ToolsV0ToolName(name)]; !ok {
+				return ProtocolError{Message: fmt.Sprintf("node %q: unsupported tool %q (plugin conversion targets tools.v0)", spec.Nodes[i].ID, name)}
+			}
+		}
+	}
+	return nil
 }

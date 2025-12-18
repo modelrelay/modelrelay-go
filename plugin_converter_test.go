@@ -112,8 +112,20 @@ func TestPluginConverter_ToWorkflow_AssignsToolModes(t *testing.T) {
 	if len(gotReq.Input) < 2 || gotReq.Input[0].Role != llm.RoleSystem || gotReq.Input[1].Role != llm.RoleUser {
 		t.Fatalf("unexpected request input: %#v", gotReq.Input)
 	}
-	if !strings.Contains(gotReq.Input[0].Content[0].Text, "workflow.v0") {
+	sys := gotReq.Input[0].Content[0].Text
+	if !strings.Contains(sys, "workflow.v0") {
 		t.Fatalf("expected system prompt, got: %q", gotReq.Input[0].Content[0].Text)
+	}
+	if !strings.Contains(sys, "tools.v0") || !strings.Contains(sys, "docs/reference/tools-v0.md") {
+		t.Fatalf("expected tools.v0 contract reference in system prompt, got: %q", sys)
+	}
+	for _, want := range []string{"fs.read_file", "fs.list_files", "fs.search", "bash", "write_file"} {
+		if !strings.Contains(sys, want) {
+			t.Fatalf("expected system prompt to mention %q, got: %q", want, sys)
+		}
+	}
+	if !strings.Contains(sys, "Do NOT invent") {
+		t.Fatalf("expected system prompt to forbid ad-hoc tool names, got: %q", sys)
 	}
 
 	var n0 llmResponsesNodeInputV0
@@ -203,6 +215,144 @@ func TestPluginConverter_ToWorkflow_AllowsMixingFSAndBashTools(t *testing.T) {
 	}
 	if n0.ToolExecution == nil || n0.ToolExecution.Mode != ToolExecutionModeClient {
 		t.Fatalf("expected client mode, got: %#v", n0.ToolExecution)
+	}
+}
+
+func TestPluginConverter_ToWorkflow_RejectsUnknownToolName(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != routes.Responses {
+			http.NotFound(w, r)
+			return
+		}
+
+		spec := WorkflowSpecV0{
+			Kind: WorkflowKindV0,
+			Nodes: []WorkflowNodeV0{
+				{
+					ID:   "bad_tool",
+					Type: WorkflowNodeTypeLLMResponses,
+					Input: mustJSON(llmResponsesNodeInputV0{
+						Request: responseRequestPayload{
+							Model: "x",
+							Input: []llm.InputItem{llm.NewSystemText("x"), llm.NewUserText("x")},
+							Tools: []llm.Tool{
+								{Type: llm.ToolTypeFunction, Function: &llm.FunctionTool{Name: "repo.search"}},
+							},
+						},
+					}),
+				},
+			},
+			Outputs: []WorkflowOutputRefV0{{Name: "result", From: "bad_tool"}},
+		}
+		rawSpec, _ := json.Marshal(spec)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "id":"resp_1",
+  "model":"claude-3-5-haiku-latest",
+  "usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2},
+  "output":[{"type":"message","role":"assistant","content":[{"type":"text","text":` + jsonString(string(rawSpec)) + `}]}]
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	client, err := NewClientWithToken("tok", WithBaseURL(srv.URL))
+	if err != nil {
+		t.Fatalf("NewClientWithToken: %v", err)
+	}
+
+	plugin := Plugin{
+		ID:  PluginID("octo/repo/plugins/my"),
+		URL: PluginURL("github.com/octo/repo@main/plugins/my"),
+		Commands: map[PluginCommandName]PluginCommand{
+			PluginCommandName("analyze"): {Name: PluginCommandName("analyze"), Prompt: "# analyze"},
+		},
+		Agents:   map[PluginAgentName]PluginAgent{},
+		RawFiles: map[PluginRepoPath]string{},
+		Manifest: PluginManifest{Name: "x"},
+		Ref:      PluginGitHubRef{Owner: GitHubOwner("octo"), Repo: GitHubRepo("repo"), Ref: GitHubRef("main"), Path: GitHubPath("plugins/my")},
+	}
+
+	converter := NewPluginConverter(client)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	t.Cleanup(cancel)
+
+	_, err = converter.ToWorkflow(ctx, &plugin, "analyze", "do the thing")
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "unsupported tool") || !strings.Contains(err.Error(), "repo.search") {
+		t.Fatalf("expected unsupported tool error, got: %v", err)
+	}
+}
+
+func TestPluginConverter_ToWorkflow_RejectsNonFunctionTools(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != routes.Responses {
+			http.NotFound(w, r)
+			return
+		}
+
+		spec := WorkflowSpecV0{
+			Kind: WorkflowKindV0,
+			Nodes: []WorkflowNodeV0{
+				{
+					ID:   "bad_type",
+					Type: WorkflowNodeTypeLLMResponses,
+					Input: mustJSON(llmResponsesNodeInputV0{
+						Request: responseRequestPayload{
+							Model: "x",
+							Input: []llm.InputItem{llm.NewSystemText("x"), llm.NewUserText("x")},
+							Tools: []llm.Tool{
+								{Type: llm.ToolTypeWeb, Web: &llm.WebToolConfig{Mode: llm.WebToolModeAuto}},
+							},
+						},
+					}),
+				},
+			},
+			Outputs: []WorkflowOutputRefV0{{Name: "result", From: "bad_type"}},
+		}
+		rawSpec, _ := json.Marshal(spec)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "id":"resp_1",
+  "model":"claude-3-5-haiku-latest",
+  "usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2},
+  "output":[{"type":"message","role":"assistant","content":[{"type":"text","text":` + jsonString(string(rawSpec)) + `}]}]
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	client, err := NewClientWithToken("tok", WithBaseURL(srv.URL))
+	if err != nil {
+		t.Fatalf("NewClientWithToken: %v", err)
+	}
+
+	plugin := Plugin{
+		ID:  PluginID("octo/repo/plugins/my"),
+		URL: PluginURL("github.com/octo/repo@main/plugins/my"),
+		Commands: map[PluginCommandName]PluginCommand{
+			PluginCommandName("analyze"): {Name: PluginCommandName("analyze"), Prompt: "# analyze"},
+		},
+		Agents:   map[PluginAgentName]PluginAgent{},
+		RawFiles: map[PluginRepoPath]string{},
+		Manifest: PluginManifest{Name: "x"},
+		Ref:      PluginGitHubRef{Owner: GitHubOwner("octo"), Repo: GitHubRepo("repo"), Ref: GitHubRef("main"), Path: GitHubPath("plugins/my")},
+	}
+
+	converter := NewPluginConverter(client)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	t.Cleanup(cancel)
+
+	_, err = converter.ToWorkflow(ctx, &plugin, "analyze", "do the thing")
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "only supports tools.v0 function tools") {
+		t.Fatalf("expected non-function tool rejection, got: %v", err)
 	}
 }
 
