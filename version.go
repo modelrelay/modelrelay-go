@@ -75,4 +75,5 @@ package sdk
 // 0.75.0: Add LocalFSToolPack (fs.read_file/fs.list_files/fs.search) for tools.v0 client tools (#701).
 // 0.76.0: Add customer credit balance + low-credit signal to CustomerMeUsage.
 // 0.77.0: Add LocalBashToolPack (`bash`) for tools.v0 client tools (#702).
-const Version = "0.77.0"
+// 0.78.0: Add LocalWriteFileToolPack (`write_file`) for tools.v0 client tools (#703).
+const Version = "0.78.0"

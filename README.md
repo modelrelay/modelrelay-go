@@ -312,16 +312,18 @@ ctx := context.Background()
 key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
 client, _ := sdk.NewClientWithKey(key)
 
-registry := sdk.NewToolRegistry().
-    Register("write_file", func(args map[string]any, call llm.ToolCall) (any, error) {
-        return "ok", nil
-    })
-
+registry := sdk.NewToolRegistry()
 sdk.NewLocalFSToolPack(".").RegisterInto(registry)
 sdk.NewLocalBashToolPack(
     ".",
     sdk.WithLocalBashAllowAllCommands(),
     sdk.WithLocalBashAllowEnvVars("PATH"),
+).RegisterInto(registry)
+sdk.NewLocalWriteFileToolPack(
+    ".",
+    sdk.WithLocalWriteFileAllow(),
+    sdk.WithLocalWriteFileCreateDirs(true),
+    sdk.WithLocalWriteFileAtomic(true),
 ).RegisterInto(registry)
 
 result, err := client.Plugins().QuickRun(

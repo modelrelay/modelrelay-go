@@ -2,15 +2,12 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	sdk "github.com/modelrelay/modelrelay/sdk/go"
-	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
 
 func main() {
@@ -57,7 +54,12 @@ func run() int {
 		sdk.WithLocalBashAllowAllCommands(),
 		sdk.WithLocalBashAllowEnvVars("PATH"),
 	).RegisterInto(registry)
-	registry.Register("write_file", writeFileTool)
+	sdk.NewLocalWriteFileToolPack(
+		".",
+		sdk.WithLocalWriteFileAllow(),
+		sdk.WithLocalWriteFileCreateDirs(true),
+		sdk.WithLocalWriteFileAtomic(true),
+	).RegisterInto(registry)
 
 	result, err := client.Plugins().QuickRun(
 		ctx,
@@ -80,48 +82,4 @@ func run() int {
 		fmt.Printf("- %s: %s\n", k, string(v))
 	}
 	return 0
-}
-
-func writeFileTool(args map[string]any, _ llm.ToolCall) (any, error) {
-	pathVal, exists := args["path"]
-	if !exists {
-		return nil, &sdk.ToolArgsError{Message: "path is required"}
-	}
-	rawPath, ok := pathVal.(string)
-	if !ok {
-		return nil, &sdk.ToolArgsError{Message: "path must be a string"}
-	}
-	contentVal, exists := args["contents"]
-	if !exists {
-		return nil, &sdk.ToolArgsError{Message: "contents is required"}
-	}
-	rawContent, ok := contentVal.(string)
-	if !ok {
-		return nil, &sdk.ToolArgsError{Message: "contents must be a string"}
-	}
-	p := strings.TrimSpace(rawPath)
-	if p == "" {
-		return nil, &sdk.ToolArgsError{Message: "path cannot be empty"}
-	}
-	if strings.Contains(p, "\x00") {
-		return nil, errors.New("invalid path")
-	}
-	if filepath.IsAbs(p) {
-		return nil, errors.New("path must be relative")
-	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	full := filepath.Clean(filepath.Join(cwd, p))
-	if !strings.HasPrefix(full, cwd+string(os.PathSeparator)) && full != cwd {
-		return nil, errors.New("path escapes working directory")
-	}
-	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
-		return nil, err
-	}
-	if err := os.WriteFile(full, []byte(rawContent), 0o600); err != nil {
-		return nil, err
-	}
-	return map[string]any{"written": p, "bytes": len(rawContent)}, nil
 }
