@@ -39,11 +39,6 @@ type PluginRunResult struct {
 	Outputs     map[OutputName]json.RawMessage `json:"outputs,omitempty"`
 	CostSummary RunCostSummaryV0               `json:"cost_summary"`
 	Events      []RunEventV0                   `json:"events,omitempty"`
-
-	// Conversion metadata from server-side plugin execution (/plugins/runs).
-	ConversionModel      ModelID     `json:"conversion_model,omitempty"`
-	ConversionResponseID ResponseID  `json:"conversion_response_id,omitempty"`
-	ConversionUsage      Usage       `json:"conversion_usage,omitempty"`
 }
 
 func (r *PluginRunner) Run(ctx context.Context, spec *WorkflowSpecV0, cfg PluginRunConfig) (*PluginRunResult, error) {
@@ -110,7 +105,7 @@ func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfi
 
 		var status RunStatusV0
 		var waiting []RunEventNodeWaitingV0
-	for _, ev := range events {
+		for _, ev := range events {
 			allEvents = append(allEvents, ev)
 			if seq, ok := ev.(interface{ seqNum() int64 }); ok {
 				lastSeq = maxInt64(lastSeq, seq.seqNum())

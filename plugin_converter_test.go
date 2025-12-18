@@ -33,20 +33,20 @@ func TestPluginConverter_ToWorkflow_AssignsToolModes(t *testing.T) {
 			Name: "converted",
 			Nodes: []WorkflowNodeV0{
 				{
-					ID:   "server_tools",
+					ID:   "fs_tools",
 					Type: WorkflowNodeTypeLLMResponses,
 					Input: mustJSON(llmResponsesNodeInputV0{
 						Request: responseRequestPayload{
 							Model: "x",
 							Input: []llm.InputItem{llm.NewSystemText("x"), llm.NewUserText("x")},
 							Tools: []llm.Tool{
-								{Type: llm.ToolTypeFunction, Function: &llm.FunctionTool{Name: "repo.search"}},
+								{Type: llm.ToolTypeFunction, Function: &llm.FunctionTool{Name: "fs.search"}},
 							},
 						},
 					}),
 				},
 				{
-					ID:   "client_tools",
+					ID:   "bash_tools",
 					Type: WorkflowNodeTypeLLMResponses,
 					Input: mustJSON(llmResponsesNodeInputV0{
 						Request: responseRequestPayload{
@@ -59,8 +59,8 @@ func TestPluginConverter_ToWorkflow_AssignsToolModes(t *testing.T) {
 					}),
 				},
 			},
-			Edges:   []WorkflowEdgeV0{{From: "server_tools", To: "client_tools"}},
-			Outputs: []WorkflowOutputRefV0{{Name: "result", From: "client_tools"}},
+			Edges:   []WorkflowEdgeV0{{From: "fs_tools", To: "bash_tools"}},
+			Outputs: []WorkflowOutputRefV0{{Name: "result", From: "bash_tools"}},
 		}
 
 		rawSpec, _ := json.Marshal(spec)
@@ -120,8 +120,8 @@ func TestPluginConverter_ToWorkflow_AssignsToolModes(t *testing.T) {
 	if err := json.Unmarshal(out.Nodes[0].Input, &n0); err != nil {
 		t.Fatalf("unmarshal node input: %v", err)
 	}
-	if n0.ToolExecution == nil || n0.ToolExecution.Mode != ToolExecutionModeServer {
-		t.Fatalf("expected server mode, got: %#v", n0.ToolExecution)
+	if n0.ToolExecution == nil || n0.ToolExecution.Mode != ToolExecutionModeClient {
+		t.Fatalf("expected client mode, got: %#v", n0.ToolExecution)
 	}
 	var n1 llmResponsesNodeInputV0
 	if err := json.Unmarshal(out.Nodes[1].Input, &n1); err != nil {
@@ -132,7 +132,7 @@ func TestPluginConverter_ToWorkflow_AssignsToolModes(t *testing.T) {
 	}
 }
 
-func TestPluginConverter_ToWorkflow_ErrorsOnMixedToolModesInNode(t *testing.T) {
+func TestPluginConverter_ToWorkflow_AllowsMixingFSAndBashTools(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -153,7 +153,7 @@ func TestPluginConverter_ToWorkflow_ErrorsOnMixedToolModesInNode(t *testing.T) {
 							Input: []llm.InputItem{llm.NewSystemText("x"), llm.NewUserText("x")},
 							Tools: []llm.Tool{
 								{Type: llm.ToolTypeFunction, Function: &llm.FunctionTool{Name: "bash"}},
-								{Type: llm.ToolTypeFunction, Function: &llm.FunctionTool{Name: "repo.search"}},
+								{Type: llm.ToolTypeFunction, Function: &llm.FunctionTool{Name: "fs.search"}},
 							},
 						},
 					}),
@@ -193,9 +193,16 @@ func TestPluginConverter_ToWorkflow_ErrorsOnMixedToolModesInNode(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	t.Cleanup(cancel)
 
-	_, err = converter.ToWorkflow(ctx, &plugin, "analyze", "do the thing")
-	if err == nil || !strings.Contains(err.Error(), "mixed server and client tools") {
-		t.Fatalf("expected mixed tool mode error, got: %v", err)
+	out, err := converter.ToWorkflow(ctx, &plugin, "analyze", "do the thing")
+	if err != nil {
+		t.Fatalf("ToWorkflow() error: %v", err)
+	}
+	var n0 llmResponsesNodeInputV0
+	if err := json.Unmarshal(out.Nodes[0].Input, &n0); err != nil {
+		t.Fatalf("unmarshal node input: %v", err)
+	}
+	if n0.ToolExecution == nil || n0.ToolExecution.Mode != ToolExecutionModeClient {
+		t.Fatalf("expected client mode, got: %#v", n0.ToolExecution)
 	}
 }
 

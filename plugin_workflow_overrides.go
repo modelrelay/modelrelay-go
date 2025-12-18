@@ -30,4 +30,3 @@ func applyWorkflowModelOverride(spec *WorkflowSpecV0, model ModelID) error {
 	}
 	return nil
 }
-

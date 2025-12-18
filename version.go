@@ -69,4 +69,5 @@ package sdk
 // 0.69.0: PluginsClient now loads/converts plugins locally via PluginLoader + PluginConverter (#668).
 // 0.70.0: Add Detail field to ProviderError and NodeErrorV0 for raw provider error messages.
 // 0.71.0: Add customer usage endpoint (MeUsage) for spend/usage monitoring (#TBD).
-const Version = "0.71.0"
+// 0.72.0: Plugins use client-side fs.* tools (no repo.* tools) (#695).
+const Version = "0.72.0"

@@ -112,9 +112,7 @@ Rules:
 - Use join.all to aggregate parallel branches and then a final synthesizer node.
 - Bind node outputs using bindings when passing data forward.
 - Tools:
-  - Server tools: repo.read_file, repo.list_files, repo.search (tool_execution.mode="server")
-  - Client tools: bash, write_file, and any other custom tools (tool_execution.mode="client")
-- Do NOT mix server and client tools in the same llm.responses node. If both are required, create separate nodes.
+  - Client tools: fs.read_file, fs.list_files, fs.search, bash, write_file, and any other custom tools (tool_execution.mode="client")
 - Prefer minimal nodes needed to satisfy the task.
 `
 
@@ -222,12 +220,9 @@ func toolNameMode(name string) ToolExecutionModeV0 {
 	switch strings.TrimSpace(name) {
 	case "bash", "write_file":
 		return ToolExecutionModeClient
-	case "repo.read_file", "repo.search", "repo.list_files":
-		return ToolExecutionModeServer
+	case "fs.read_file", "fs.search", "fs.list_files":
+		return ToolExecutionModeClient
 	default:
-		if strings.HasPrefix(name, "repo.") {
-			return ToolExecutionModeServer
-		}
 		return ToolExecutionModeClient
 	}
 }
