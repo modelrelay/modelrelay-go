@@ -142,6 +142,9 @@ const (
 	ErrCodeIdentityRequired           APIErrorCode = "IDENTITY_REQUIRED"
 	ErrCodeAutoProvisionDisabled      APIErrorCode = "AUTO_PROVISION_DISABLED"
 	ErrCodeAutoProvisionMisconfigured APIErrorCode = "AUTO_PROVISION_MISCONFIGURED"
+
+	// Workflow / model capability validation
+	ErrCodeModelCapabilityUnsupported APIErrorCode = "MODEL_CAPABILITY_UNSUPPORTED"
 )
 
 // APIError captures structured SaaS error metadata.
