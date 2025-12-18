@@ -41,6 +41,9 @@ const (
 	// CustomersMe returns the current authenticated customer (customer bearer token only).
 	CustomersMe = "/customers/me"
 
+	// CustomersMeUsage returns the current customer's usage metrics (customer bearer token only).
+	CustomersMeUsage = "/customers/me/usage"
+
 	// CustomersMeSubscription returns the current customer's subscription details (customer bearer token only).
 	CustomersMeSubscription = "/customers/me/subscription"
 

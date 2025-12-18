@@ -302,6 +302,25 @@ type CustomerMeSubscriptionResponse struct {
 	Subscription CustomerMeSubscription `json:"subscription"`
 }
 
+// CustomerMeUsage Customer-visible usage metrics for the current billing window.
+type CustomerMeUsage struct {
+	Daily    []CustomerUsagePoint `json:"daily"`
+	Requests int64                `json:"requests"`
+	Tokens   int64                `json:"tokens"`
+
+	// WindowEnd End of the current billing window
+	WindowEnd time.Time `json:"window_end"`
+
+	// WindowStart Start of the current billing window
+	WindowStart time.Time `json:"window_start"`
+}
+
+// CustomerMeUsageResponse defines model for CustomerMeUsageResponse.
+type CustomerMeUsageResponse struct {
+	// Usage Customer-visible usage metrics for the current billing window.
+	Usage CustomerMeUsage `json:"usage"`
+}
+
 // CustomerTokenResponse defines model for CustomerTokenResponse.
 type CustomerTokenResponse struct {
 	// CustomerExternalId External customer identifier
@@ -324,6 +343,14 @@ type CustomerTokenResponse struct {
 
 	// Token The customer bearer token
 	Token string `json:"token"`
+}
+
+// CustomerUsagePoint defines model for CustomerUsagePoint.
+type CustomerUsagePoint struct {
+	// Day UTC day bucket
+	Day      time.Time `json:"day"`
+	Requests int64     `json:"requests"`
+	Tokens   int64     `json:"tokens"`
 }
 
 // DeviceStartResponse defines model for DeviceStartResponse.

@@ -70,5 +70,6 @@ package sdk
 // 0.70.0: Add Detail field to ProviderError and NodeErrorV0 for raw provider error messages.
 // 0.71.0: Add customer usage endpoint (MeUsage) for spend/usage monitoring (#TBD).
 // 0.72.0: Plugins use client-side fs.* tools (no repo.* tools) (#695).
-// 0.73.0: Breaking - Replace /customers/me/usage with /customers/me/subscription; remove MeUsage; add MeSubscription.
-const Version = "0.73.0"
+// 0.73.0: Add /customers/me/subscription (MeSubscription) for customer-visible subscription pricing.
+// 0.74.0: Add /customers/me/usage (MeUsage) returning non-private usage metrics (requests/tokens + daily history).
+const Version = "0.74.0"
