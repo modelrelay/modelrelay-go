@@ -19,10 +19,14 @@ const (
 	ContentPartTypeText ContentPartType = "text"
 )
 
-// Defines values for CustomerMeUsageState.
+// Defines values for CustomerMeSubscriptionSubscriptionStatus.
 const (
-	Allowed   CustomerMeUsageState = "allowed"
-	Exhausted CustomerMeUsageState = "exhausted"
+	CustomerMeSubscriptionSubscriptionStatusActive     CustomerMeSubscriptionSubscriptionStatus = "active"
+	CustomerMeSubscriptionSubscriptionStatusCanceled   CustomerMeSubscriptionSubscriptionStatus = "canceled"
+	CustomerMeSubscriptionSubscriptionStatusIncomplete CustomerMeSubscriptionSubscriptionStatus = "incomplete"
+	CustomerMeSubscriptionSubscriptionStatusPastDue    CustomerMeSubscriptionSubscriptionStatus = "past_due"
+	CustomerMeSubscriptionSubscriptionStatusTrialing   CustomerMeSubscriptionSubscriptionStatus = "trialing"
+	CustomerMeSubscriptionSubscriptionStatusUnpaid     CustomerMeSubscriptionSubscriptionStatus = "unpaid"
 )
 
 // Defines values for InputItemType.
@@ -97,11 +101,11 @@ const (
 
 // Defines values for RunStatusV0.
 const (
-	RunStatusV0Canceled  RunStatusV0 = "canceled"
-	RunStatusV0Failed    RunStatusV0 = "failed"
-	RunStatusV0Running   RunStatusV0 = "running"
-	RunStatusV0Succeeded RunStatusV0 = "succeeded"
-	RunStatusV0Waiting   RunStatusV0 = "waiting"
+	Canceled  RunStatusV0 = "canceled"
+	Failed    RunStatusV0 = "failed"
+	Running   RunStatusV0 = "running"
+	Succeeded RunStatusV0 = "succeeded"
+	Waiting   RunStatusV0 = "waiting"
 )
 
 // Defines values for ToolType.
@@ -262,37 +266,40 @@ type CustomerMeResponse struct {
 	Customer CustomerMe `json:"customer"`
 }
 
-// CustomerMeUsage Usage summary for the current billing period.
-type CustomerMeUsage struct {
-	// CurrentSpendCents Amount spent in current billing window in cents
-	CurrentSpendCents int64 `json:"current_spend_cents"`
+// CustomerMeSubscription Customer-visible subscription details for the current tier.
+type CustomerMeSubscription struct {
+	// CurrentPeriodEnd End of the current billing period
+	CurrentPeriodEnd *time.Time `json:"current_period_end,omitempty"`
 
-	// PercentageUsed Percentage of spend limit used (0-100, null for unlimited tiers)
-	PercentageUsed *float32 `json:"percentage_used,omitempty"`
+	// CurrentPeriodStart Start of the current billing period
+	CurrentPeriodStart *time.Time `json:"current_period_start,omitempty"`
 
-	// RemainingCents Remaining spend budget in cents (0 for unlimited tiers)
-	RemainingCents int64 `json:"remaining_cents"`
+	// PriceAmountCents Subscription price amount in cents (omitted for free tiers)
+	PriceAmountCents *int64 `json:"price_amount_cents,omitempty"`
 
-	// SpendLimitCents Monthly spend limit from tier in cents (0 = unlimited)
-	SpendLimitCents int64 `json:"spend_limit_cents"`
+	// PriceCurrency Currency code for the price (e.g., 'usd')
+	PriceCurrency *string `json:"price_currency,omitempty"`
 
-	// State Whether the customer can make more requests
-	State CustomerMeUsageState `json:"state"`
+	// PriceInterval Billing interval for a tier.
+	PriceInterval *PriceInterval `json:"price_interval,omitempty"`
 
-	// WindowEnd End of the current billing window
-	WindowEnd time.Time `json:"window_end"`
+	// SubscriptionStatus Subscription status (omitted when unknown)
+	SubscriptionStatus *CustomerMeSubscriptionSubscriptionStatus `json:"subscription_status,omitempty"`
 
-	// WindowStart Start of the current billing window
-	WindowStart time.Time `json:"window_start"`
+	// TierCode Tier code identifier (e.g., free, pro, enterprise).
+	TierCode TierCode `json:"tier_code"`
+
+	// TierDisplayName Human-readable tier name
+	TierDisplayName string `json:"tier_display_name"`
 }
 
-// CustomerMeUsageState Whether the customer can make more requests
-type CustomerMeUsageState string
+// CustomerMeSubscriptionSubscriptionStatus Subscription status (omitted when unknown)
+type CustomerMeSubscriptionSubscriptionStatus string
 
-// CustomerMeUsageResponse defines model for CustomerMeUsageResponse.
-type CustomerMeUsageResponse struct {
-	// Usage Usage summary for the current billing period.
-	Usage CustomerMeUsage `json:"usage"`
+// CustomerMeSubscriptionResponse defines model for CustomerMeSubscriptionResponse.
+type CustomerMeSubscriptionResponse struct {
+	// Subscription Customer-visible subscription details for the current tier.
+	Subscription CustomerMeSubscription `json:"subscription"`
 }
 
 // CustomerTokenResponse defines model for CustomerTokenResponse.
