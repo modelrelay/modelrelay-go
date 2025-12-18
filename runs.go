@@ -225,7 +225,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			if env.Error != nil || env.LLMCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "node_tool_call must not include error/llm_call/delta/output_info/artifact_key"}
 			}
-			if env.ToolCall == nil || strings.TrimSpace(env.ToolCall.RequestID) == "" || strings.TrimSpace(env.ToolCall.ToolCall.ID) == "" {
+			if env.ToolCall == nil || strings.TrimSpace(env.ToolCall.RequestID) == "" || env.ToolCall.ToolCall.ID == "" {
 				return nil, ProtocolError{Message: "node_tool_call must include tool_call"}
 			}
 			return RunEventNodeToolCallV0{RunEventV0Base: base, NodeID: env.NodeID, ToolCall: *env.ToolCall}, nil
@@ -233,7 +233,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.Waiting != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "node_tool_result must not include error/llm_call/delta/output_info/artifact_key"}
 			}
-			if env.ToolResult == nil || strings.TrimSpace(env.ToolResult.RequestID) == "" || strings.TrimSpace(env.ToolResult.ToolCallID) == "" {
+			if env.ToolResult == nil || strings.TrimSpace(env.ToolResult.RequestID) == "" || env.ToolResult.ToolCallID == "" {
 				return nil, ProtocolError{Message: "node_tool_result must include tool_result"}
 			}
 			return RunEventNodeToolResultV0{RunEventV0Base: base, NodeID: env.NodeID, ToolResult: *env.ToolResult}, nil
@@ -380,9 +380,9 @@ type RunsToolResultsRequest struct {
 }
 
 type RunsToolResultItemV0 struct {
-	ToolCallID string `json:"tool_call_id"`
-	Name       string `json:"name"`
-	Output     string `json:"output"`
+	ToolCallID ToolCallID `json:"tool_call_id"`
+	Name       ToolName   `json:"name"`
+	Output     string     `json:"output"`
 }
 
 type RunsToolResultsResponse struct {
@@ -403,9 +403,9 @@ type RunsPendingToolsNodeV0 struct {
 }
 
 type RunsPendingToolCallV0 struct {
-	ToolCallID string `json:"tool_call_id"`
-	Name       string `json:"name"`
-	Arguments  string `json:"arguments"`
+	ToolCallID ToolCallID `json:"tool_call_id"`
+	Name       ToolName   `json:"name"`
+	Arguments  string     `json:"arguments"`
 }
 
 type RunsEventStream struct {

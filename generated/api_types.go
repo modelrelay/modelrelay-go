@@ -405,11 +405,13 @@ type DeviceTokenError struct {
 
 // InputItem defines model for InputItem.
 type InputItem struct {
-	Content    *[]ContentPart `json:"content,omitempty"`
-	Role       *MessageRole   `json:"role,omitempty"`
-	ToolCallId *string        `json:"tool_call_id,omitempty"`
-	ToolCalls  *[]ToolCall    `json:"tool_calls,omitempty"`
-	Type       InputItemType  `json:"type"`
+	Content *[]ContentPart `json:"content,omitempty"`
+	Role    *MessageRole   `json:"role,omitempty"`
+
+	// ToolCallId Unique identifier for a tool call. Treated as an opaque string and must be preserved exactly.
+	ToolCallId *ToolCallId   `json:"tool_call_id,omitempty"`
+	ToolCalls  *[]ToolCall   `json:"tool_calls,omitempty"`
+	Type       InputItemType `json:"type"`
 }
 
 // InputItemType defines model for InputItem.Type.
@@ -809,9 +811,11 @@ type TierUpdate struct {
 type Tool struct {
 	CodeExecution *map[string]interface{} `json:"code_execution,omitempty"`
 	Function      *struct {
-		Description *string                 `json:"description,omitempty"`
-		Name        *string                 `json:"name,omitempty"`
-		Parameters  *map[string]interface{} `json:"parameters,omitempty"`
+		Description *string `json:"description,omitempty"`
+
+		// Name Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
+		Name       *ToolName               `json:"name,omitempty"`
+		Parameters *map[string]interface{} `json:"parameters,omitempty"`
 	} `json:"function,omitempty"`
 	Type    ToolType                `json:"type"`
 	Web     *map[string]interface{} `json:"web,omitempty"`
@@ -826,23 +830,34 @@ type ToolCall struct {
 	Function *struct {
 		// Arguments JSON string of function arguments
 		Arguments *string `json:"arguments,omitempty"`
-		Name      *string `json:"name,omitempty"`
+
+		// Name Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
+		Name *ToolName `json:"name,omitempty"`
 	} `json:"function,omitempty"`
-	Id   string       `json:"id"`
+
+	// Id Unique identifier for a tool call. Treated as an opaque string and must be preserved exactly.
+	Id   ToolCallId   `json:"id"`
 	Type ToolCallType `json:"type"`
 }
 
 // ToolCallType defines model for ToolCall.Type.
 type ToolCallType string
 
+// ToolCallId Unique identifier for a tool call. Treated as an opaque string and must be preserved exactly.
+type ToolCallId = string
+
 // ToolChoice defines model for ToolChoice.
 type ToolChoice struct {
-	Function *string        `json:"function,omitempty"`
+	// Function Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
+	Function *ToolName      `json:"function,omitempty"`
 	Type     ToolChoiceType `json:"type"`
 }
 
 // ToolChoiceType defines model for ToolChoice.Type.
 type ToolChoiceType string
+
+// ToolName Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
+type ToolName = string
 
 // Usage Token usage statistics. All fields default to 0 if not present.
 type Usage struct {

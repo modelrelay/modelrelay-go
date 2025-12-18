@@ -309,6 +309,10 @@ Plugin manifests can be `PLUGIN.md` or `SKILL.md`, and plugin URLs can be GitHub
 
 Client tool names + argument schemas are standardized by the tools.v0 contract: `docs/reference/tools-v0.md` (design notes: `docs/architecture/client-tools.md`).
 
+The Go SDK uses strong types for tool plumbing:
+- `sdk.ToolName` for function tool names
+- `sdk.ToolCallID` for correlating tool calls/results
+
 ```go
 ctx := context.Background()
 key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))

@@ -16,16 +16,6 @@ type PluginConverter struct {
 	converterModel ModelID
 }
 
-type ToolsV0ToolName string
-
-const (
-	ToolsV0FSReadFile  ToolsV0ToolName = "fs.read_file"
-	ToolsV0FSListFiles ToolsV0ToolName = "fs.list_files"
-	ToolsV0FSSearch    ToolsV0ToolName = "fs.search"
-	ToolsV0Bash        ToolsV0ToolName = "bash"
-	ToolsV0WriteFile   ToolsV0ToolName = "write_file"
-)
-
 type PluginConverterOption func(*PluginConverter)
 
 // WithPluginConverterModel overrides the default model used for plugin → workflow conversion.
@@ -219,7 +209,7 @@ func desiredToolExecutionMode(tools []llm.Tool) (ToolExecutionModeV0, error) {
 		if tool.Type != llm.ToolTypeFunction || tool.Function == nil {
 			return ToolExecutionModeClient, nil
 		}
-		name := strings.TrimSpace(tool.Function.Name)
+		name := tool.Function.Name
 		if name == "" {
 			continue
 		}
@@ -235,30 +225,28 @@ func desiredToolExecutionMode(tools []llm.Tool) (ToolExecutionModeV0, error) {
 	return wanted, nil
 }
 
-func toolNameMode(name string) ToolExecutionModeV0 {
-	switch strings.TrimSpace(name) {
-	case ToolsV0Bash.String(), ToolsV0WriteFile.String():
+func toolNameMode(name ToolName) ToolExecutionModeV0 {
+	switch name {
+	case ToolNameBash, ToolNameWriteFile:
 		return ToolExecutionModeClient
-	case ToolsV0FSReadFile.String(), ToolsV0FSSearch.String(), ToolsV0FSListFiles.String():
+	case ToolNameFSReadFile, ToolNameFSSearch, ToolNameFSListFiles:
 		return ToolExecutionModeClient
 	default:
 		return ToolExecutionModeClient
 	}
 }
 
-func (n ToolsV0ToolName) String() string { return string(n) }
-
 func validatePluginWorkflowTargetsToolsV0(spec *WorkflowSpecV0) error {
 	if spec == nil {
 		return errors.New("workflow spec required")
 	}
 
-	allowed := map[ToolsV0ToolName]struct{}{
-		ToolsV0FSReadFile:  {},
-		ToolsV0FSListFiles: {},
-		ToolsV0FSSearch:    {},
-		ToolsV0Bash:        {},
-		ToolsV0WriteFile:   {},
+	allowed := map[ToolName]struct{}{
+		ToolNameFSReadFile:  {},
+		ToolNameFSListFiles: {},
+		ToolNameFSSearch:    {},
+		ToolNameBash:        {},
+		ToolNameWriteFile:   {},
 	}
 
 	for i := range spec.Nodes {
@@ -279,12 +267,12 @@ func validatePluginWorkflowTargetsToolsV0(spec *WorkflowSpecV0) error {
 			if tool.Type != llm.ToolTypeFunction || tool.Function == nil {
 				return ProtocolError{Message: fmt.Sprintf("node %q: plugin conversion only supports tools.v0 function tools (got type=%q)", spec.Nodes[i].ID, tool.Type)}
 			}
-			name := strings.TrimSpace(tool.Function.Name)
+			name := tool.Function.Name
 			if name == "" {
 				return ProtocolError{Message: fmt.Sprintf("node %q: tool name required", spec.Nodes[i].ID)}
 			}
-			if _, ok := allowed[ToolsV0ToolName(name)]; !ok {
-				return ProtocolError{Message: fmt.Sprintf("node %q: unsupported tool %q (plugin conversion targets tools.v0)", spec.Nodes[i].ID, name)}
+			if _, ok := allowed[name]; !ok {
+				return ProtocolError{Message: fmt.Sprintf("node %q: unsupported tool %q (plugin conversion targets tools.v0)", spec.Nodes[i].ID, name.String())}
 			}
 		}
 	}

@@ -81,7 +81,7 @@ func (b ResponseBuilder) Tool(tool llm.Tool) ResponseBuilder {
 	return b
 }
 
-func (b ResponseBuilder) FunctionTool(name, description string, parameters json.RawMessage) ResponseBuilder {
+func (b ResponseBuilder) FunctionTool(name ToolName, description string, parameters json.RawMessage) ResponseBuilder {
 	return b.Tool(llm.Tool{
 		Type: llm.ToolTypeFunction,
 		Function: &llm.FunctionTool{
@@ -138,11 +138,11 @@ func (b ResponseBuilder) Assistant(content string) ResponseBuilder {
 	return b.Message(llm.RoleAssistant, content)
 }
 
-func (b ResponseBuilder) ToolResultText(toolCallID string, content string) ResponseBuilder {
+func (b ResponseBuilder) ToolResultText(toolCallID ToolCallID, content string) ResponseBuilder {
 	return b.Item(llm.InputItem{
 		Type:       llm.InputItemTypeMessage,
 		Role:       llm.RoleTool,
-		ToolCallID: strings.TrimSpace(toolCallID),
+		ToolCallID: toolCallID,
 		Content:    []llm.ContentPart{llm.TextPart(content)},
 	})
 }

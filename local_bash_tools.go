@@ -249,7 +249,7 @@ func (p *LocalBashToolPack) RegisterInto(registry *ToolRegistry) *ToolRegistry {
 	if registry == nil {
 		return nil
 	}
-	registry.Register("bash", p.bashTool)
+	registry.Register(ToolNameBash, p.bashTool)
 	return registry
 }
 

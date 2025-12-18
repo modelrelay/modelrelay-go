@@ -162,7 +162,7 @@ func (p *LocalWriteFileToolPack) RegisterInto(registry *ToolRegistry) *ToolRegis
 	if registry == nil {
 		return nil
 	}
-	registry.Register("write_file", p.writeFileTool)
+	registry.Register(ToolNameWriteFile, p.writeFileTool)
 	return registry
 }
 
@@ -276,7 +276,7 @@ func (p *LocalWriteFileToolPack) writeFileTool(_ map[string]any, call llm.ToolCa
 	return map[string]any{"written": relPath, "bytes": contentBytes}, nil
 }
 
-func toolNameFromToolCall(call llm.ToolCall) string {
+func toolNameFromToolCall(call llm.ToolCall) ToolName {
 	if call.Function == nil {
 		return ""
 	}

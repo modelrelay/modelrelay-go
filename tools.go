@@ -32,7 +32,7 @@ func NewSystemMessage(content string) llm.InputItem {
 // ============================================================================
 
 // NewToolCall creates a tool call with the given ID, function name, and arguments.
-func NewToolCall(id, name, args string) llm.ToolCall {
+func NewToolCall(id ToolCallID, name ToolName, args string) llm.ToolCall {
 	return llm.ToolCall{
 		ID:       id,
 		Type:     llm.ToolTypeFunction,
@@ -41,7 +41,7 @@ func NewToolCall(id, name, args string) llm.ToolCall {
 }
 
 // NewFunctionCall creates a function call with the given name and arguments.
-func NewFunctionCall(name, args string) *llm.FunctionCall {
+func NewFunctionCall(name ToolName, args string) *llm.FunctionCall {
 	return &llm.FunctionCall{Name: name, Arguments: args}
 }
 
@@ -381,7 +381,7 @@ func parseInt(s string) (int, bool) {
 //	}
 //
 //	tool, err := FunctionToolFromType[GetWeatherParams]("get_weather", "Get weather for a location")
-func FunctionToolFromType[T any](name, description string) (llm.Tool, error) {
+func FunctionToolFromType[T any](name ToolName, description string) (llm.Tool, error) {
 	var zero T
 	schema := TypeToJSONSchema(zero, nil)
 
@@ -402,7 +402,7 @@ func FunctionToolFromType[T any](name, description string) (llm.Tool, error) {
 
 // MustFunctionToolFromType creates a function tool from a Go struct type, panicking on error.
 // Useful for static tool definitions.
-func MustFunctionToolFromType[T any](name, description string) llm.Tool {
+func MustFunctionToolFromType[T any](name ToolName, description string) llm.Tool {
 	tool, err := FunctionToolFromType[T](name, description)
 	if err != nil {
 		panic(err)
@@ -412,7 +412,7 @@ func MustFunctionToolFromType[T any](name, description string) llm.Tool {
 
 // NewFunctionTool creates a function tool with the given name, description, and JSON schema.
 // The schema parameter should be a JSON-encodable value (map, struct, or json.RawMessage).
-func NewFunctionTool(name, description string, schema any) (llm.Tool, error) {
+func NewFunctionTool(name ToolName, description string, schema any) (llm.Tool, error) {
 	var params json.RawMessage
 	if schema != nil {
 		switch v := schema.(type) {
@@ -442,7 +442,7 @@ func NewFunctionTool(name, description string, schema any) (llm.Tool, error) {
 
 // MustFunctionTool creates a function tool, panicking on error.
 // Useful for static tool definitions.
-func MustFunctionTool(name, description string, schema any) llm.Tool {
+func MustFunctionTool(name ToolName, description string, schema any) llm.Tool {
 	tool, err := NewFunctionTool(name, description, schema)
 	if err != nil {
 		panic(err)
@@ -581,7 +581,7 @@ func (r *Response) AssistantText() string {
 
 // ToolResultMessage creates a message containing the result of a tool call.
 // The result parameter should be a JSON-encodable value or a string.
-func ToolResultMessage(toolCallID string, result any) (llm.InputItem, error) {
+func ToolResultMessage(toolCallID ToolCallID, result any) (llm.InputItem, error) {
 	var content string
 	switch v := result.(type) {
 	case string:
@@ -601,7 +601,7 @@ func ToolResultMessage(toolCallID string, result any) (llm.InputItem, error) {
 }
 
 // MustToolResultMessage creates a tool result message, panicking on error.
-func MustToolResultMessage(toolCallID string, result any) llm.InputItem {
+func MustToolResultMessage(toolCallID ToolCallID, result any) llm.InputItem {
 	msg, err := ToolResultMessage(toolCallID, result)
 	if err != nil {
 		panic(err)
@@ -715,11 +715,11 @@ func (a *ToolCallAccumulator) Reset() {
 // ToolArgsError is returned when tool argument parsing or validation fails.
 // Contains a descriptive message suitable for sending back to the model.
 type ToolArgsError struct {
-	Message      string // Human-readable error message
-	ToolCallID   string // The tool call ID for correlation
-	ToolName     string // The tool name that was called
-	RawArguments string // The raw arguments string that failed to parse
-	Cause        error  // The underlying error (JSON parse error, validation error, etc.)
+	Message      string     // Human-readable error message
+	ToolCallID   ToolCallID // The tool call ID for correlation
+	ToolName     ToolName   // The tool name that was called
+	RawArguments string     // The raw arguments string that failed to parse
+	Cause        error      // The underlying error (JSON parse error, validation error, etc.)
 }
 
 func (e *ToolArgsError) Error() string {
@@ -746,7 +746,7 @@ func (e *ToolArgsError) Unwrap() error {
 //	}
 //	fmt.Println(args.Location) // Use typed args
 func ParseToolArgs(call llm.ToolCall, target any) error {
-	toolName := ""
+	var toolName ToolName
 	rawArgs := ""
 	if call.Function != nil {
 		toolName = call.Function.Name
@@ -760,7 +760,7 @@ func ParseToolArgs(call llm.ToolCall, target any) error {
 
 	if err := json.Unmarshal([]byte(rawArgs), target); err != nil {
 		return &ToolArgsError{
-			Message:      "failed to parse arguments for tool '" + toolName + "': " + err.Error(),
+			Message:      "failed to parse arguments for tool '" + toolName.String() + "': " + err.Error(),
 			ToolCallID:   call.ID,
 			ToolName:     toolName,
 			RawArguments: rawArgs,
@@ -841,14 +841,14 @@ func ParseAndValidateToolArgs(call llm.ToolCall, target any) error {
 	// We need to handle both pointer and value receivers
 	if v, ok := target.(Validator); ok {
 		if err := v.Validate(); err != nil {
-			toolName := ""
+			var toolName ToolName
 			rawArgs := ""
 			if call.Function != nil {
 				toolName = call.Function.Name
 				rawArgs = call.Function.Arguments
 			}
 			return &ToolArgsError{
-				Message:      "invalid arguments for tool '" + toolName + "': " + err.Error(),
+				Message:      "invalid arguments for tool '" + toolName.String() + "': " + err.Error(),
 				ToolCallID:   call.ID,
 				ToolName:     toolName,
 				RawArguments: rawArgs,
@@ -871,8 +871,8 @@ type ToolHandler func(args map[string]any, call llm.ToolCall) (any, error)
 
 // ToolExecutionResult contains the result of executing a tool call.
 type ToolExecutionResult struct {
-	ToolCallID string
-	ToolName   string
+	ToolCallID ToolCallID
+	ToolName   ToolName
 	Result     any
 	Error      error
 	// IsRetryable is true if the error is due to malformed arguments (JSON parse or validation failure)
@@ -897,26 +897,26 @@ type ToolExecutionResult struct {
 //	results := registry.ExecuteAll(response.ToolCalls)
 //	messages := registry.ResultsToMessages(results)
 type ToolRegistry struct {
-	handlers map[string]ToolHandler
+	handlers map[ToolName]ToolHandler
 }
 
 // NewToolRegistry creates a new tool registry.
 func NewToolRegistry() *ToolRegistry {
 	return &ToolRegistry{
-		handlers: make(map[string]ToolHandler),
+		handlers: make(map[ToolName]ToolHandler),
 	}
 }
 
 // Register adds a handler for the given tool name.
 // Returns the registry for method chaining.
-func (r *ToolRegistry) Register(name string, handler ToolHandler) *ToolRegistry {
+func (r *ToolRegistry) Register(name ToolName, handler ToolHandler) *ToolRegistry {
 	r.handlers[name] = handler
 	return r
 }
 
 // Unregister removes the handler for the given tool name.
 // Returns true if a handler was removed.
-func (r *ToolRegistry) Unregister(name string) bool {
+func (r *ToolRegistry) Unregister(name ToolName) bool {
 	if _, ok := r.handlers[name]; ok {
 		delete(r.handlers, name)
 		return true
@@ -925,14 +925,14 @@ func (r *ToolRegistry) Unregister(name string) bool {
 }
 
 // Has returns true if a handler is registered for the given tool name.
-func (r *ToolRegistry) Has(name string) bool {
+func (r *ToolRegistry) Has(name ToolName) bool {
 	_, ok := r.handlers[name]
 	return ok
 }
 
 // RegisteredTools returns a list of registered tool names.
-func (r *ToolRegistry) RegisteredTools() []string {
-	names := make([]string, 0, len(r.handlers))
+func (r *ToolRegistry) RegisteredTools() []ToolName {
+	names := make([]ToolName, 0, len(r.handlers))
 	for name := range r.handlers {
 		names = append(names, name)
 	}
@@ -941,7 +941,7 @@ func (r *ToolRegistry) RegisteredTools() []string {
 
 // Execute runs the handler for a single tool call.
 func (r *ToolRegistry) Execute(call llm.ToolCall) ToolExecutionResult {
-	toolName := ""
+	var toolName ToolName
 	if call.Function != nil {
 		toolName = call.Function.Name
 	}
@@ -1029,24 +1029,24 @@ func (r *ToolRegistry) ResultsToMessages(results []ToolExecutionResult) []llm.In
 
 // UnknownToolError is returned when a tool call references an unregistered tool.
 type UnknownToolError struct {
-	ToolName  string
-	Available []string
+	ToolName  ToolName
+	Available []ToolName
 }
 
 func (e *UnknownToolError) Error() string {
 	if len(e.Available) == 0 {
-		return "unknown tool: '" + e.ToolName + "'. No tools registered."
+		return "unknown tool: '" + e.ToolName.String() + "'. No tools registered."
 	}
-	return "unknown tool: '" + e.ToolName + "'. Available: " + joinStrings(e.Available, ", ")
+	return "unknown tool: '" + e.ToolName.String() + "'. Available: " + joinToolNames(e.Available, ", ")
 }
 
-func joinStrings(s []string, sep string) string {
+func joinToolNames(s []ToolName, sep string) string {
 	if len(s) == 0 {
 		return ""
 	}
-	result := s[0]
+	result := s[0].String()
 	for i := 1; i < len(s); i++ {
-		result += sep + s[i]
+		result += sep + s[i].String()
 	}
 	return result
 }
@@ -1059,7 +1059,7 @@ func joinStrings(s []string, sep string) string {
 // for sending back to the model. The message is designed to help the model
 // understand what went wrong and correct it.
 func FormatToolErrorForModel(result ToolExecutionResult) string {
-	msg := "Tool call error for '" + result.ToolName + "': " + result.Error.Error()
+	msg := "Tool call error for '" + result.ToolName.String() + "': " + result.Error.Error()
 	if result.IsRetryable {
 		msg += "\n\nPlease correct the arguments and try again."
 	}
@@ -1154,7 +1154,7 @@ func ExecuteWithRetry(registry *ToolRegistry, toolCalls []llm.ToolCall, opts Ret
 	attempt := 0
 
 	// Track successful results across retries, keyed by ToolCallID
-	successfulResults := make(map[string]ToolExecutionResult)
+	successfulResults := make(map[ToolCallID]ToolExecutionResult)
 
 	for attempt <= maxRetries {
 		results := registry.ExecuteAll(currentCalls)
@@ -1213,7 +1213,7 @@ func ExecuteWithRetry(registry *ToolRegistry, toolCalls []llm.ToolCall, opts Ret
 }
 
 // mapToSlice converts a map of results to a slice.
-func mapToSlice(m map[string]ToolExecutionResult) []ToolExecutionResult {
+func mapToSlice(m map[ToolCallID]ToolExecutionResult) []ToolExecutionResult {
 	results := make([]ToolExecutionResult, 0, len(m))
 	for _, v := range m {
 		results = append(results, v)

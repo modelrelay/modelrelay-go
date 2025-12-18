@@ -31,7 +31,7 @@ func TestLocalFSTools_ReadFile_SandboxAndCaps(t *testing.T) {
 	reg := NewLocalFSTools(root)
 
 	t.Run("reads file within root", func(t *testing.T) {
-		res := reg.Execute(toolCallJSON("fs.read_file", map[string]any{"path": "a.txt"}))
+		res := reg.Execute(toolCallJSON(ToolNameFSReadFile, map[string]any{"path": "a.txt"}))
 		if res.Error != nil {
 			t.Fatalf("unexpected error: %v", res.Error)
 		}
@@ -41,7 +41,7 @@ func TestLocalFSTools_ReadFile_SandboxAndCaps(t *testing.T) {
 	})
 
 	t.Run("rejects traversal", func(t *testing.T) {
-		res := reg.Execute(toolCallJSON("fs.read_file", map[string]any{"path": "../secret.txt"}))
+		res := reg.Execute(toolCallJSON(ToolNameFSReadFile, map[string]any{"path": "../secret.txt"}))
 		if res.Error == nil {
 			t.Fatalf("expected error")
 		}
@@ -51,7 +51,7 @@ func TestLocalFSTools_ReadFile_SandboxAndCaps(t *testing.T) {
 	})
 
 	t.Run("rejects symlink escape", func(t *testing.T) {
-		res := reg.Execute(toolCallJSON("fs.read_file", map[string]any{"path": "link.txt"}))
+		res := reg.Execute(toolCallJSON(ToolNameFSReadFile, map[string]any{"path": "link.txt"}))
 		if res.Error == nil {
 			t.Fatalf("expected error")
 		}
@@ -61,7 +61,7 @@ func TestLocalFSTools_ReadFile_SandboxAndCaps(t *testing.T) {
 	})
 
 	t.Run("enforces max_bytes", func(t *testing.T) {
-		res := reg.Execute(toolCallJSON("fs.read_file", map[string]any{"path": "a.txt", "max_bytes": 2}))
+		res := reg.Execute(toolCallJSON(ToolNameFSReadFile, map[string]any{"path": "a.txt", "max_bytes": 2}))
 		if res.Error == nil {
 			t.Fatalf("expected error")
 		}
@@ -71,7 +71,7 @@ func TestLocalFSTools_ReadFile_SandboxAndCaps(t *testing.T) {
 	})
 
 	t.Run("rejects max_bytes over hard cap", func(t *testing.T) {
-		res := reg.Execute(toolCallJSON("fs.read_file", map[string]any{"path": "a.txt", "max_bytes": localFSHardMaxReadBytes + 1}))
+		res := reg.Execute(toolCallJSON(ToolNameFSReadFile, map[string]any{"path": "a.txt", "max_bytes": localFSHardMaxReadBytes + 1}))
 		if res.Error == nil {
 			t.Fatalf("expected error")
 		}
@@ -91,7 +91,7 @@ func TestLocalFSTools_ListFiles_IgnoreAndCap(t *testing.T) {
 	reg := NewLocalFSTools(root)
 
 	t.Run("skips ignored dirs", func(t *testing.T) {
-		res := reg.Execute(toolCallJSON("fs.list_files", map[string]any{"path": ".", "max_entries": 100}))
+		res := reg.Execute(toolCallJSON(ToolNameFSListFiles, map[string]any{"path": ".", "max_entries": 100}))
 		if res.Error != nil {
 			t.Fatalf("unexpected error: %v", res.Error)
 		}
@@ -105,7 +105,7 @@ func TestLocalFSTools_ListFiles_IgnoreAndCap(t *testing.T) {
 	})
 
 	t.Run("enforces max_entries", func(t *testing.T) {
-		res := reg.Execute(toolCallJSON("fs.list_files", map[string]any{"path": ".", "max_entries": 1}))
+		res := reg.Execute(toolCallJSON(ToolNameFSListFiles, map[string]any{"path": ".", "max_entries": 1}))
 		if res.Error != nil {
 			t.Fatalf("unexpected error: %v", res.Error)
 		}
@@ -123,7 +123,7 @@ func TestLocalFSTools_Search_MaxMatchesAndArgsValidation(t *testing.T) {
 	reg := NewLocalFSTools(root, WithLocalFSSearchTimeout(2*time.Second))
 
 	t.Run("enforces max_matches", func(t *testing.T) {
-		res := reg.Execute(toolCallJSON("fs.search", map[string]any{"query": "foo", "path": ".", "max_matches": 2}))
+		res := reg.Execute(toolCallJSON(ToolNameFSSearch, map[string]any{"query": "foo", "path": ".", "max_matches": 2}))
 		if res.Error != nil {
 			t.Fatalf("unexpected error: %v", res.Error)
 		}
@@ -134,7 +134,7 @@ func TestLocalFSTools_Search_MaxMatchesAndArgsValidation(t *testing.T) {
 	})
 
 	t.Run("invalid regex is ToolArgsError", func(t *testing.T) {
-		res := reg.Execute(toolCallJSON("fs.search", map[string]any{"query": "(", "path": "."}))
+		res := reg.Execute(toolCallJSON(ToolNameFSSearch, map[string]any{"query": "(", "path": "."}))
 		if res.Error == nil {
 			t.Fatalf("expected error")
 		}
@@ -144,10 +144,10 @@ func TestLocalFSTools_Search_MaxMatchesAndArgsValidation(t *testing.T) {
 	})
 }
 
-func toolCallJSON(toolName string, args map[string]any) llm.ToolCall {
+func toolCallJSON(toolName ToolName, args map[string]any) llm.ToolCall {
 	b, _ := json.Marshal(args)
 	return llm.ToolCall{
-		ID:   "tc_1",
+		ID:   ToolCallID("tc_1"),
 		Type: llm.ToolTypeFunction,
 		Function: &llm.FunctionCall{
 			Name:      toolName,

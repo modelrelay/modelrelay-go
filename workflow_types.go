@@ -245,9 +245,9 @@ type NodeLLMCallV0 struct {
 }
 
 type FunctionToolCallV0 struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Arguments string `json:"arguments"`
+	ID        ToolCallID `json:"id"`
+	Name      ToolName   `json:"name"`
+	Arguments string     `json:"arguments"`
 }
 
 type NodeToolCallV0 struct {
@@ -257,17 +257,17 @@ type NodeToolCallV0 struct {
 }
 
 type NodeToolResultV0 struct {
-	Step       int64  `json:"step"`
-	RequestID  string `json:"request_id"`
-	ToolCallID string `json:"tool_call_id"`
-	Name       string `json:"name"`
-	Output     string `json:"output"`
+	Step       int64      `json:"step"`
+	RequestID  string     `json:"request_id"`
+	ToolCallID ToolCallID `json:"tool_call_id"`
+	Name       ToolName   `json:"name"`
+	Output     string     `json:"output"`
 }
 
 type PendingToolCallV0 struct {
-	ToolCallID string `json:"tool_call_id"`
-	Name       string `json:"name"`
-	Arguments  string `json:"arguments"`
+	ToolCallID ToolCallID `json:"tool_call_id"`
+	Name       ToolName   `json:"name"`
+	Arguments  string     `json:"arguments"`
 }
 
 type NodeWaitingV0 struct {

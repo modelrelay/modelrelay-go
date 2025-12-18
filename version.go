@@ -79,4 +79,5 @@ package sdk
 // 0.79.0: Plugin converter targets tools.v0 (fs.* tools, client execution) (#704).
 // 0.79.1: Docs: tools.v0 tool pack wiring for plugins (#708).
 // 0.79.2: Add MODEL_CAPABILITY_UNSUPPORTED API error code constant (#710).
-const Version = "0.79.2"
+// 0.80.0: Breaking - tighten tool typing (ToolName, ToolCallID, ToolExecutionResult) (#711).
+const Version = "0.80.0"

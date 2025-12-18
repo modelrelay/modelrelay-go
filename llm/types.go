@@ -79,7 +79,7 @@ type InputItem struct {
 	Role       MessageRole   `json:"role,omitempty"`
 	Content    []ContentPart `json:"content,omitempty"`
 	ToolCalls  []ToolCall    `json:"tool_calls,omitempty"`
-	ToolCallID string        `json:"tool_call_id,omitempty"`
+	ToolCallID ToolCallID    `json:"tool_call_id,omitempty"`
 }
 
 type OutputItemType string
@@ -196,7 +196,7 @@ type Tool struct {
 
 // FunctionTool defines a custom function the model can call.
 type FunctionTool struct {
-	Name        string          `json:"name"`
+	Name        ToolName        `json:"name"`
 	Description string          `json:"description,omitempty"`
 	Parameters  json.RawMessage `json:"parameters,omitempty"`
 }
@@ -234,20 +234,20 @@ const (
 // ToolChoice specifies tool selection behavior.
 type ToolChoice struct {
 	Type     ToolChoiceType `json:"type"`
-	Function *string        `json:"function,omitempty"` // Force specific function
+	Function *ToolName      `json:"function,omitempty"` // Force specific function
 }
 
 // ToolCall represents a tool invocation requested by the model.
 type ToolCall struct {
-	ID       string        `json:"id"`
+	ID       ToolCallID    `json:"id"`
 	Type     ToolType      `json:"type"`
 	Function *FunctionCall `json:"function,omitempty"`
 }
 
 // FunctionCall contains function invocation details.
 type FunctionCall struct {
-	Name      string `json:"name"`
-	Arguments string `json:"arguments"` // JSON string
+	Name      ToolName `json:"name"`
+	Arguments string   `json:"arguments"` // JSON string
 }
 
 // ============================================================================
@@ -266,12 +266,12 @@ func NewSystemText(text string) InputItem {
 	return InputItem{Type: InputItemTypeMessage, Role: RoleSystem, Content: []ContentPart{TextPart(text)}}
 }
 
-func NewToolResultText(toolCallID, text string) InputItem {
+func NewToolResultText(toolCallID ToolCallID, text string) InputItem {
 	return InputItem{Type: InputItemTypeMessage, Role: RoleTool, ToolCallID: toolCallID, Content: []ContentPart{TextPart(text)}}
 }
 
 // NewToolCall creates a function tool call.
-func NewToolCall(id, name, args string) ToolCall {
+func NewToolCall(id ToolCallID, name ToolName, args string) ToolCall {
 	return ToolCall{
 		ID:       id,
 		Type:     ToolTypeFunction,
@@ -280,7 +280,7 @@ func NewToolCall(id, name, args string) ToolCall {
 }
 
 // NewFunctionCall creates a function call.
-func NewFunctionCall(name, args string) *FunctionCall {
+func NewFunctionCall(name ToolName, args string) *FunctionCall {
 	return &FunctionCall{Name: name, Arguments: args}
 }
 
@@ -339,15 +339,15 @@ type StreamEvent struct {
 // ToolCallDelta represents an incremental update to a tool call during streaming.
 type ToolCallDelta struct {
 	Index    int                `json:"index"`
-	ID       string             `json:"id,omitempty"`
+	ID       ToolCallID         `json:"id,omitempty"`
 	Type     string             `json:"type,omitempty"`
 	Function *FunctionCallDelta `json:"function,omitempty"`
 }
 
 // FunctionCallDelta contains incremental function call data.
 type FunctionCallDelta struct {
-	Name      string `json:"name,omitempty"`
-	Arguments string `json:"arguments,omitempty"` // Partial JSON string
+	Name      ToolName `json:"name,omitempty"`
+	Arguments string   `json:"arguments,omitempty"` // Partial JSON string
 }
 
 // EventName returns the SSE event name that should be emitted for this event.

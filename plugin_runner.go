@@ -89,7 +89,7 @@ func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfi
 
 	var allEvents []RunEventV0
 	var lastSeq int64
-	handledToolCallIDs := make(map[string]struct{})
+	handledToolCallIDs := make(map[ToolCallID]struct{})
 
 	for {
 		select {
@@ -122,7 +122,7 @@ func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfi
 				waiting = append(waiting, e)
 				status = RunStatusWaiting
 			case RunEventNodeToolResultV0:
-				if strings.TrimSpace(e.ToolResult.ToolCallID) != "" {
+				if e.ToolResult.ToolCallID != "" {
 					handledToolCallIDs[e.ToolResult.ToolCallID] = struct{}{}
 				}
 			}
@@ -170,7 +170,7 @@ func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfi
 	}
 }
 
-func (r *PluginRunner) handleWaitingEvents(ctx context.Context, runID RunID, waiting []RunEventNodeWaitingV0, registry *ToolRegistry, handled map[string]struct{}) error {
+func (r *PluginRunner) handleWaitingEvents(ctx context.Context, runID RunID, waiting []RunEventNodeWaitingV0, registry *ToolRegistry, handled map[ToolCallID]struct{}) error {
 	for i := range waiting {
 		ev := waiting[i]
 		if !ev.NodeID.Valid() {
@@ -185,14 +185,14 @@ func (r *PluginRunner) handleWaitingEvents(ctx context.Context, runID RunID, wai
 
 		var results []RunsToolResultItemV0
 		for _, call := range ev.Waiting.PendingToolCalls {
-			toolCallID := strings.TrimSpace(call.ToolCallID)
+			toolCallID := call.ToolCallID
 			if toolCallID == "" {
 				continue
 			}
 			if _, ok := handled[toolCallID]; ok {
 				continue
 			}
-			name := strings.TrimSpace(call.Name)
+			name := call.Name
 			if name == "" {
 				continue
 			}
@@ -222,7 +222,7 @@ func (r *PluginRunner) handleWaitingEvents(ctx context.Context, runID RunID, wai
 			return err
 		}
 		for _, res := range results {
-			if strings.TrimSpace(res.ToolCallID) != "" {
+			if res.ToolCallID != "" {
 				handled[res.ToolCallID] = struct{}{}
 			}
 		}

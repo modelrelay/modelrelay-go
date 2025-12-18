@@ -206,9 +206,9 @@ func (p *LocalFSToolPack) RegisterInto(registry *ToolRegistry) *ToolRegistry {
 	if registry == nil {
 		return nil
 	}
-	registry.Register("fs.read_file", p.readFileTool)
-	registry.Register("fs.list_files", p.listFilesTool)
-	registry.Register("fs.search", p.searchTool)
+	registry.Register(ToolNameFSReadFile, p.readFileTool)
+	registry.Register(ToolNameFSListFiles, p.listFilesTool)
+	registry.Register(ToolNameFSSearch, p.searchTool)
 	return registry
 }
 
