@@ -19,6 +19,12 @@ const (
 	ContentPartTypeText ContentPartType = "text"
 )
 
+// Defines values for CustomerMeUsageState.
+const (
+	Allowed   CustomerMeUsageState = "allowed"
+	Exhausted CustomerMeUsageState = "exhausted"
+)
+
 // Defines values for InputItemType.
 const (
 	InputItemTypeMessage InputItemType = "message"
@@ -254,6 +260,39 @@ type CustomerMe struct {
 // CustomerMeResponse defines model for CustomerMeResponse.
 type CustomerMeResponse struct {
 	Customer CustomerMe `json:"customer"`
+}
+
+// CustomerMeUsage Usage summary for the current billing period.
+type CustomerMeUsage struct {
+	// CurrentSpendCents Amount spent in current billing window in cents
+	CurrentSpendCents int64 `json:"current_spend_cents"`
+
+	// PercentageUsed Percentage of spend limit used (0-100, null for unlimited tiers)
+	PercentageUsed *float32 `json:"percentage_used,omitempty"`
+
+	// RemainingCents Remaining spend budget in cents (0 for unlimited tiers)
+	RemainingCents int64 `json:"remaining_cents"`
+
+	// SpendLimitCents Monthly spend limit from tier in cents (0 = unlimited)
+	SpendLimitCents int64 `json:"spend_limit_cents"`
+
+	// State Whether the customer can make more requests
+	State CustomerMeUsageState `json:"state"`
+
+	// WindowEnd End of the current billing window
+	WindowEnd time.Time `json:"window_end"`
+
+	// WindowStart Start of the current billing window
+	WindowStart time.Time `json:"window_start"`
+}
+
+// CustomerMeUsageState Whether the customer can make more requests
+type CustomerMeUsageState string
+
+// CustomerMeUsageResponse defines model for CustomerMeUsageResponse.
+type CustomerMeUsageResponse struct {
+	// Usage Usage summary for the current billing period.
+	Usage CustomerMeUsage `json:"usage"`
 }
 
 // CustomerTokenResponse defines model for CustomerTokenResponse.

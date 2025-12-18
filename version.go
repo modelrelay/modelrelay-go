@@ -68,4 +68,5 @@ package sdk
 // 0.68.0: Add PluginConverter for local plugin→workflow conversion (#666).
 // 0.69.0: PluginsClient now loads/converts plugins locally via PluginLoader + PluginConverter (#668).
 // 0.70.0: Add Detail field to ProviderError and NodeErrorV0 for raw provider error messages.
-const Version = "0.70.0"
+// 0.71.0: Add customer usage endpoint (MeUsage) for spend/usage monitoring (#TBD).
+const Version = "0.71.0"
