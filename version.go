@@ -73,4 +73,5 @@ package sdk
 // 0.73.0: Add /customers/me/subscription (MeSubscription) for customer-visible subscription pricing.
 // 0.74.0: Add /customers/me/usage (MeUsage) returning non-private usage metrics (requests/tokens + daily history).
 // 0.75.0: Add LocalFSToolPack (fs.read_file/fs.list_files/fs.search) for tools.v0 client tools (#701).
-const Version = "0.75.0"
+const Version = "0.76.0"
+// 0.76.0: Add customer credit balance + low-credit signal to CustomerMeUsage.

@@ -304,9 +304,23 @@ type CustomerMeSubscriptionResponse struct {
 
 // CustomerMeUsage Customer-visible usage metrics for the current billing window.
 type CustomerMeUsage struct {
-	Daily    []CustomerUsagePoint `json:"daily"`
-	Requests int64                `json:"requests"`
-	Tokens   int64                `json:"tokens"`
+	// CreditsGrantedCents Credits granted for this billing window (only for paid tiers)
+	CreditsGrantedCents *int64 `json:"credits_granted_cents,omitempty"`
+
+	// CreditsRemainingCents Credits remaining in this billing window (only for paid tiers)
+	CreditsRemainingCents *int64 `json:"credits_remaining_cents,omitempty"`
+
+	// CreditsUsedCents Credits used so far in this billing window (only for paid tiers)
+	CreditsUsedCents *int64               `json:"credits_used_cents,omitempty"`
+	Daily            []CustomerUsagePoint `json:"daily"`
+
+	// Low Whether remaining credits are low (only for paid tiers)
+	Low *bool `json:"low,omitempty"`
+
+	// PercentageUsed Percentage of granted credits used (only for paid tiers)
+	PercentageUsed *float32 `json:"percentage_used,omitempty"`
+	Requests       int64    `json:"requests"`
+	Tokens         int64    `json:"tokens"`
 
 	// WindowEnd End of the current billing window
 	WindowEnd time.Time `json:"window_end"`
@@ -347,6 +361,9 @@ type CustomerTokenResponse struct {
 
 // CustomerUsagePoint defines model for CustomerUsagePoint.
 type CustomerUsagePoint struct {
+	// CreditsUsedCents Credits used in this day bucket (only for paid tiers)
+	CreditsUsedCents *int64 `json:"credits_used_cents,omitempty"`
+
 	// Day UTC day bucket
 	Day      time.Time `json:"day"`
 	Requests int64     `json:"requests"`
