@@ -307,24 +307,33 @@ Plugins are GitHub-hosted markdown agents that the Go SDK loads from GitHub, con
 
 Plugin manifests can be `PLUGIN.md` or `SKILL.md`, and plugin URLs can be GitHub `tree/blob/raw` URLs or `github.com/owner/repo@ref/path` canonical URLs.
 
+Client tool names + argument schemas are standardized by the tools.v0 contract: `docs/reference/tools-v0.md` (design notes: `docs/architecture/client-tools.md`).
+
 ```go
 ctx := context.Background()
 key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
 client, _ := sdk.NewClientWithKey(key)
 
+workspaceRoot := "."
+
 registry := sdk.NewToolRegistry()
-sdk.NewLocalFSToolPack(".").RegisterInto(registry)
-sdk.NewLocalBashToolPack(
-    ".",
-    sdk.WithLocalBashAllowAllCommands(),
-    sdk.WithLocalBashAllowEnvVars("PATH"),
-).RegisterInto(registry)
+
+// Safe-by-default workspace tools (tools.v0): root sandbox + traversal prevention + caps.
+sdk.NewLocalFSToolPack(workspaceRoot).RegisterInto(registry)
+
+// Opt-in: file writes are deny-by-default (enable explicitly).
 sdk.NewLocalWriteFileToolPack(
-    ".",
+    workspaceRoot,
     sdk.WithLocalWriteFileAllow(),
-    sdk.WithLocalWriteFileCreateDirs(true),
-    sdk.WithLocalWriteFileAtomic(true),
 ).RegisterInto(registry)
+
+// Optional: `bash` is intentionally powerful and deny-by-default.
+// Only register it if you need it, and prefer allow-rules over allow-all.
+// sdk.NewLocalBashToolPack(
+//     workspaceRoot,
+//     sdk.WithLocalBashAllowRules(sdk.BashCommandPrefix("git ")),
+//     sdk.WithLocalBashAllowEnvVars("PATH"),
+// ).RegisterInto(registry)
 
 result, err := client.Plugins().QuickRun(
     ctx,

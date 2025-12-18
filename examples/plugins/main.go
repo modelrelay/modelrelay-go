@@ -49,16 +49,9 @@ func run() int {
 
 	// Local workspace tools (tools.v0). Point this at the repo/workspace you want the plugin to analyze.
 	registry := sdk.NewLocalFSTools(".")
-	sdk.NewLocalBashToolPack(
-		".",
-		sdk.WithLocalBashAllowAllCommands(),
-		sdk.WithLocalBashAllowEnvVars("PATH"),
-	).RegisterInto(registry)
 	sdk.NewLocalWriteFileToolPack(
 		".",
 		sdk.WithLocalWriteFileAllow(),
-		sdk.WithLocalWriteFileCreateDirs(true),
-		sdk.WithLocalWriteFileAtomic(true),
 	).RegisterInto(registry)
 
 	result, err := client.Plugins().QuickRun(

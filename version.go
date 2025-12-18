@@ -77,4 +77,5 @@ package sdk
 // 0.77.0: Add LocalBashToolPack (`bash`) for tools.v0 client tools (#702).
 // 0.78.0: Add LocalWriteFileToolPack (`write_file`) for tools.v0 client tools (#703).
 // 0.79.0: Plugin converter targets tools.v0 (fs.* tools, client execution) (#704).
-const Version = "0.79.0"
+// 0.79.1: Docs: tools.v0 tool pack wiring for plugins (#708).
+const Version = "0.79.1"
