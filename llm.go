@@ -405,6 +405,9 @@ func newNDJSONStream(
 
 func (s *ndjsonStream) Next() (StreamEvent, bool, error) {
 	if s.isClosed() {
+		if terr := s.monitor.GetTimeoutErr(); terr != nil {
+			return StreamEvent{}, false, terr
+		}
 		return StreamEvent{}, false, nil
 	}
 	for {

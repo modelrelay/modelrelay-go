@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -52,9 +51,13 @@ func run() int {
 	}
 
 	// Local workspace tools (tools.v0). Point this at the repo/workspace you want the plugin to analyze.
-	registry := sdk.NewLocalFSTools(".").
-		Register("bash", bashTool).
-		Register("write_file", writeFileTool)
+	registry := sdk.NewLocalFSTools(".")
+	sdk.NewLocalBashToolPack(
+		".",
+		sdk.WithLocalBashAllowAllCommands(),
+		sdk.WithLocalBashAllowEnvVars("PATH"),
+	).RegisterInto(registry)
+	registry.Register("write_file", writeFileTool)
 
 	result, err := client.Plugins().QuickRun(
 		ctx,
@@ -77,27 +80,6 @@ func run() int {
 		fmt.Printf("- %s: %s\n", k, string(v))
 	}
 	return 0
-}
-
-func bashTool(args map[string]any, _ llm.ToolCall) (any, error) {
-	rawVal, exists := args["command"]
-	if !exists {
-		return nil, &sdk.ToolArgsError{Message: "command is required"}
-	}
-	raw, ok := rawVal.(string)
-	if !ok {
-		return nil, &sdk.ToolArgsError{Message: "command must be a string"}
-	}
-	cmd := strings.TrimSpace(raw)
-	if cmd == "" {
-		return nil, &sdk.ToolArgsError{Message: "command cannot be empty"}
-	}
-	//nolint:gosec // G204: intentional user-provided command for plugin execution example
-	out, err := exec.CommandContext(context.Background(), "bash", "-lc", cmd).CombinedOutput()
-	if err != nil {
-		return string(out), err
-	}
-	return string(out), nil
 }
 
 func writeFileTool(args map[string]any, _ llm.ToolCall) (any, error) {

@@ -313,9 +313,16 @@ key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
 client, _ := sdk.NewClientWithKey(key)
 
 registry := sdk.NewToolRegistry().
-    Register("bash", func(args map[string]any, call llm.ToolCall) (any, error) {
+    Register("write_file", func(args map[string]any, call llm.ToolCall) (any, error) {
         return "ok", nil
     })
+
+sdk.NewLocalFSToolPack(".").RegisterInto(registry)
+sdk.NewLocalBashToolPack(
+    ".",
+    sdk.WithLocalBashAllowAllCommands(),
+    sdk.WithLocalBashAllowEnvVars("PATH"),
+).RegisterInto(registry)
 
 result, err := client.Plugins().QuickRun(
     ctx,

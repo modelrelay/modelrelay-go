@@ -134,6 +134,9 @@ func buildCompleteFieldsMap(fields []string) map[string]bool {
 // (missing completion/error) are surfaced as TransportError.
 func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 	if s.isClosed() {
+		if terr := s.monitor.GetTimeoutErr(); terr != nil {
+			return StructuredJSONEvent[T]{}, false, terr
+		}
 		return StructuredJSONEvent[T]{}, false, nil
 	}
 
