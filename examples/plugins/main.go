@@ -51,7 +51,8 @@ func run() int {
 		task = "Review the authentication module"
 	}
 
-	registry := sdk.NewToolRegistry().
+	// Local workspace tools (tools.v0). Point this at the repo/workspace you want the plugin to analyze.
+	registry := sdk.NewLocalFSTools(".").
 		Register("bash", bashTool).
 		Register("write_file", writeFileTool)
 

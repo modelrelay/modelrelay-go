@@ -72,4 +72,5 @@ package sdk
 // 0.72.0: Plugins use client-side fs.* tools (no repo.* tools) (#695).
 // 0.73.0: Add /customers/me/subscription (MeSubscription) for customer-visible subscription pricing.
 // 0.74.0: Add /customers/me/usage (MeUsage) returning non-private usage metrics (requests/tokens + daily history).
-const Version = "0.74.0"
+// 0.75.0: Add LocalFSToolPack (fs.read_file/fs.list_files/fs.search) for tools.v0 client tools (#701).
+const Version = "0.75.0"
