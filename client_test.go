@@ -22,10 +22,7 @@ func TestBearerTokenDuplication(t *testing.T) {
 
 	// Case 1: User provides clean token (this should pass already)
 	t.Run("CleanToken", func(t *testing.T) {
-		client, err := NewClient(Config{
-			BaseURL:     server.URL,
-			AccessToken: "my-secret-token",
-		})
+		client, err := NewClientWithToken("my-secret-token", WithBaseURL(server.URL))
 		if err != nil {
 			t.Fatalf("NewClient failed: %v", err)
 		}
@@ -38,10 +35,7 @@ func TestBearerTokenDuplication(t *testing.T) {
 
 	// Case 2: User provides token with "Bearer " prefix (this is expected to fail currently)
 	t.Run("TokenWithPrefix", func(t *testing.T) {
-		client, err := NewClient(Config{
-			BaseURL:     server.URL,
-			AccessToken: "Bearer my-secret-token",
-		})
+		client, err := NewClientWithToken("Bearer my-secret-token", WithBaseURL(server.URL))
 		if err != nil {
 			t.Fatalf("NewClient failed: %v", err)
 		}
@@ -55,9 +49,12 @@ func TestBearerTokenDuplication(t *testing.T) {
 }
 
 func TestBaseURLOverride(t *testing.T) {
-	client, err := NewClient(Config{BaseURL: "https://override.example.com/api/v1", APIKey: mustSecretKey(t, "mr_sk_test")})
+	client, err := NewClientWithKey(
+		mustSecretKey(t, "mr_sk_test"),
+		WithBaseURL("https://override.example.com/api/v1"),
+	)
 	if err != nil {
-		t.Fatalf("NewClient failed: %v", err)
+		t.Fatalf("NewClientWithKey failed: %v", err)
 	}
 	if client.baseURL != "https://override.example.com/api/v1" {
 		t.Fatalf("base url should use explicit override, got %s", client.baseURL)
@@ -65,17 +62,17 @@ func TestBaseURLOverride(t *testing.T) {
 }
 
 func TestDefaultBaseURL(t *testing.T) {
-	client, err := NewClient(Config{APIKey: mustSecretKey(t, "mr_sk_test")})
+	client, err := NewClientWithKey(mustSecretKey(t, "mr_sk_test"))
 	if err != nil {
-		t.Fatalf("NewClient failed: %v", err)
+		t.Fatalf("NewClientWithKey failed: %v", err)
 	}
 	if client.baseURL != defaultBaseURL {
 		t.Fatalf("expected default base url %s got %s", defaultBaseURL, client.baseURL)
 	}
 }
 
-func TestNewClientRejectsEmptyAPIKeyAuth(t *testing.T) {
-	_, err := NewClient(Config{APIKey: SecretKey("   ")})
+func TestNewClientWithKeyRejectsEmptyKey(t *testing.T) {
+	_, err := NewClientWithKey(SecretKey("   "))
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -97,7 +94,11 @@ func TestRetryOnServerError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
+	client, err := NewClientWithKey(
+		mustSecretKey(t, "mr_sk_test"),
+		WithBaseURL(srv.URL),
+		WithHTTPClient(srv.Client()),
+	)
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
@@ -122,7 +123,11 @@ func TestPostDoesNotRetryByDefault(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
+	client, err := NewClientWithKey(
+		mustSecretKey(t, "mr_sk_test"),
+		WithBaseURL(srv.URL),
+		WithHTTPClient(srv.Client()),
+	)
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
@@ -143,7 +148,12 @@ func TestTransportTimeout(t *testing.T) {
 	}))
 	defer srv.Close()
 	timeout := 50 * time.Millisecond
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client(), RequestTimeout: &timeout})
+	client, err := NewClientWithKey(
+		mustSecretKey(t, "mr_sk_test"),
+		WithBaseURL(srv.URL),
+		WithHTTPClient(srv.Client()),
+		WithRequestTimeout(timeout),
+	)
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
@@ -165,7 +175,11 @@ func TestDisableRetry(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
+	client, err := NewClientWithKey(
+		mustSecretKey(t, "mr_sk_test"),
+		WithBaseURL(srv.URL),
+		WithHTTPClient(srv.Client()),
+	)
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}

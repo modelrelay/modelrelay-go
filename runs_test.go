@@ -59,7 +59,11 @@ func TestRunsCreateGetAndStream(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test_runs"), HTTPClient: srv.Client()})
+	client, err := NewClientWithKey(
+		mustSecretKey(t, "mr_sk_test_runs"),
+		WithBaseURL(srv.URL),
+		WithHTTPClient(srv.Client()),
+	)
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}

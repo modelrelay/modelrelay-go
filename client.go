@@ -23,26 +23,6 @@ const (
 	defaultRequestTO  = 60 * time.Second
 )
 
-// Config wires authentication, base URL, headers defaults, and telemetry for the API client.
-//
-// Deprecated: Use NewClientWithKey or NewClientWithToken with functional options instead.
-type Config struct {
-	BaseURL        string
-	APIKey         APIKeyAuth
-	AccessToken    string
-	TokenProvider  TokenProvider
-	HTTPClient     *http.Client
-	Telemetry      TelemetryHooks
-	UserAgent      string
-	ClientHeader   string
-	DefaultHeaders http.Header
-	// Optional timeouts (nil => defaults). Set to 0 to disable.
-	ConnectTimeout *time.Duration
-	RequestTimeout *time.Duration
-	// Optional retry/backoff policy (nil => defaults).
-	Retry *RetryConfig
-}
-
 // Option configures optional settings for the SDK client.
 type Option func(*clientOptions)
 
@@ -251,39 +231,6 @@ func newClientFromOptions(apiKey APIKeyAuth, accessToken string, opts clientOpti
 	client.Tiers = &TiersClient{client: client}
 	client.Models = &ModelsClient{client: client}
 	return client, nil
-}
-
-// NewClient validates the configuration and returns a ready-to-use Client.
-//
-// Deprecated: Use NewClientWithKey or NewClientWithToken instead for clearer
-// API key requirements and compile-time safety.
-func NewClient(cfg Config) (*Client, error) {
-	// Validate auth before delegating
-	hasKey := cfg.APIKey != nil && strings.TrimSpace(cfg.APIKey.String()) != ""
-	token := strings.TrimSpace(cfg.AccessToken)
-	hasToken := token != ""
-	hasProvider := cfg.TokenProvider != nil
-	if !hasKey && !hasToken && !hasProvider {
-		return nil, ConfigError{Reason: "api key, access token, or token provider required"}
-	}
-	// Map Config to clientOptions and delegate
-	opts := clientOptions{
-		baseURL:        cfg.BaseURL,
-		httpClient:     cfg.HTTPClient,
-		telemetry:      cfg.Telemetry,
-		userAgent:      cfg.UserAgent,
-		clientHeader:   cfg.ClientHeader,
-		defaultHeaders: cfg.DefaultHeaders,
-		connectTimeout: cfg.ConnectTimeout,
-		requestTimeout: cfg.RequestTimeout,
-		retry:          cfg.Retry,
-		tokenProvider:  cfg.TokenProvider,
-	}
-	var apiKey APIKeyAuth
-	if hasKey {
-		apiKey = cfg.APIKey
-	}
-	return newClientFromOptions(apiKey, token, opts)
 }
 
 func normalizeBaseURL(raw string) (string, error) {

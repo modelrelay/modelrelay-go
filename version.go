@@ -68,7 +68,7 @@ package sdk
 // 0.68.0: Add PluginConverter for local plugin→workflow conversion (#666).
 // 0.69.0: PluginsClient now loads/converts plugins locally via PluginLoader + PluginConverter (#668).
 // 0.70.0: Add Detail field to ProviderError and NodeErrorV0 for raw provider error messages.
-// 0.71.0: Add customer usage endpoint (MeUsage) for spend/usage monitoring (#TBD).
+// 0.71.0: Add customer usage endpoint (MeUsage) for spend/usage monitoring.
 // 0.72.0: Plugins use client-side fs.* tools (no repo.* tools) (#695).
 // 0.73.0: Add /customers/me/subscription (MeSubscription) for customer-visible subscription pricing.
 // 0.74.0: Add /customers/me/usage (MeUsage) returning non-private usage metrics (requests/tokens + daily history).
@@ -79,5 +79,6 @@ package sdk
 // 0.79.0: Plugin converter targets tools.v0 (fs.* tools, client execution) (#704).
 // 0.79.1: Docs: tools.v0 tool pack wiring for plugins (#708).
 // 0.79.2: Add MODEL_CAPABILITY_UNSUPPORTED API error code constant (#710).
+// 1.0.0: Breaking - remove deprecated Config-based SDK client constructor.
 // 0.80.0: Breaking - tighten tool typing (ToolName, ToolCallID, ToolExecutionResult) (#711).
-const Version = "0.80.0"
+const Version = "1.0.0"

@@ -15,6 +15,19 @@ import (
 	"github.com/modelrelay/modelrelay/sdk/go/routes"
 )
 
+func newTestClient(t *testing.T, srv *httptest.Server, key string) *Client {
+	t.Helper()
+	client, err := NewClientWithKey(
+		mustSecretKey(t, key),
+		WithBaseURL(srv.URL),
+		WithHTTPClient(srv.Client()),
+	)
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	return client
+}
+
 func TestResponsesCreate(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != routes.Responses {
@@ -50,10 +63,7 @@ func TestResponsesCreate(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
 	req, opts, err := client.Responses.New().
 		Model(NewModelID("demo")).
@@ -118,10 +128,7 @@ func TestResponsesTextHelper(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
 	text, err := client.Responses.Text(context.Background(), NewModelID("demo"), "sys", "user")
 	if err != nil {
@@ -161,10 +168,7 @@ func TestResponsesTextForCustomerOmitsModel(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
 	text, err := client.Responses.TextForCustomer(context.Background(), "cust_123", "sys", "user")
 	if err != nil {
@@ -191,12 +195,9 @@ func TestResponsesTextErrorsOnEmptyAssistantText(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
-	_, err = client.Responses.Text(context.Background(), NewModelID("demo"), "sys", "user")
+	_, err := client.Responses.Text(context.Background(), NewModelID("demo"), "sys", "user")
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -224,10 +225,7 @@ func TestResponsesStreamTextDeltas(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -275,10 +273,7 @@ func TestResponsesStream(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -383,10 +378,7 @@ func TestResponsesStreamRejectsNonNDJSONContentType(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
 	req, opts, err := client.Responses.New().
 		Model(NewModelID("demo")).
@@ -421,10 +413,7 @@ func TestResponsesStreamJSONRejectsNonNDJSONContentType(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
 	format, err := OutputFormatFromType[Simple]("simple")
 	if err != nil {
@@ -465,10 +454,7 @@ func TestResponsesStreamTTFTTimeout(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -520,10 +506,7 @@ func TestResponsesStreamIdleTimeout(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -577,10 +560,7 @@ func TestResponsesStreamTotalTimeout(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -636,10 +616,7 @@ func TestResponsesStreamJSONTTFTTimeout(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
 	format, err := OutputFormatFromType[Simple]("simple")
 	if err != nil {
@@ -695,10 +672,7 @@ func TestResponsesCustomerHeaderAllowsMissingModel(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := NewClient(Config{BaseURL: srv.URL, APIKey: mustSecretKey(t, "mr_sk_test"), HTTPClient: srv.Client()})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
+	client := newTestClient(t, srv, "mr_sk_test")
 
 	req, opts, err := client.Responses.New().
 		CustomerID("cust_123").
