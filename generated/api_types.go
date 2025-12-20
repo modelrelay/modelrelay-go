@@ -131,6 +131,36 @@ const (
 	Required ToolChoiceType = "required"
 )
 
+// Defines values for WebhookConfigEvents.
+const (
+	WebhookConfigEventsBillingSubscriptionChanged WebhookConfigEvents = "billing.subscription_changed"
+	WebhookConfigEventsCustomerCreated            WebhookConfigEvents = "customer.created"
+	WebhookConfigEventsCustomerDeleted            WebhookConfigEvents = "customer.deleted"
+	WebhookConfigEventsCustomerUpdated            WebhookConfigEvents = "customer.updated"
+	WebhookConfigEventsRequestCompleted           WebhookConfigEvents = "request.completed"
+	WebhookConfigEventsUsageThresholdExceeded     WebhookConfigEvents = "usage.threshold_exceeded"
+)
+
+// Defines values for WebhookConfigInputEvents.
+const (
+	WebhookConfigInputEventsBillingSubscriptionChanged WebhookConfigInputEvents = "billing.subscription_changed"
+	WebhookConfigInputEventsCustomerCreated            WebhookConfigInputEvents = "customer.created"
+	WebhookConfigInputEventsCustomerDeleted            WebhookConfigInputEvents = "customer.deleted"
+	WebhookConfigInputEventsCustomerUpdated            WebhookConfigInputEvents = "customer.updated"
+	WebhookConfigInputEventsRequestCompleted           WebhookConfigInputEvents = "request.completed"
+	WebhookConfigInputEventsUsageThresholdExceeded     WebhookConfigInputEvents = "usage.threshold_exceeded"
+)
+
+// Defines values for WebhookConfigUpdateEvents.
+const (
+	BillingSubscriptionChanged WebhookConfigUpdateEvents = "billing.subscription_changed"
+	CustomerCreated            WebhookConfigUpdateEvents = "customer.created"
+	CustomerDeleted            WebhookConfigUpdateEvents = "customer.deleted"
+	CustomerUpdated            WebhookConfigUpdateEvents = "customer.updated"
+	RequestCompleted           WebhookConfigUpdateEvents = "request.completed"
+	UsageThresholdExceeded     WebhookConfigUpdateEvents = "usage.threshold_exceeded"
+)
+
 // Defines values for ClaimCustomerJSONBodyProvider.
 const (
 	ClaimCustomerJSONBodyProviderGithub ClaimCustomerJSONBodyProvider = "github"
@@ -499,6 +529,25 @@ type NodeStatusV0 string
 
 // NodeTypeV0 Type of workflow node.
 type NodeTypeV0 string
+
+// OutboundWebhookEvent defines model for OutboundWebhookEvent.
+type OutboundWebhookEvent struct {
+	AttemptCount    *int32                  `json:"attempt_count,omitempty"`
+	CreatedAt       *time.Time              `json:"created_at,omitempty"`
+	Error           *string                 `json:"error,omitempty"`
+	EventId         *string                 `json:"event_id,omitempty"`
+	EventType       *string                 `json:"event_type,omitempty"`
+	Id              *openapi_types.UUID     `json:"id,omitempty"`
+	LastAttemptAt   *time.Time              `json:"last_attempt_at,omitempty"`
+	LatencyMs       *int32                  `json:"latency_ms,omitempty"`
+	NextAttemptAt   *time.Time              `json:"next_attempt_at,omitempty"`
+	Payload         *map[string]interface{} `json:"payload,omitempty"`
+	ResponseBody    *string                 `json:"response_body,omitempty"`
+	ResponseStatus  *int32                  `json:"response_status,omitempty"`
+	Status          *string                 `json:"status,omitempty"`
+	UpdatedAt       *time.Time              `json:"updated_at,omitempty"`
+	WebhookConfigId *openapi_types.UUID     `json:"webhook_config_id,omitempty"`
+}
 
 // OutputFormat defines model for OutputFormat.
 type OutputFormat struct {
@@ -879,11 +928,50 @@ type User struct {
 	ProjectId *openapi_types.UUID  `json:"project_id,omitempty"`
 }
 
+// WebhookConfig defines model for WebhookConfig.
+type WebhookConfig struct {
+	CreatedAt     *time.Time             `json:"created_at,omitempty"`
+	Enabled       *bool                  `json:"enabled,omitempty"`
+	EndpointUrl   *string                `json:"endpoint_url,omitempty"`
+	Events        *[]WebhookConfigEvents `json:"events,omitempty"`
+	Id            *openapi_types.UUID    `json:"id,omitempty"`
+	ProjectId     *openapi_types.UUID    `json:"project_id,omitempty"`
+	SigningSecret *string                `json:"signing_secret,omitempty"`
+	UpdatedAt     *time.Time             `json:"updated_at,omitempty"`
+}
+
+// WebhookConfigEvents defines model for WebhookConfig.Events.
+type WebhookConfigEvents string
+
+// WebhookConfigInput defines model for WebhookConfigInput.
+type WebhookConfigInput struct {
+	Enabled     *bool                      `json:"enabled,omitempty"`
+	EndpointUrl string                     `json:"endpoint_url"`
+	Events      []WebhookConfigInputEvents `json:"events"`
+}
+
+// WebhookConfigInputEvents defines model for WebhookConfigInput.Events.
+type WebhookConfigInputEvents string
+
+// WebhookConfigUpdate defines model for WebhookConfigUpdate.
+type WebhookConfigUpdate struct {
+	Enabled      *bool                       `json:"enabled,omitempty"`
+	EndpointUrl  string                      `json:"endpoint_url"`
+	Events       []WebhookConfigUpdateEvents `json:"events"`
+	RotateSecret *bool                       `json:"rotate_secret,omitempty"`
+}
+
+// WebhookConfigUpdateEvents defines model for WebhookConfigUpdate.Events.
+type WebhookConfigUpdateEvents string
+
 // WorkflowSpecV0 A `workflow.v0` spec. The canonical JSON Schema is available at `/schemas/workflow_v0.schema.json`.
 type WorkflowSpecV0 map[string]interface{}
 
 // ProjectID defines model for ProjectID.
 type ProjectID = openapi_types.UUID
+
+// WebhookID defines model for WebhookID.
+type WebhookID = openapi_types.UUID
 
 // MintCustomerTokenJSONBody defines parameters for MintCustomerToken.
 type MintCustomerTokenJSONBody struct {
@@ -982,6 +1070,11 @@ type UpdateProjectJSONBody struct {
 // UpdateProjectJSONBodyCustomerOauthProviders defines parameters for UpdateProject.
 type UpdateProjectJSONBodyCustomerOauthProviders string
 
+// ListProjectWebhookEventsParams defines parameters for ListProjectWebhookEvents.
+type ListProjectWebhookEventsParams struct {
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // StreamRunEventsParams defines parameters for StreamRunEvents.
 type StreamRunEventsParams struct {
 	// AfterSeq Returns events where `seq > after_seq`.
@@ -1035,6 +1128,12 @@ type CreateTierJSONRequestBody = TierCreate
 
 // UpdateTierJSONRequestBody defines body for UpdateTier for application/json ContentType.
 type UpdateTierJSONRequestBody = TierUpdate
+
+// CreateProjectWebhookJSONRequestBody defines body for CreateProjectWebhook for application/json ContentType.
+type CreateProjectWebhookJSONRequestBody = WebhookConfigInput
+
+// UpdateProjectWebhookJSONRequestBody defines body for UpdateProjectWebhook for application/json ContentType.
+type UpdateProjectWebhookJSONRequestBody = WebhookConfigUpdate
 
 // CreateResponseJSONRequestBody defines body for CreateResponse for application/json ContentType.
 type CreateResponseJSONRequestBody = ResponsesRequest
