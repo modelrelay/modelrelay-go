@@ -195,10 +195,12 @@ type Customer struct {
 	Email *openapi_types.Email `json:"email,omitempty"`
 
 	// ExternalId External customer identifier from your system
-	ExternalId *string                 `json:"external_id,omitempty"`
-	Id         *openapi_types.UUID     `json:"id,omitempty"`
-	Metadata   *map[string]interface{} `json:"metadata,omitempty"`
-	ProjectId  *openapi_types.UUID     `json:"project_id,omitempty"`
+	ExternalId *string             `json:"external_id,omitempty"`
+	Id         *openapi_types.UUID `json:"id,omitempty"`
+
+	// Metadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values must be JSON scalars, arrays, or objects. Nesting depth limited to 5 levels.
+	Metadata  *map[string]interface{} `json:"metadata,omitempty"`
+	ProjectId *openapi_types.UUID     `json:"project_id,omitempty"`
 
 	// StripeCustomerId Stripe customer ID
 	StripeCustomerId *string `json:"stripe_customer_id,omitempty"`
@@ -221,9 +223,11 @@ type CustomerCreate struct {
 	Email *openapi_types.Email `json:"email,omitempty"`
 
 	// ExternalId External customer identifier from your system
-	ExternalId string                  `json:"external_id"`
-	Metadata   *map[string]interface{} `json:"metadata,omitempty"`
-	TierId     openapi_types.UUID      `json:"tier_id"`
+	ExternalId string `json:"external_id"`
+
+	// Metadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values must be JSON scalars, arrays, or objects. Nesting depth limited to 5 levels.
+	Metadata *map[string]interface{} `json:"metadata,omitempty"`
+	TierId   openapi_types.UUID      `json:"tier_id"`
 }
 
 // CustomerMe defines model for CustomerMe.
@@ -240,10 +244,12 @@ type CustomerMe struct {
 	Email *openapi_types.Email `json:"email,omitempty"`
 
 	// ExternalId External customer identifier from your system
-	ExternalId *string                 `json:"external_id,omitempty"`
-	Id         *openapi_types.UUID     `json:"id,omitempty"`
-	Metadata   *map[string]interface{} `json:"metadata,omitempty"`
-	ProjectId  *openapi_types.UUID     `json:"project_id,omitempty"`
+	ExternalId *string             `json:"external_id,omitempty"`
+	Id         *openapi_types.UUID `json:"id,omitempty"`
+
+	// Metadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values must be JSON scalars, arrays, or objects. Nesting depth limited to 5 levels.
+	Metadata  *map[string]interface{} `json:"metadata,omitempty"`
+	ProjectId *openapi_types.UUID     `json:"project_id,omitempty"`
 
 	// StripeCustomerId Stripe customer ID
 	StripeCustomerId *string `json:"stripe_customer_id,omitempty"`
