@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 1.1.1: Structured streaming now surfaces usage on events.
 // 1.0.1: Regenerate SDK types after customer metadata constraints updates.
 // 0.39.1: Fix request timeouts to not cancel streaming bodies.
 // 0.39.0: Add stream collection metrics helper (CollectWithMetrics) for /responses streaming.
@@ -82,4 +83,4 @@ package sdk
 // 0.79.2: Add MODEL_CAPABILITY_UNSUPPORTED API error code constant (#710).
 // 1.0.0: Breaking - remove deprecated Config-based SDK client constructor.
 // 0.80.0: Breaking - tighten tool typing (ToolName, ToolCallID, ToolExecutionResult) (#711).
-const Version = "1.1.0"
+const Version = "1.1.1"

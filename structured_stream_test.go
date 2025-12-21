@@ -219,3 +219,49 @@ func TestStructuredJSONStream_CompleteFieldsFiltersEmptyStrings(t *testing.T) {
 		t.Errorf("expected 2 fields in CompleteFields, got %d: %v", len(event.CompleteFields), event.CompleteFields)
 	}
 }
+
+func TestStructuredJSONStream_UsageParsing(t *testing.T) {
+	ctx := context.Background()
+
+	type Simple struct {
+		Name string `json:"name"`
+	}
+
+	ndjson := `{"type":"start","request_id":"req-usage","provider":"test","model":"test-model"}
+{"type":"update","payload":{"name":"Test"},"complete_fields":["name"]}
+{"type":"completion","payload":{"name":"Test"},"complete_fields":["name"],"usage":{"input_tokens":3,"output_tokens":5,"total_tokens":8}}
+`
+	stream := newStructuredJSONStream[Simple](ctx, newNDJSONReadCloser(ndjson), "req-usage", nil, StreamTimeouts{})
+	defer stream.Close()
+
+	_, ok, err := stream.Next()
+	if err != nil {
+		t.Fatalf("unexpected error on update Next: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok=true on update Next")
+	}
+
+	event, ok, err := stream.Next()
+	if err != nil {
+		t.Fatalf("unexpected error on completion Next: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok=true on completion Next")
+	}
+	if event.Type != StructuredRecordTypeCompletion {
+		t.Fatalf("expected completion, got %s", event.Type)
+	}
+	if event.Usage == nil {
+		t.Fatal("expected usage on completion event")
+	}
+	if event.Usage.InputTokens != 3 {
+		t.Errorf("expected input_tokens=3, got %d", event.Usage.InputTokens)
+	}
+	if event.Usage.OutputTokens != 5 {
+		t.Errorf("expected output_tokens=5, got %d", event.Usage.OutputTokens)
+	}
+	if event.Usage.TotalTokens != 8 {
+		t.Errorf("expected total_tokens=8, got %d", event.Usage.TotalTokens)
+	}
+}

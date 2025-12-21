@@ -30,6 +30,7 @@ type StructuredJSONEvent[T any] struct {
 	Type      StructuredRecordType
 	Payload   *T
 	RequestID string
+	Usage     *Usage
 	// CompleteFields contains the set of field paths that are complete
 	// (have their closing delimiters). Use dot notation for nested fields
 	// (e.g., "metadata.author"). Check with CompleteFields["fieldName"].
@@ -90,6 +91,7 @@ type structuredRecord struct {
 	code           string
 	message        string
 	status         int
+	usage          *Usage
 }
 
 // parseStructuredRecord parses a single NDJSON line into a typed record.
@@ -102,6 +104,7 @@ func parseStructuredRecord(line []byte) (structuredRecord, error) {
 		Code           string          `json:"code,omitempty"`
 		Message        string          `json:"message,omitempty"`
 		Status         int             `json:"status,omitempty"`
+		Usage          *Usage          `json:"usage,omitempty"`
 	}
 	if err := json.Unmarshal(line, &raw); err != nil {
 		return structuredRecord{}, err
@@ -113,6 +116,7 @@ func parseStructuredRecord(line []byte) (structuredRecord, error) {
 		code:           raw.Code,
 		message:        raw.Message,
 		status:         raw.Status,
+		usage:          raw.Usage,
 	}, nil
 }
 
@@ -205,6 +209,7 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 				Type:           record.recordType,
 				Payload:        &payload,
 				RequestID:      s.requestID,
+				Usage:          record.usage,
 				CompleteFields: buildCompleteFieldsMap(record.completeFields),
 			}, true, nil
 		case StructuredRecordTypeError:
