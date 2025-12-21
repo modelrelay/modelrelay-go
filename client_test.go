@@ -231,6 +231,129 @@ func TestNewClientWithKey(t *testing.T) {
 	})
 }
 
+func TestNewClientFromSecretKey(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := r.Header.Get("X-ModelRelay-Api-Key")
+		if key != "mr_sk_test123" {
+			t.Errorf("Expected API key 'mr_sk_test123', got '%s'", key)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	t.Run("RejectsPublishableKey", func(t *testing.T) {
+		_, err := NewClientFromSecretKey("mr_pk_test123")
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		var cfgErr ConfigError
+		if !errors.As(err, &cfgErr) {
+			t.Fatalf("expected ConfigError, got %T", err)
+		}
+	})
+
+	t.Run("WithOptions", func(t *testing.T) {
+		client, err := NewClientFromSecretKey("mr_sk_test123", WithBaseURL(srv.URL))
+		if err != nil {
+			t.Fatalf("NewClientFromSecretKey failed: %v", err)
+		}
+		req, _ := client.newJSONRequest(context.Background(), "GET", "/foo", nil)
+		_, _, err = client.send(req, nil, nil)
+		if err != nil {
+			t.Errorf("Request failed: %v", err)
+		}
+	})
+}
+
+func TestNewClientFromPublishableKey(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := r.Header.Get("X-ModelRelay-Api-Key")
+		if key != "mr_pk_test123" {
+			t.Errorf("Expected API key 'mr_pk_test123', got '%s'", key)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	t.Run("RejectsSecretKey", func(t *testing.T) {
+		_, err := NewClientFromPublishableKey("mr_sk_test123")
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		var cfgErr ConfigError
+		if !errors.As(err, &cfgErr) {
+			t.Fatalf("expected ConfigError, got %T", err)
+		}
+	})
+
+	t.Run("WithOptions", func(t *testing.T) {
+		client, err := NewClientFromPublishableKey("mr_pk_test123", WithBaseURL(srv.URL))
+		if err != nil {
+			t.Fatalf("NewClientFromPublishableKey failed: %v", err)
+		}
+		req, _ := client.newJSONRequest(context.Background(), "GET", "/foo", nil)
+		_, _, err = client.send(req, nil, nil)
+		if err != nil {
+			t.Errorf("Request failed: %v", err)
+		}
+	})
+}
+
+func TestNewClientFromAPIKey(t *testing.T) {
+	t.Run("AcceptsSecretKey", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			key := r.Header.Get("X-ModelRelay-Api-Key")
+			if key != "mr_sk_test123" {
+				t.Errorf("Expected API key 'mr_sk_test123', got '%s'", key)
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+
+		client, err := NewClientFromAPIKey("mr_sk_test123", WithBaseURL(srv.URL))
+		if err != nil {
+			t.Fatalf("NewClientFromAPIKey failed: %v", err)
+		}
+		req, _ := client.newJSONRequest(context.Background(), "GET", "/foo", nil)
+		_, _, err = client.send(req, nil, nil)
+		if err != nil {
+			t.Errorf("Request failed: %v", err)
+		}
+	})
+
+	t.Run("AcceptsPublishableKey", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			key := r.Header.Get("X-ModelRelay-Api-Key")
+			if key != "mr_pk_test123" {
+				t.Errorf("Expected API key 'mr_pk_test123', got '%s'", key)
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+
+		client, err := NewClientFromAPIKey("mr_pk_test123", WithBaseURL(srv.URL))
+		if err != nil {
+			t.Fatalf("NewClientFromAPIKey failed: %v", err)
+		}
+		req, _ := client.newJSONRequest(context.Background(), "GET", "/foo", nil)
+		_, _, err = client.send(req, nil, nil)
+		if err != nil {
+			t.Errorf("Request failed: %v", err)
+		}
+	})
+
+	t.Run("RejectsInvalidKey", func(t *testing.T) {
+		_, err := NewClientFromAPIKey("sk_test123")
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		var cfgErr ConfigError
+		if !errors.As(err, &cfgErr) {
+			t.Fatalf("expected ConfigError, got %T", err)
+		}
+	})
+}
+
 func TestNewClientWithToken(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")

@@ -134,6 +134,33 @@ func NewClientWithKey(key APIKeyAuth, opts ...Option) (*Client, error) {
 	return newClientFromOptions(key, "", options)
 }
 
+// NewClientFromSecretKey parses and validates a secret key (mr_sk_*) and creates a client.
+func NewClientFromSecretKey(raw string, opts ...Option) (*Client, error) {
+	key, err := ParseSecretKey(raw)
+	if err != nil {
+		return nil, err
+	}
+	return NewClientWithKey(key, opts...)
+}
+
+// NewClientFromPublishableKey parses and validates a publishable key (mr_pk_*) and creates a client.
+func NewClientFromPublishableKey(raw string, opts ...Option) (*Client, error) {
+	key, err := ParsePublishableKey(raw)
+	if err != nil {
+		return nil, err
+	}
+	return NewClientWithKey(key, opts...)
+}
+
+// NewClientFromAPIKey parses and validates an API key (mr_pk_* or mr_sk_*) and creates a client.
+func NewClientFromAPIKey(raw string, opts ...Option) (*Client, error) {
+	key, err := ParseAPIKeyAuth(raw)
+	if err != nil {
+		return nil, err
+	}
+	return NewClientWithKey(key, opts...)
+}
+
 // NewClientWithToken creates a client authenticated with a bearer access token.
 // The token parameter is required and must be non-empty.
 // Use functional options to configure additional settings.

@@ -48,8 +48,7 @@ client, _ := sdk.NewClientWithTokenProvider(provider)
 
 ```go
 ctx := context.Background()
-key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
-client, _ := sdk.NewClientWithKey(key)
+client, _ := sdk.NewClientFromAPIKey(os.Getenv("MODELRELAY_API_KEY"))
 
 req, callOpts, _ := client.Responses.New().
     Model(sdk.NewModelID("claude-sonnet-4-20250514")).
@@ -67,8 +66,7 @@ For the most common path (**system + user → assistant text**):
 
 ```go
 ctx := context.Background()
-key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
-client, _ := sdk.NewClientWithKey(key)
+client, _ := sdk.NewClientFromAPIKey(os.Getenv("MODELRELAY_API_KEY"))
 
 text, _ := client.Responses.Text(
     ctx,
@@ -109,8 +107,7 @@ for {
 
 ```go
 ctx := context.Background()
-key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
-client, _ := sdk.NewClientWithKey(key)
+client, _ := sdk.NewClientFromAPIKey(os.Getenv("MODELRELAY_API_KEY"))
 
 req, callOpts, _ := client.Responses.New().
     Model(sdk.NewModelID("claude-sonnet-4-20250514")).
@@ -133,8 +130,7 @@ for {
 
 ```go
 ctx := context.Background()
-key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
-client, _ := sdk.NewClientWithKey(key)
+client, _ := sdk.NewClientFromAPIKey(os.Getenv("MODELRELAY_API_KEY"))
 
 exec := workflow.ExecutionV0{
 	MaxParallelism: sdk.Int64Ptr(3),
@@ -315,8 +311,7 @@ The Go SDK uses strong types for tool plumbing:
 
 ```go
 ctx := context.Background()
-key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
-client, _ := sdk.NewClientWithKey(key)
+client, _ := sdk.NewClientFromAPIKey(os.Getenv("MODELRELAY_API_KEY"))
 
 workspaceRoot := "."
 
@@ -357,8 +352,7 @@ See `docs/guides/PLUGIN_QUICKSTART.md` for a step-by-step guide, and `docs/archi
 ## Configuration
 
 ```go
-secret, _ := sdk.ParseSecretKey("mr_sk_...")
-client, _ := sdk.NewClientWithKey(secret,
+client, _ := sdk.NewClientFromSecretKey("mr_sk_...",
     sdk.WithConnectTimeout(5*time.Second),
     sdk.WithRetryConfig(sdk.RetryConfig{MaxAttempts: 3}),
 )
