@@ -19,10 +19,6 @@ func newResponseStream(handle *StreamHandle) *responseStream {
 // Collect drains the stream into an aggregated Response. It is pull-based (no
 // internal buffering beyond the current NDJSON frame) and respects context
 // cancellation. The stream is closed when the call returns.
-//
-// In the unified NDJSON format, update events contain accumulated content (not
-// per-token deltas), so Collect uses the final accumulated content from the
-// completion event.
 func (s *responseStream) Collect(ctx context.Context) (*Response, error) {
 	resp, _, err := s.CollectWithMetrics(ctx)
 	return resp, err
@@ -42,6 +38,8 @@ func (s *responseStream) CollectWithMetrics(ctx context.Context) (*Response, Res
 	var model ModelID
 	var responseID string
 	var finalContent string
+	var contentBuilder strings.Builder
+	var sawDelta bool
 	var toolCalls []llm.ToolCall
 	var firstToken time.Time
 
@@ -94,11 +92,25 @@ func (s *responseStream) CollectWithMetrics(ctx context.Context) (*Response, Res
 		if !ev.Model.IsEmpty() {
 			model = ev.Model
 		}
-		if ev.TextDelta != "" {
-			if firstToken.IsZero() {
-				firstToken = time.Now()
+		switch ev.Kind {
+		case llm.StreamEventKindMessageDelta:
+			if ev.TextDelta != "" {
+				if firstToken.IsZero() {
+					firstToken = time.Now()
+				}
+				sawDelta = true
+				contentBuilder.WriteString(ev.TextDelta)
 			}
-			finalContent = ev.TextDelta
+		case llm.StreamEventKindMessageStop:
+			if ev.TextDelta != "" {
+				if firstToken.IsZero() {
+					firstToken = time.Now()
+				}
+				// Completion payload may include the full content; treat it as authoritative.
+				finalContent = ev.TextDelta
+			}
+		default:
+			// Ignore non-text events.
 		}
 		if ev.StopReason != "" {
 			stop = ev.StopReason
@@ -109,6 +121,10 @@ func (s *responseStream) CollectWithMetrics(ctx context.Context) (*Response, Res
 		if len(ev.ToolCalls) > 0 {
 			toolCalls = append(toolCalls[:0], ev.ToolCalls...)
 		}
+	}
+
+	if finalContent == "" && (sawDelta || contentBuilder.Len() > 0) {
+		finalContent = contentBuilder.String()
 	}
 
 	var output []llm.OutputItem

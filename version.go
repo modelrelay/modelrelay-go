@@ -1,7 +1,9 @@
 package sdk
 
 // Version is the published SDK version.
-// 1.2.0: Add single-call client constructors for raw API keys.
+// 1.3.1: Align NDJSON streaming helpers with v2 structured/text stream contract updates.
+// 1.3.0: Breaking - responses streaming v2 (delta/content top-level, structured patches, v2 Accept profile).
+// 1.2.0: Breaking - NDJSON streaming updates now emit text deltas (not accumulated content).
 // 1.1.1: Structured streaming now surfaces usage on events.
 // 1.0.1: Regenerate SDK types after customer metadata constraints updates.
 // 0.39.1: Fix request timeouts to not cancel streaming bodies.
@@ -84,4 +86,4 @@ package sdk
 // 0.79.2: Add MODEL_CAPABILITY_UNSUPPORTED API error code constant (#710).
 // 1.0.0: Breaking - remove deprecated Config-based SDK client constructor.
 // 0.80.0: Breaking - tighten tool typing (ToolName, ToolCallID, ToolExecutionResult) (#711).
-const Version = "1.2.0"
+const Version = "1.3.1"

@@ -116,8 +116,8 @@ func TestStructuredJSONStream_CompleteFieldsParsing(t *testing.T) {
 
 	// Simulate a stream with update (partial fields) and completion (all fields)
 	ndjson := `{"type":"start","request_id":"req-1","provider":"test","model":"test-model"}
-{"type":"update","payload":{"title":"Hello"},"complete_fields":["title"]}
-{"type":"update","payload":{"title":"Hello","body":"World"},"complete_fields":["title","body"]}
+{"type":"update","patch":[{"op":"add","path":"/title","value":"Hello"}],"complete_fields":["title"]}
+{"type":"update","patch":[{"op":"add","path":"/body","value":"World"}],"complete_fields":["title","body"]}
 {"type":"completion","payload":{"title":"Hello","body":"World"},"complete_fields":["title","body"]}
 `
 	stream := newStructuredJSONStream[Article](ctx, newNDJSONReadCloser(ndjson), "req-1", nil, StreamTimeouts{})
@@ -189,7 +189,7 @@ func TestStructuredJSONStream_CompleteFieldsFiltersEmptyStrings(t *testing.T) {
 	}
 
 	// Include empty strings and whitespace-only strings in complete_fields
-	ndjson := `{"type":"update","payload":{"name":"Test"},"complete_fields":["name", "", "  ", "other"]}
+	ndjson := `{"type":"update","patch":[{"op":"add","path":"/name","value":"Test"}],"complete_fields":["name", "", "  ", "other"]}
 {"type":"completion","payload":{"name":"Test"},"complete_fields":["name"]}
 `
 	stream := newStructuredJSONStream[Simple](ctx, newNDJSONReadCloser(ndjson), "req-2", nil, StreamTimeouts{})
@@ -228,7 +228,7 @@ func TestStructuredJSONStream_UsageParsing(t *testing.T) {
 	}
 
 	ndjson := `{"type":"start","request_id":"req-usage","provider":"test","model":"test-model"}
-{"type":"update","payload":{"name":"Test"},"complete_fields":["name"]}
+{"type":"update","patch":[{"op":"add","path":"/name","value":"Test"}],"complete_fields":["name"]}
 {"type":"completion","payload":{"name":"Test"},"complete_fields":["name"],"usage":{"input_tokens":3,"output_tokens":5,"total_tokens":8}}
 `
 	stream := newStructuredJSONStream[Simple](ctx, newNDJSONReadCloser(ndjson), "req-usage", nil, StreamTimeouts{})

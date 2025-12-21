@@ -217,10 +217,12 @@ func TestResponsesStreamTextDeltas(t *testing.T) {
 		flusher, _ := w.(http.Flusher)
 		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
 		flusher.Flush()
-		_, _ = w.Write([]byte(`{"type":"update","payload":{"content":"Hello"}}` + "\n"))
+		_, _ = w.Write([]byte(`{"type":"update","delta":"Hello"}` + "\n"))
 		flusher.Flush()
 		time.Sleep(10 * time.Millisecond)
-		_, _ = w.Write([]byte(`{"type":"completion","payload":{"content":"Hello world"},"usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}` + "\n"))
+		_, _ = w.Write([]byte(`{"type":"update","delta":" world"}` + "\n"))
+		flusher.Flush()
+		_, _ = w.Write([]byte(`{"type":"completion","usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}` + "\n"))
 		flusher.Flush()
 	}))
 	defer srv.Close()
@@ -247,7 +249,7 @@ func TestResponsesStreamTextDeltas(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("expected second delta got err=%v ok=%v", err, ok)
 	}
-	if second != "Hello world" {
+	if second != " world" {
 		t.Fatalf("unexpected delta %q", second)
 	}
 }
@@ -265,10 +267,12 @@ func TestResponsesStream(t *testing.T) {
 		flusher, _ := w.(http.Flusher)
 		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
 		flusher.Flush()
-		_, _ = w.Write([]byte(`{"type":"update","payload":{"content":"Hello"}}` + "\n"))
+		_, _ = w.Write([]byte(`{"type":"update","delta":"Hello "}` + "\n"))
 		flusher.Flush()
 		time.Sleep(25 * time.Millisecond)
-		_, _ = w.Write([]byte(`{"type":"completion","payload":{"content":"Hello world"},"usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}` + "\n"))
+		_, _ = w.Write([]byte(`{"type":"update","delta":"world"}` + "\n"))
+		flusher.Flush()
+		_, _ = w.Write([]byte(`{"type":"completion","usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}` + "\n"))
 		flusher.Flush()
 	}))
 	defer srv.Close()
@@ -307,6 +311,14 @@ func TestResponsesStream(t *testing.T) {
 	}
 	if event.Kind != llm.StreamEventKindMessageDelta {
 		t.Fatalf("expected delta kind, got %s", event.Kind)
+	}
+
+	event, ok, err = stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected second delta event got err=%v ok=%v", err, ok)
+	}
+	if event.Kind != llm.StreamEventKindMessageDelta {
+		t.Fatalf("expected second delta kind, got %s", event.Kind)
 	}
 
 	event, ok, err = stream.Next()
@@ -449,7 +461,7 @@ func TestResponsesStreamTTFTTimeout(t *testing.T) {
 		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
 		flusher.Flush()
 		time.Sleep(75 * time.Millisecond)
-		_, _ = w.Write([]byte(`{"type":"completion","payload":{"content":"Hello world"}}` + "\n"))
+		_, _ = w.Write([]byte(`{"type":"completion","content":"Hello world"}` + "\n"))
 		flusher.Flush()
 	}))
 	defer srv.Close()
@@ -501,7 +513,7 @@ func TestResponsesStreamIdleTimeout(t *testing.T) {
 		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
 		flusher.Flush()
 		time.Sleep(75 * time.Millisecond)
-		_, _ = w.Write([]byte(`{"type":"completion","payload":{"content":"Hello world"}}` + "\n"))
+		_, _ = w.Write([]byte(`{"type":"completion","content":"Hello world"}` + "\n"))
 		flusher.Flush()
 	}))
 	defer srv.Close()

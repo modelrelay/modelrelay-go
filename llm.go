@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -22,6 +21,8 @@ import (
 type ResponsesClient struct {
 	client *Client
 }
+
+const responsesStreamAccept = "application/x-ndjson; profile=\"responses-stream/v2\""
 
 // Create performs a blocking /responses request.
 func (c *ResponsesClient) Create(ctx context.Context, req ResponseRequest, options ...ResponseOption) (*Response, error) {
@@ -123,11 +124,10 @@ func (c *ResponsesClient) TextForCustomer(
 	return text, nil
 }
 
-// TextDeltaStream yields only text content updates from a responses stream.
-//
-// Note: in the unified NDJSON format, update events contain accumulated content (not per-token deltas).
+// TextDeltaStream yields only text deltas from a responses stream.
 type TextDeltaStream struct {
-	handle *StreamHandle
+	handle   *StreamHandle
+	sawDelta bool
 }
 
 func (s *TextDeltaStream) Close() error {
@@ -147,8 +147,20 @@ func (s *TextDeltaStream) Next() (delta string, ok bool, err error) {
 		if err != nil || !ok {
 			return "", ok, err
 		}
-		if ev.TextDelta != "" {
-			return ev.TextDelta, true, nil
+		switch ev.Kind {
+		case llm.StreamEventKindMessageDelta:
+			if ev.TextDelta != "" {
+				s.sawDelta = true
+				return ev.TextDelta, true, nil
+			}
+		case llm.StreamEventKindMessageStop:
+			// Some providers may only provide content at completion.
+			if !s.sawDelta && ev.TextDelta != "" {
+				s.sawDelta = true
+				return ev.TextDelta, true, nil
+			}
+		default:
+			// Ignore non-text events.
 		}
 	}
 }
@@ -224,7 +236,7 @@ func (c *ResponsesClient) Stream(ctx context.Context, req ResponseRequest, optio
 		return nil, err
 	}
 	// All streaming uses unified NDJSON format
-	httpReq.Header.Set("Accept", "application/x-ndjson")
+	httpReq.Header.Set("Accept", responsesStreamAccept)
 	applyResponseHeaders(httpReq, callOpts)
 	startedAt := time.Now()
 	//nolint:bodyclose // resp.Body is transferred to stream and will be closed by stream.Close()
@@ -280,7 +292,7 @@ func StreamJSON[T any](ctx context.Context, c *ResponsesClient, req ResponseRequ
 	if err != nil {
 		return nil, err
 	}
-	httpReq.Header.Set("Accept", "application/x-ndjson")
+	httpReq.Header.Set("Accept", responsesStreamAccept)
 	applyResponseHeaders(httpReq, callOpts)
 
 	//nolint:bodyclose // resp.Body is owned by the StructuredJSONStream
@@ -542,6 +554,11 @@ func parseNDJSONEvent(line []byte) (StreamEvent, error) {
 	var envelope struct {
 		// Unified format fields
 		Type           string          `json:"type"`
+		StreamMode     string          `json:"stream_mode,omitempty"`
+		StreamVersion  string          `json:"stream_version,omitempty"`
+		Delta          string          `json:"delta,omitempty"`
+		Content        string          `json:"content,omitempty"`
+		Patch          json.RawMessage `json:"patch,omitempty"`
 		Payload        json.RawMessage `json:"payload,omitempty"`
 		CompleteFields []string        `json:"complete_fields,omitempty"`
 		Code           string          `json:"code,omitempty"`
@@ -584,17 +601,13 @@ func parseNDJSONEvent(line []byte) (StreamEvent, error) {
 		kind = llm.StreamEventKindCustom
 	}
 
-	// Extract content from payload if available
+	// Extract text payload for text streaming.
 	var textDelta string
-	if len(envelope.Payload) > 0 {
-		var obj map[string]json.RawMessage
-		if err := json.Unmarshal(envelope.Payload, &obj); err == nil {
-			if rawContent, ok := obj["content"]; ok {
-				if err := json.Unmarshal(rawContent, &textDelta); err != nil {
-					return StreamEvent{}, fmt.Errorf("invalid stream payload content: %w", err)
-				}
-			}
-		}
+	switch envelope.Type {
+	case "update":
+		textDelta = envelope.Delta
+	case "completion":
+		textDelta = envelope.Content
 	}
 
 	// Handle tool_calls array or single tool_call
@@ -606,7 +619,7 @@ func parseNDJSONEvent(line []byte) (StreamEvent, error) {
 	event := StreamEvent{
 		Kind:           kind,
 		Name:           envelope.Type,
-		Data:           append([]byte(nil), envelope.Payload...),
+		Data:           append([]byte(nil), line...),
 		ResponseID:     envelope.RequestID,
 		Model:          NewModelID(envelope.Model),
 		TextDelta:      textDelta,

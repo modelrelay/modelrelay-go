@@ -6,7 +6,7 @@ import llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 type StreamEvent struct {
 	Kind          llm.StreamEventKind
 	Name          string // Record type: "start", "update", "completion", "error"
-	Data          []byte // Raw payload (deprecated: use structured fields)
+	Data          []byte // Raw NDJSON record (deprecated: use structured fields)
 	Usage         *Usage
 	ResponseID    string
 	Model         ModelID

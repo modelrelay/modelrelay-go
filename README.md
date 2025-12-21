@@ -83,7 +83,7 @@ For customer-attributed requests where the backend selects the model:
 text, _ := client.Responses.TextForCustomer(ctx, "customer-123", "You are helpful.", "Hello!")
 ```
 
-To stream only text updates (accumulated content in unified NDJSON):
+To stream only text deltas:
 
 ```go
 stream, _ := client.Responses.StreamTextDeltas(
@@ -248,18 +248,21 @@ for {
     if !ok {
         break
     }
+    if event.Payload == nil {
+        continue
+    }
 
     // Render fields as soon as they're complete
     if event.CompleteFields["title"] {
-        renderTitle(*event.Payload.Title)  // Safe to display
+        renderTitle(event.Payload.Title)  // Safe to display
     }
     if event.CompleteFields["summary"] {
-        renderSummary(*event.Payload.Summary)
+        renderSummary(event.Payload.Summary)
     }
 
     // Show streaming preview of incomplete fields
-    if !event.CompleteFields["body"] && event.Payload.Body != nil {
-        renderBodyPreview(*event.Payload.Body + "▋")
+    if !event.CompleteFields["body"] && event.Payload.Body != "" {
+        renderBodyPreview(event.Payload.Body + "▋")
     }
 }
 ```

@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
+	jsonpatch "github.com/evanphx/json-patch/v5"
 )
 
 // StructuredRecordType identifies the NDJSON record kind in structured
@@ -54,6 +56,8 @@ type StructuredJSONStream[T any] struct {
 	closeOnce sync.Once
 	done      chan struct{}
 	terminal  bool // completion or error observed
+
+	currentPayload json.RawMessage
 }
 
 func newStructuredJSONStream[T any](ctx context.Context, body io.ReadCloser, requestID string, retry *RetryMetadata, timeouts StreamTimeouts) *StructuredJSONStream[T] {
@@ -87,6 +91,7 @@ func newStructuredJSONStream[T any](ctx context.Context, body io.ReadCloser, req
 type structuredRecord struct {
 	recordType     StructuredRecordType
 	payload        json.RawMessage
+	patch          json.RawMessage
 	completeFields []string
 	code           string
 	message        string
@@ -99,6 +104,7 @@ type structuredRecord struct {
 func parseStructuredRecord(line []byte) (structuredRecord, error) {
 	var raw struct {
 		Type           string          `json:"type"`
+		Patch          json.RawMessage `json:"patch,omitempty"`
 		Payload        json.RawMessage `json:"payload,omitempty"`
 		CompleteFields []string        `json:"complete_fields,omitempty"`
 		Code           string          `json:"code,omitempty"`
@@ -111,6 +117,7 @@ func parseStructuredRecord(line []byte) (structuredRecord, error) {
 	}
 	return structuredRecord{
 		recordType:     StructuredRecordType(strings.TrimSpace(strings.ToLower(raw.Type))),
+		patch:          raw.Patch,
 		payload:        raw.Payload,
 		completeFields: raw.CompleteFields,
 		code:           raw.Code,
@@ -131,6 +138,45 @@ func buildCompleteFieldsMap(fields []string) map[string]bool {
 		}
 	}
 	return result
+}
+
+func (s *StructuredJSONStream[T]) materializePayload(record structuredRecord) (json.RawMessage, error) {
+	switch record.recordType {
+	case StructuredRecordTypeUpdate:
+		if len(bytes.TrimSpace(record.patch)) == 0 {
+			return nil, s.protocolError("structured stream update missing patch")
+		}
+		next, err := s.applyPatch(record.patch)
+		if err != nil {
+			return nil, s.transportError("failed to apply structured patch", err)
+		}
+		return next, nil
+	case StructuredRecordTypeCompletion:
+		if len(bytes.TrimSpace(record.payload)) == 0 {
+			return nil, s.protocolError("structured stream completion missing payload")
+		}
+		s.currentPayload = append([]byte(nil), record.payload...)
+		return s.currentPayload, nil
+	default:
+		return nil, s.protocolError("structured stream record missing payload")
+	}
+}
+
+func (s *StructuredJSONStream[T]) applyPatch(patch json.RawMessage) (json.RawMessage, error) {
+	base := s.currentPayload
+	if len(bytes.TrimSpace(base)) == 0 {
+		base = []byte("{}")
+	}
+	ops, err := jsonpatch.DecodePatch(patch)
+	if err != nil {
+		return nil, err
+	}
+	next, err := ops.Apply(base)
+	if err != nil {
+		return nil, err
+	}
+	s.currentPayload = next
+	return next, nil
 }
 
 // Next advances the stream and decodes the next update or completion record.
@@ -192,11 +238,12 @@ func (s *StructuredJSONStream[T]) Next() (StructuredJSONEvent[T], bool, error) {
 			// They are used to keep long-lived connections from timing out.
 			continue
 		case StructuredRecordTypeUpdate, StructuredRecordTypeCompletion:
-			if len(bytes.TrimSpace(record.payload)) == 0 {
-				return StructuredJSONEvent[T]{}, false, s.protocolError("structured stream record missing payload")
+			payloadBytes, matErr := s.materializePayload(record)
+			if matErr != nil {
+				return StructuredJSONEvent[T]{}, false, matErr
 			}
 			var payload T
-			if err := json.Unmarshal(record.payload, &payload); err != nil {
+			if err := json.Unmarshal(payloadBytes, &payload); err != nil {
 				return StructuredJSONEvent[T]{}, false, s.transportError("failed to decode structured payload", err)
 			}
 			s.monitor.SignalFirstContent()
