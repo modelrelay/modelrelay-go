@@ -125,6 +125,7 @@ const (
 	ModelCapabilityTools       ModelCapability = "tools"
 	ModelCapabilityVision      ModelCapability = "vision"
 	ModelCapabilityWebSearch   ModelCapability = "web_search"
+	ModelCapabilityWebFetch    ModelCapability = "web_fetch"
 	ModelCapabilityComputerUse ModelCapability = "computer_use"
 	ModelCapabilityCodeExec    ModelCapability = "code_execution"
 )
@@ -140,6 +141,7 @@ func IsKnownModelCapability(c ModelCapability) bool {
 	case ModelCapabilityTools,
 		ModelCapabilityVision,
 		ModelCapabilityWebSearch,
+		ModelCapabilityWebFetch,
 		ModelCapabilityComputerUse,
 		ModelCapabilityCodeExec:
 		return true

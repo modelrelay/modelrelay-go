@@ -48,6 +48,7 @@ const (
 	ModelCapabilityComputerUse   ModelCapability = "computer_use"
 	ModelCapabilityTools         ModelCapability = "tools"
 	ModelCapabilityVision        ModelCapability = "vision"
+	ModelCapabilityWebFetch      ModelCapability = "web_fetch"
 	ModelCapabilityWebSearch     ModelCapability = "web_search"
 )
 
