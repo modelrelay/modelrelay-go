@@ -11,6 +11,6 @@ const (
 	APIKey = "X-ModelRelay-Api-Key" //nolint:gosec // This is a header name, not a credential
 
 	// CustomerID is the header for customer-attributed requests.
-	// When set, the customer's tier determines the model to use.
+	// When set, the customer's subscription tier (if any) determines model defaults.
 	CustomerID = "X-ModelRelay-Customer-Id"
 )

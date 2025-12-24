@@ -25,4 +25,3 @@ func (c *CustomersClient) MeSubscription(ctx context.Context) (CustomerMeSubscri
 	}
 	return payload.Subscription, nil
 }
-

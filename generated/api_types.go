@@ -201,6 +201,15 @@ type AuthTokens struct {
 	RefreshToken *string    `json:"refresh_token,omitempty"`
 }
 
+// CheckoutSessionResponse defines model for CheckoutSessionResponse.
+type CheckoutSessionResponse struct {
+	// SessionId Stripe checkout session ID
+	SessionId string `json:"session_id"`
+
+	// Url Checkout URL
+	Url string `json:"url"`
+}
+
 // Citation defines model for Citation.
 type Citation struct {
 	Title *string `json:"title,omitempty"`
@@ -220,12 +229,6 @@ type ContentPartType string
 type Customer struct {
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 
-	// CurrentPeriodEnd End of the current billing period
-	CurrentPeriodEnd *time.Time `json:"current_period_end,omitempty"`
-
-	// CurrentPeriodStart Start of the current billing period
-	CurrentPeriodStart *time.Time `json:"current_period_start,omitempty"`
-
 	// Email Customer email address
 	Email *openapi_types.Email `json:"email,omitempty"`
 
@@ -236,70 +239,26 @@ type Customer struct {
 	// Metadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values must be JSON scalars, arrays, or objects. Nesting depth limited to 5 levels.
 	Metadata  *CustomerMetadata   `json:"metadata,omitempty"`
 	ProjectId *openapi_types.UUID `json:"project_id,omitempty"`
-
-	// StripeCustomerId Stripe customer ID
-	StripeCustomerId *string `json:"stripe_customer_id,omitempty"`
-
-	// StripeSubscriptionId Stripe subscription ID
-	StripeSubscriptionId *string `json:"stripe_subscription_id,omitempty"`
-
-	// SubscriptionStatus Subscription status (active, past_due, canceled, etc.)
-	SubscriptionStatus *SubscriptionStatusKind `json:"subscription_status,omitempty"`
-
-	// TierCode Tier code identifier (e.g., free, pro, enterprise).
-	TierCode  *TierCode           `json:"tier_code,omitempty"`
-	TierId    *openapi_types.UUID `json:"tier_id,omitempty"`
 	UpdatedAt *time.Time          `json:"updated_at,omitempty"`
 }
 
 // CustomerCreate defines model for CustomerCreate.
 type CustomerCreate struct {
 	// Email Customer email address
-	Email *openapi_types.Email `json:"email,omitempty"`
+	Email openapi_types.Email `json:"email"`
 
 	// ExternalId External customer identifier from your system
 	ExternalId string `json:"external_id"`
 
 	// Metadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values must be JSON scalars, arrays, or objects. Nesting depth limited to 5 levels.
-	Metadata *CustomerMetadata  `json:"metadata,omitempty"`
-	TierId   openapi_types.UUID `json:"tier_id"`
+	Metadata *CustomerMetadata `json:"metadata,omitempty"`
 }
 
 // CustomerMe defines model for CustomerMe.
 type CustomerMe struct {
-	CreatedAt *time.Time `json:"created_at,omitempty"`
-
-	// CurrentPeriodEnd End of the current billing period
-	CurrentPeriodEnd *time.Time `json:"current_period_end,omitempty"`
-
-	// CurrentPeriodStart Start of the current billing period
-	CurrentPeriodStart *time.Time `json:"current_period_start,omitempty"`
-
-	// Email Customer email address
-	Email *openapi_types.Email `json:"email,omitempty"`
-
-	// ExternalId External customer identifier from your system
-	ExternalId *string             `json:"external_id,omitempty"`
-	Id         *openapi_types.UUID `json:"id,omitempty"`
-
-	// Metadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values must be JSON scalars, arrays, or objects. Nesting depth limited to 5 levels.
-	Metadata  *CustomerMetadata   `json:"metadata,omitempty"`
-	ProjectId *openapi_types.UUID `json:"project_id,omitempty"`
-
-	// StripeCustomerId Stripe customer ID
-	StripeCustomerId *string `json:"stripe_customer_id,omitempty"`
-
-	// StripeSubscriptionId Stripe subscription ID
-	StripeSubscriptionId *string `json:"stripe_subscription_id,omitempty"`
-
-	// SubscriptionStatus Subscription status (active, past_due, canceled, etc.)
-	SubscriptionStatus *SubscriptionStatusKind `json:"subscription_status,omitempty"`
-	Tier               Tier                    `json:"tier"`
-
-	// TierCode Tier code identifier (e.g., free, pro, enterprise).
-	TierCode  *TierCode           `json:"tier_code,omitempty"`
-	TierId    *openapi_types.UUID `json:"tier_id,omitempty"`
-	UpdatedAt *time.Time          `json:"updated_at,omitempty"`
+	Customer     Customer      `json:"customer"`
+	Subscription *Subscription `json:"subscription,omitempty"`
+	Tier         *Tier         `json:"tier,omitempty"`
 }
 
 // CustomerMeResponse defines model for CustomerMeResponse.
@@ -426,6 +385,12 @@ type CustomerUsagePoint struct {
 	Day      time.Time `json:"day"`
 	Requests int64     `json:"requests"`
 	Tokens   int64     `json:"tokens"`
+}
+
+// CustomerWithSubscription defines model for CustomerWithSubscription.
+type CustomerWithSubscription struct {
+	Customer     Customer      `json:"customer"`
+	Subscription *Subscription `json:"subscription,omitempty"`
 }
 
 // DeviceStartResponse defines model for DeviceStartResponse.
@@ -757,6 +722,34 @@ type RunsGetResponse struct {
 	Status RunStatusV0 `json:"status"`
 }
 
+// Subscription defines model for Subscription.
+type Subscription struct {
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+
+	// CurrentPeriodEnd End of the current billing period
+	CurrentPeriodEnd *time.Time `json:"current_period_end,omitempty"`
+
+	// CurrentPeriodStart Start of the current billing period
+	CurrentPeriodStart *time.Time          `json:"current_period_start,omitempty"`
+	CustomerId         *openapi_types.UUID `json:"customer_id,omitempty"`
+	Id                 *openapi_types.UUID `json:"id,omitempty"`
+	ProjectId          *openapi_types.UUID `json:"project_id,omitempty"`
+
+	// StripeCustomerId Stripe customer ID
+	StripeCustomerId *string `json:"stripe_customer_id,omitempty"`
+
+	// StripeSubscriptionId Stripe subscription ID
+	StripeSubscriptionId *string `json:"stripe_subscription_id,omitempty"`
+
+	// SubscriptionStatus Subscription status (active, past_due, canceled, etc.)
+	SubscriptionStatus *SubscriptionStatusKind `json:"subscription_status,omitempty"`
+
+	// TierCode Tier code identifier (e.g., free, pro, enterprise).
+	TierCode  *TierCode           `json:"tier_code,omitempty"`
+	TierId    *openapi_types.UUID `json:"tier_id,omitempty"`
+	UpdatedAt *time.Time          `json:"updated_at,omitempty"`
+}
+
 // SubscriptionStatusKind Subscription status (active, past_due, canceled, etc.)
 type SubscriptionStatusKind string
 
@@ -1006,9 +999,6 @@ type MintCustomerTokenJSONBody struct {
 	// CustomerId Internal customer UUID (provide exactly one of customer_id or customer_external_id)
 	CustomerId *openapi_types.UUID `json:"customer_id,omitempty"`
 
-	// ProjectId Project ID the customer belongs to
-	ProjectId openapi_types.UUID `json:"project_id"`
-
 	// TtlSeconds Requested token TTL in seconds (server may cap this)
 	TtlSeconds *uint32 `json:"ttl_seconds,omitempty"`
 }
@@ -1063,6 +1053,13 @@ type ClaimCustomerJSONBody struct {
 
 // ClaimCustomerJSONBodyProvider defines parameters for ClaimCustomer.
 type ClaimCustomerJSONBodyProvider string
+
+// SubscribeCustomerJSONBody defines parameters for SubscribeCustomer.
+type SubscribeCustomerJSONBody struct {
+	CancelUrl  string             `json:"cancel_url"`
+	SuccessUrl string             `json:"success_url"`
+	TierId     openapi_types.UUID `json:"tier_id"`
+}
 
 // ListModelsParams defines parameters for ListModels.
 type ListModelsParams struct {
@@ -1133,8 +1130,17 @@ type RefreshTokenJSONRequestBody RefreshTokenJSONBody
 // RegisterOwnerJSONRequestBody defines body for RegisterOwner for application/json ContentType.
 type RegisterOwnerJSONRequestBody RegisterOwnerJSONBody
 
+// CreateProjectCustomerJSONRequestBody defines body for CreateProjectCustomer for application/json ContentType.
+type CreateProjectCustomerJSONRequestBody = CustomerCreate
+
+// UpsertCustomerJSONRequestBody defines body for UpsertCustomer for application/json ContentType.
+type UpsertCustomerJSONRequestBody = CustomerCreate
+
 // ClaimCustomerJSONRequestBody defines body for ClaimCustomer for application/json ContentType.
 type ClaimCustomerJSONRequestBody ClaimCustomerJSONBody
+
+// SubscribeCustomerJSONRequestBody defines body for SubscribeCustomer for application/json ContentType.
+type SubscribeCustomerJSONRequestBody SubscribeCustomerJSONBody
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody CreateProjectJSONBody
@@ -1144,9 +1150,6 @@ type UpdateProjectJSONRequestBody UpdateProjectJSONBody
 
 // CreateCustomerJSONRequestBody defines body for CreateCustomer for application/json ContentType.
 type CreateCustomerJSONRequestBody = CustomerCreate
-
-// UpdateCustomerJSONRequestBody defines body for UpdateCustomer for application/json ContentType.
-type UpdateCustomerJSONRequestBody = CustomerCreate
 
 // CreateTierJSONRequestBody defines body for CreateTier for application/json ContentType.
 type CreateTierJSONRequestBody = TierCreate

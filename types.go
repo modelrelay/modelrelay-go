@@ -144,7 +144,7 @@ func WithRequestID(requestID string) ResponseOption {
 }
 
 // WithCustomerID sets the X-ModelRelay-Customer-Id header for customer-attributed requests.
-// When this header is set, the customer's tier determines the model to use.
+// When this header is set, the customer's subscription tier (if any) determines model defaults.
 func WithCustomerID(customerID string) ResponseOption {
 	return func(opts *responseCallOptions) {
 		clean := strings.TrimSpace(customerID)

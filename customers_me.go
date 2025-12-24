@@ -24,8 +24,7 @@ func (c *CustomersClient) Me(ctx context.Context) (CustomerMe, error) {
 	if err := c.client.sendAndDecode(ctx, http.MethodGet, routes.CustomersMe, nil, &payload); err != nil {
 		return CustomerMe{}, err
 	}
-	// The generated type uses a non-pointer field for customer; validate it's present.
-	if payload.Customer.Id == nil {
+	if payload.Customer.Customer.Id == nil {
 		return CustomerMe{}, fmt.Errorf("sdk: missing customer in response")
 	}
 	return payload.Customer, nil

@@ -14,12 +14,11 @@ Use token providers when you want the SDK to automatically obtain/refresh **bear
 ctx := context.Background()
 secret, _ := sdk.ParseSecretKey(os.Getenv("MODELRELAY_API_KEY"))
 
-projectID := uuid.MustParse(os.Getenv("MODELRELAY_PROJECT_ID"))
 customerID := uuid.MustParse(os.Getenv("MODELRELAY_CUSTOMER_ID"))
 
 provider, _ := sdk.NewCustomerTokenProvider(sdk.CustomerTokenProviderConfig{
     SecretKey: secret,
-    Request:   sdk.NewCustomerTokenRequestForCustomerID(projectID, customerID),
+    Request:   sdk.NewCustomerTokenRequestForCustomerID(customerID),
 })
 
 client, _ := sdk.NewClientWithTokenProvider(provider)
@@ -269,7 +268,7 @@ for {
 
 ## Customer-Attributed Requests
 
-For metered billing, use `CustomerID` — the customer's tier determines the model:
+For metered billing, use `CustomerID` — the customer's subscription tier determines the model:
 
 ```go
 ctx := context.Background()
@@ -285,19 +284,19 @@ resp, _ := client.Responses.Create(ctx, req, callOpts...)
 ```go
 // Create/update customer
 customer, _ := client.Customers.Upsert(ctx, sdk.CustomerUpsertRequest{
-    TierID:     uuid.MustParse("00000000-0000-0000-0000-000000000000"), // Replace with your tier UUID
     ExternalID: sdk.NewCustomerExternalID("your-user-id"),
     Email:      "user@example.com",
 })
 
 // Create checkout session for subscription billing
-session, _ := client.Customers.CreateCheckoutSession(ctx, customer.ID, sdk.CheckoutSessionRequest{
+session, _ := client.Customers.Subscribe(ctx, customer.Customer.ID, sdk.CustomerSubscribeRequest{
+    TierID:     uuid.MustParse("00000000-0000-0000-0000-000000000000"), // Replace with your tier UUID
     SuccessURL: "https://myapp.com/success",
     CancelURL:  "https://myapp.com/cancel",
 })
 
 // Check subscription status
-status, _ := client.Customers.GetSubscription(ctx, customer.ID)
+status, _ := client.Customers.GetSubscription(ctx, customer.Customer.ID)
 ```
 
 ## Plugins (Workflows)

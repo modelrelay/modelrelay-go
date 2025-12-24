@@ -20,25 +20,21 @@ const TokenTypeBearer TokenType = "Bearer"
 // CustomerTokenRequest mints a customer-scoped bearer token (requires secret key auth).
 // Exactly one of CustomerID or CustomerExternalID is required.
 type CustomerTokenRequest struct {
-	ProjectID          uuid.UUID          `json:"project_id"`
 	CustomerID         *uuid.UUID         `json:"customer_id,omitempty"`
 	CustomerExternalID CustomerExternalID `json:"customer_external_id,omitempty"`
 	TTLSeconds         int64              `json:"ttl_seconds,omitempty"`
 }
 
-func NewCustomerTokenRequestForCustomerID(projectID uuid.UUID, customerID uuid.UUID) CustomerTokenRequest {
+func NewCustomerTokenRequestForCustomerID(customerID uuid.UUID) CustomerTokenRequest {
 	id := customerID
-	return CustomerTokenRequest{ProjectID: projectID, CustomerID: &id}
+	return CustomerTokenRequest{CustomerID: &id}
 }
 
-func NewCustomerTokenRequestForExternalID(projectID uuid.UUID, customerExternalID CustomerExternalID) CustomerTokenRequest {
-	return CustomerTokenRequest{ProjectID: projectID, CustomerExternalID: customerExternalID}
+func NewCustomerTokenRequestForExternalID(customerExternalID CustomerExternalID) CustomerTokenRequest {
+	return CustomerTokenRequest{CustomerExternalID: customerExternalID}
 }
 
 func (r CustomerTokenRequest) Validate() error {
-	if r.ProjectID == uuid.Nil {
-		return fmt.Errorf("project_id is required")
-	}
 	hasCustomerID := r.CustomerID != nil && *r.CustomerID != uuid.Nil
 	hasExternal := !r.CustomerExternalID.IsEmpty()
 	if hasCustomerID == hasExternal {

@@ -271,4 +271,3 @@ func (p *OIDCExchangeTokenProvider) exchange(ctx context.Context) (CustomerToken
 	}
 	return tok, nil
 }
-

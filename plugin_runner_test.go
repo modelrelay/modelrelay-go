@@ -44,12 +44,12 @@ func TestPluginRunner_Run_HandlesClientToolHandoff(t *testing.T) {
 			}
 
 			// First poll: emit waiting. After tool-results submission: emit run_completed.
-				if !toolsDone.Load() {
-					if afterSeq < 1 {
-						_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID + `","seq":1,"ts":"2025-12-17T00:00:00Z","type":"node_waiting","node_id":"n1","waiting":{"step":0,"request_id":"req_1","pending_tool_calls":[{"tool_call_id":"tc_1","name":"bash","arguments":"{\"command\":\"echo hi\"}"},{"tool_call_id":"tc_2","name":"write_file","arguments":"{\"path\":\"x.txt\",\"contents\":\"hi\"}"}],"reason":"client_tool_execution"}}` + "\n"))
-					}
-					return
+			if !toolsDone.Load() {
+				if afterSeq < 1 {
+					_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID + `","seq":1,"ts":"2025-12-17T00:00:00Z","type":"node_waiting","node_id":"n1","waiting":{"step":0,"request_id":"req_1","pending_tool_calls":[{"tool_call_id":"tc_1","name":"bash","arguments":"{\"command\":\"echo hi\"}"},{"tool_call_id":"tc_2","name":"write_file","arguments":"{\"path\":\"x.txt\",\"contents\":\"hi\"}"}],"reason":"client_tool_execution"}}` + "\n"))
 				}
+				return
+			}
 			if afterSeq < 2 {
 				_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID + `","seq":2,"ts":"2025-12-17T00:00:01Z","type":"run_completed","plan_hash":"` + planHash + `","outputs_artifact_key":"run_outputs.v0","outputs_info":{"bytes":2,"sha256":"00","included":false}}` + "\n"))
 			}

@@ -25,4 +25,3 @@ func (c *CustomersClient) MeUsage(ctx context.Context) (CustomerMeUsage, error) 
 	}
 	return payload.Usage, nil
 }
-

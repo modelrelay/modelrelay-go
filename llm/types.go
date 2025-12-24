@@ -13,7 +13,7 @@ import (
 type ResponseRequest struct {
 	// Provider optionally forces routing to a specific provider (advanced).
 	Provider string `json:"provider,omitempty"`
-	// Model is optional for customer-attributed requests (tier controls model).
+	// Model is optional for customer-attributed requests (subscription tier controls model).
 	Model string `json:"model,omitempty"`
 
 	// Input is the ordered list of input items (messages, tool results, etc.).

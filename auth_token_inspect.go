@@ -38,4 +38,3 @@ func (c *Client) hasJWTAccessToken() bool {
 	}
 	return false
 }
-

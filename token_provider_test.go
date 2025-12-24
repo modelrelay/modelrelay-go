@@ -86,7 +86,7 @@ func TestOIDCExchangeTokenProviderExchangesAndCaches(t *testing.T) {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(CustomerToken{
-				Token:              "cust-token-1",
+				Token:              "customer-token-1",
 				ExpiresAt:          expiresAt,
 				ExpiresIn:          600,
 				TokenType:          TokenTypeBearer,
@@ -96,7 +96,7 @@ func TestOIDCExchangeTokenProviderExchangesAndCaches(t *testing.T) {
 				TierCode:           NewTierCode("free"),
 			})
 		case routes.Responses:
-			if got := r.Header.Get("Authorization"); got != "Bearer cust-token-1" {
+			if got := r.Header.Get("Authorization"); got != "Bearer customer-token-1" {
 				t.Fatalf("expected Authorization header got %q", got)
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -167,7 +167,7 @@ func TestCustomerTokenProviderMintsAndCaches(t *testing.T) {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(CustomerToken{
-				Token:              "cust-token-2",
+				Token:              "customer-token-2",
 				ExpiresAt:          expiresAt,
 				ExpiresIn:          600,
 				TokenType:          TokenTypeBearer,
@@ -177,7 +177,7 @@ func TestCustomerTokenProviderMintsAndCaches(t *testing.T) {
 				TierCode:           NewTierCode("pro"),
 			})
 		case routes.Responses:
-			if got := r.Header.Get("Authorization"); got != "Bearer cust-token-2" {
+			if got := r.Header.Get("Authorization"); got != "Bearer customer-token-2" {
 				t.Fatalf("expected Authorization header got %q", got)
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -197,7 +197,8 @@ func TestCustomerTokenProviderMintsAndCaches(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	req := NewCustomerTokenRequestForCustomerID(projectID, customerID)
+	req := NewCustomerTokenRequestForCustomerID(customerID)
+	req.TTLSeconds = 0
 	provider, err := NewCustomerTokenProvider(CustomerTokenProviderConfig{
 		BaseURL:    srv.URL,
 		HTTPClient: srv.Client(),
@@ -226,4 +227,3 @@ func TestCustomerTokenProviderMintsAndCaches(t *testing.T) {
 		t.Fatalf("expected 1 mint call, got %d", got)
 	}
 }
-

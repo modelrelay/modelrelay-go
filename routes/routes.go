@@ -38,6 +38,18 @@ const (
 	// CustomersClaim claims a customer by email, setting their external_id.
 	CustomersClaim = "/customers/claim"
 
+	// Customers lists or creates customers in a project.
+	Customers = "/customers"
+
+	// CustomersByID targets a customer by ID.
+	CustomersByID = "/customers/{customer_id}"
+
+	// CustomersSubscribe creates a checkout session for a customer subscription.
+	CustomersSubscribe = "/customers/{customer_id}/subscribe"
+
+	// CustomersSubscription reads or cancels a customer subscription.
+	CustomersSubscription = "/customers/{customer_id}/subscription"
+
 	// CustomersMe returns the current authenticated customer (customer bearer token only).
 	CustomersMe = "/customers/me"
 

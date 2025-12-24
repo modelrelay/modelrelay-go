@@ -45,7 +45,7 @@ func TestCustomerToken(t *testing.T) {
 		t.Fatalf("NewClientWithKey: %v", err)
 	}
 
-	req := NewCustomerTokenRequestForExternalID(issued.ProjectID, NewCustomerExternalID("customer_123"))
+	req := NewCustomerTokenRequestForExternalID(NewCustomerExternalID("customer_123"))
 	token, err := client.Auth.CustomerToken(context.Background(), req)
 	if err != nil {
 		t.Fatalf("CustomerToken: %v", err)
@@ -65,32 +65,27 @@ func TestCustomerTokenRequestValidation(t *testing.T) {
 	}{
 		{
 			name:      "valid external",
-			req:       NewCustomerTokenRequestForExternalID(uuid.New(), NewCustomerExternalID("customer_123")),
+			req:       NewCustomerTokenRequestForExternalID(NewCustomerExternalID("customer_123")),
 			wantError: false,
 		},
 		{
 			name:      "valid id",
-			req:       NewCustomerTokenRequestForCustomerID(uuid.New(), uuid.New()),
+			req:       NewCustomerTokenRequestForCustomerID(uuid.New()),
 			wantError: false,
 		},
 		{
-			name:      "missing project",
-			req:       CustomerTokenRequest{CustomerExternalID: NewCustomerExternalID("customer_123")},
-			wantError: true,
-		},
-		{
 			name:      "missing customer selector",
-			req:       CustomerTokenRequest{ProjectID: uuid.New()},
+			req:       CustomerTokenRequest{},
 			wantError: true,
 		},
 		{
 			name:      "both selectors set",
-			req:       CustomerTokenRequest{ProjectID: uuid.New(), CustomerID: uuidPtr(uuid.New()), CustomerExternalID: NewCustomerExternalID("customer_123")},
+			req:       CustomerTokenRequest{CustomerID: uuidPtr(uuid.New()), CustomerExternalID: NewCustomerExternalID("customer_123")},
 			wantError: true,
 		},
 		{
 			name:      "negative ttl",
-			req:       CustomerTokenRequest{ProjectID: uuid.New(), CustomerID: uuidPtr(uuid.New()), TTLSeconds: -1},
+			req:       CustomerTokenRequest{CustomerID: uuidPtr(uuid.New()), TTLSeconds: -1},
 			wantError: true,
 		},
 	}

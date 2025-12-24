@@ -52,4 +52,3 @@ func (a *AuthClient) OIDCExchange(ctx context.Context, req OIDCExchangeRequest) 
 	}
 	return payload, nil
 }
-

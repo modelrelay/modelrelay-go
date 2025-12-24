@@ -144,7 +144,7 @@ func TestResponsesTextForCustomerOmitsModel(t *testing.T) {
 		if r.URL.Path != routes.Responses {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
-		if got := strings.TrimSpace(r.Header.Get(headers.CustomerID)); got != "cust_123" {
+		if got := strings.TrimSpace(r.Header.Get(headers.CustomerID)); got != "customer_123" {
 			t.Fatalf("expected customer header got %q", got)
 		}
 		var reqPayload map[string]any
@@ -170,7 +170,7 @@ func TestResponsesTextForCustomerOmitsModel(t *testing.T) {
 
 	client := newTestClient(t, srv, "mr_sk_test")
 
-	text, err := client.Responses.TextForCustomer(context.Background(), "cust_123", "sys", "user")
+	text, err := client.Responses.TextForCustomer(context.Background(), "customer_123", "sys", "user")
 	if err != nil {
 		t.Fatalf("text for customer: %v", err)
 	}
@@ -669,7 +669,7 @@ func TestResponsesCustomerHeaderAllowsMissingModel(t *testing.T) {
 		if r.URL.Path != routes.Responses {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
-		if got := strings.TrimSpace(r.Header.Get(headers.CustomerID)); got != "cust_123" {
+		if got := strings.TrimSpace(r.Header.Get(headers.CustomerID)); got != "customer_123" {
 			t.Fatalf("expected customer header got %q", got)
 		}
 		var reqPayload map[string]any
@@ -687,7 +687,7 @@ func TestResponsesCustomerHeaderAllowsMissingModel(t *testing.T) {
 	client := newTestClient(t, srv, "mr_sk_test")
 
 	req, opts, err := client.Responses.New().
-		CustomerID("cust_123").
+		CustomerID("customer_123").
 		User("hi").
 		Build()
 	if err != nil {

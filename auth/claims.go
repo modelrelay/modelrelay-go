@@ -16,8 +16,8 @@ type Claims struct {
 	// Typed fields instead of encoded strings in scope array.
 	// These are used for customer bearer tokens minted via secret keys.
 	ProjectID        string `json:"pid,omitempty"`  // Project UUID
-	CustomerID       string `json:"cid,omitempty"`  // Internal customer UUID
-	CustomerExternal string `json:"cext,omitempty"` // External customer identifier
+	CustomerID       string `json:"euid,omitempty"` // Internal customer UUID
+	CustomerExternal string `json:"eext,omitempty"` // External customer identifier
 
 	jwt.RegisteredClaims
 }
