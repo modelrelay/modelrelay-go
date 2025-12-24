@@ -28,25 +28,22 @@ func validateEmail(email string) error {
 	return nil
 }
 
-// CustomerMetadata holds arbitrary customer metadata.
-type CustomerMetadata map[string]any
-
 // Customer represents a customer in a ModelRelay project.
 type Customer struct {
-	ID                   uuid.UUID          `json:"id"`
-	ProjectID            uuid.UUID          `json:"project_id"`
-	TierID               uuid.UUID          `json:"tier_id"`
-	TierCode             TierCode           `json:"tier_code,omitempty"`
-	ExternalID           CustomerExternalID `json:"external_id"`
-	Email                string             `json:"email"`
-	Metadata             CustomerMetadata   `json:"metadata,omitempty"`
-	StripeCustomerID     string             `json:"stripe_customer_id,omitempty"`
-	StripeSubscriptionID string             `json:"stripe_subscription_id,omitempty"`
-	SubscriptionStatus   string             `json:"subscription_status,omitempty"`
-	CurrentPeriodStart   *time.Time         `json:"current_period_start,omitempty"`
-	CurrentPeriodEnd     *time.Time         `json:"current_period_end,omitempty"`
-	CreatedAt            time.Time          `json:"created_at"`
-	UpdatedAt            time.Time          `json:"updated_at"`
+	ID                   uuid.UUID              `json:"id"`
+	ProjectID            uuid.UUID              `json:"project_id"`
+	TierID               uuid.UUID              `json:"tier_id"`
+	TierCode             TierCode               `json:"tier_code,omitempty"`
+	ExternalID           CustomerExternalID     `json:"external_id"`
+	Email                string                 `json:"email"`
+	Metadata             CustomerMetadata       `json:"metadata,omitempty"`
+	StripeCustomerID     string                 `json:"stripe_customer_id,omitempty"`
+	StripeSubscriptionID string                 `json:"stripe_subscription_id,omitempty"`
+	SubscriptionStatus   SubscriptionStatusKind `json:"subscription_status,omitempty"`
+	CurrentPeriodStart   *time.Time             `json:"current_period_start,omitempty"`
+	CurrentPeriodEnd     *time.Time             `json:"current_period_end,omitempty"`
+	CreatedAt            time.Time              `json:"created_at"`
+	UpdatedAt            time.Time              `json:"updated_at"`
 }
 
 // CustomerCreateRequest contains the fields to create a customer.
@@ -87,11 +84,11 @@ type CheckoutSession struct {
 
 // SubscriptionStatus represents the subscription status of a customer.
 type SubscriptionStatus struct {
-	Active             bool   `json:"active"`
-	SubscriptionID     string `json:"subscription_id,omitempty"`
-	Status             string `json:"status,omitempty"`
-	CurrentPeriodStart string `json:"current_period_start,omitempty"`
-	CurrentPeriodEnd   string `json:"current_period_end,omitempty"`
+	Active             bool                   `json:"active"`
+	SubscriptionID     string                 `json:"subscription_id,omitempty"`
+	Status             SubscriptionStatusKind `json:"status,omitempty"`
+	CurrentPeriodStart string                 `json:"current_period_start,omitempty"`
+	CurrentPeriodEnd   string                 `json:"current_period_end,omitempty"`
 }
 
 // customerListResponse wraps the customer list response.
@@ -144,6 +141,9 @@ func (c *CustomersClient) Create(ctx context.Context, req CustomerCreateRequest)
 	if err := validateEmail(req.Email); err != nil {
 		return Customer{}, err
 	}
+	if err := req.Metadata.Validate(); err != nil {
+		return Customer{}, err
+	}
 	var payload customerResponse
 	if err := c.client.sendAndDecode(ctx, http.MethodPost, "/customers", req, &payload); err != nil {
 		return Customer{}, err
@@ -180,6 +180,9 @@ func (c *CustomersClient) Upsert(ctx context.Context, req CustomerUpsertRequest)
 		return Customer{}, fmt.Errorf("sdk: external_id required")
 	}
 	if err := validateEmail(req.Email); err != nil {
+		return Customer{}, err
+	}
+	if err := req.Metadata.Validate(); err != nil {
 		return Customer{}, err
 	}
 	var payload customerResponse

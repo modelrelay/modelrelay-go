@@ -85,6 +85,65 @@ func (s *StopReason) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// SubscriptionStatusKind mirrors Stripe subscription lifecycle states.
+type SubscriptionStatusKind string
+
+const (
+	SubscriptionStatusActive            SubscriptionStatusKind = "active"
+	SubscriptionStatusTrialing          SubscriptionStatusKind = "trialing"
+	SubscriptionStatusPastDue           SubscriptionStatusKind = "past_due"
+	SubscriptionStatusCanceled          SubscriptionStatusKind = "canceled"
+	SubscriptionStatusUnpaid            SubscriptionStatusKind = "unpaid"
+	SubscriptionStatusIncomplete        SubscriptionStatusKind = "incomplete"
+	SubscriptionStatusIncompleteExpired SubscriptionStatusKind = "incomplete_expired"
+	SubscriptionStatusPaused            SubscriptionStatusKind = "paused"
+)
+
+// ParseSubscriptionStatus normalizes known statuses while preserving unknown values.
+func ParseSubscriptionStatus(val string) SubscriptionStatusKind {
+	normalized := strings.TrimSpace(strings.ToLower(val))
+	switch normalized {
+	case "":
+		return ""
+	case "active":
+		return SubscriptionStatusActive
+	case "trialing":
+		return SubscriptionStatusTrialing
+	case "past_due":
+		return SubscriptionStatusPastDue
+	case "canceled":
+		return SubscriptionStatusCanceled
+	case "unpaid":
+		return SubscriptionStatusUnpaid
+	case "incomplete":
+		return SubscriptionStatusIncomplete
+	case "incomplete_expired":
+		return SubscriptionStatusIncompleteExpired
+	case "paused":
+		return SubscriptionStatusPaused
+	default:
+		return SubscriptionStatusKind(val)
+	}
+}
+
+// IsActive reports whether the subscription should be treated as active.
+func (s SubscriptionStatusKind) IsActive() bool {
+	return s == SubscriptionStatusActive || s == SubscriptionStatusTrialing
+}
+
+func (s SubscriptionStatusKind) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(s))
+}
+
+func (s *SubscriptionStatusKind) UnmarshalJSON(data []byte) error {
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*s = ParseSubscriptionStatus(raw)
+	return nil
+}
+
 // ModelID is a strongly-typed wrapper around model identifiers.
 type ModelID string
 
