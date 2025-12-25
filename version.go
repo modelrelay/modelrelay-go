@@ -95,4 +95,5 @@ package sdk
 // 1.8.2: PluginRunner streams run events (NDJSON) instead of polling (#672).
 // 1.8.1: Add tools.v0 conformance fixtures/tests across SDKs (#709).
 // 1.8.0: Add image generation support (ImagesClient) (#854).
-const Version = "1.8.3"
+// 1.8.4: Simplify CustomerMetadata types in OpenAPI spec (remove recursive type alias).
+const Version = "1.8.4"

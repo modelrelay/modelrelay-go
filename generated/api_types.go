@@ -4,10 +4,8 @@
 package generated
 
 import (
-	"encoding/json"
 	"time"
 
-	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -255,7 +253,7 @@ type Customer struct {
 	ExternalId *string             `json:"external_id,omitempty"`
 	Id         *openapi_types.UUID `json:"id,omitempty"`
 
-	// Metadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values must be JSON scalars, arrays, or objects. Nesting depth limited to 5 levels.
+	// Metadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values can be any JSON type. Nesting depth limited to 5 levels.
 	Metadata  *CustomerMetadata   `json:"metadata,omitempty"`
 	ProjectId *openapi_types.UUID `json:"project_id,omitempty"`
 	UpdatedAt *time.Time          `json:"updated_at,omitempty"`
@@ -269,7 +267,7 @@ type CustomerCreate struct {
 	// ExternalId External customer identifier from your system
 	ExternalId string `json:"external_id"`
 
-	// Metadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values must be JSON scalars, arrays, or objects. Nesting depth limited to 5 levels.
+	// Metadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values can be any JSON type. Nesting depth limited to 5 levels.
 	Metadata *CustomerMetadata `json:"metadata,omitempty"`
 }
 
@@ -352,25 +350,8 @@ type CustomerMeUsageResponse struct {
 	Usage CustomerMeUsage `json:"usage"`
 }
 
-// CustomerMetadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values must be JSON scalars, arrays, or objects. Nesting depth limited to 5 levels.
-type CustomerMetadata map[string]*CustomerMetadataValue
-
-// CustomerMetadataValue Typed customer metadata value (string, number, boolean, null, object, or array).
-type CustomerMetadataValue struct {
-	union json.RawMessage
-}
-
-// CustomerMetadataValue0 defines model for .
-type CustomerMetadataValue0 = string
-
-// CustomerMetadataValue1 defines model for .
-type CustomerMetadataValue1 = float32
-
-// CustomerMetadataValue2 defines model for .
-type CustomerMetadataValue2 = bool
-
-// CustomerMetadataValue4 defines model for .
-type CustomerMetadataValue4 = []CustomerMetadataValue
+// CustomerMetadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values can be any JSON type. Nesting depth limited to 5 levels.
+type CustomerMetadata map[string]interface{}
 
 // CustomerTokenResponse defines model for CustomerTokenResponse.
 type CustomerTokenResponse struct {
@@ -1364,143 +1345,3 @@ type CreateRunJSONRequestBody = RunsCreateRequest
 
 // CreateSessionJSONRequestBody defines body for CreateSession for application/json ContentType.
 type CreateSessionJSONRequestBody = SessionCreateRequest
-
-// AsCustomerMetadataValue0 returns the union data inside the CustomerMetadataValue as a CustomerMetadataValue0
-func (t CustomerMetadataValue) AsCustomerMetadataValue0() (CustomerMetadataValue0, error) {
-	var body CustomerMetadataValue0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromCustomerMetadataValue0 overwrites any union data inside the CustomerMetadataValue as the provided CustomerMetadataValue0
-func (t *CustomerMetadataValue) FromCustomerMetadataValue0(v CustomerMetadataValue0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeCustomerMetadataValue0 performs a merge with any union data inside the CustomerMetadataValue, using the provided CustomerMetadataValue0
-func (t *CustomerMetadataValue) MergeCustomerMetadataValue0(v CustomerMetadataValue0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsCustomerMetadataValue1 returns the union data inside the CustomerMetadataValue as a CustomerMetadataValue1
-func (t CustomerMetadataValue) AsCustomerMetadataValue1() (CustomerMetadataValue1, error) {
-	var body CustomerMetadataValue1
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromCustomerMetadataValue1 overwrites any union data inside the CustomerMetadataValue as the provided CustomerMetadataValue1
-func (t *CustomerMetadataValue) FromCustomerMetadataValue1(v CustomerMetadataValue1) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeCustomerMetadataValue1 performs a merge with any union data inside the CustomerMetadataValue, using the provided CustomerMetadataValue1
-func (t *CustomerMetadataValue) MergeCustomerMetadataValue1(v CustomerMetadataValue1) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsCustomerMetadataValue2 returns the union data inside the CustomerMetadataValue as a CustomerMetadataValue2
-func (t CustomerMetadataValue) AsCustomerMetadataValue2() (CustomerMetadataValue2, error) {
-	var body CustomerMetadataValue2
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromCustomerMetadataValue2 overwrites any union data inside the CustomerMetadataValue as the provided CustomerMetadataValue2
-func (t *CustomerMetadataValue) FromCustomerMetadataValue2(v CustomerMetadataValue2) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeCustomerMetadataValue2 performs a merge with any union data inside the CustomerMetadataValue, using the provided CustomerMetadataValue2
-func (t *CustomerMetadataValue) MergeCustomerMetadataValue2(v CustomerMetadataValue2) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsCustomerMetadata returns the union data inside the CustomerMetadataValue as a CustomerMetadata
-func (t CustomerMetadataValue) AsCustomerMetadata() (CustomerMetadata, error) {
-	var body CustomerMetadata
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromCustomerMetadata overwrites any union data inside the CustomerMetadataValue as the provided CustomerMetadata
-func (t *CustomerMetadataValue) FromCustomerMetadata(v CustomerMetadata) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeCustomerMetadata performs a merge with any union data inside the CustomerMetadataValue, using the provided CustomerMetadata
-func (t *CustomerMetadataValue) MergeCustomerMetadata(v CustomerMetadata) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsCustomerMetadataValue4 returns the union data inside the CustomerMetadataValue as a CustomerMetadataValue4
-func (t CustomerMetadataValue) AsCustomerMetadataValue4() (CustomerMetadataValue4, error) {
-	var body CustomerMetadataValue4
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromCustomerMetadataValue4 overwrites any union data inside the CustomerMetadataValue as the provided CustomerMetadataValue4
-func (t *CustomerMetadataValue) FromCustomerMetadataValue4(v CustomerMetadataValue4) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeCustomerMetadataValue4 performs a merge with any union data inside the CustomerMetadataValue, using the provided CustomerMetadataValue4
-func (t *CustomerMetadataValue) MergeCustomerMetadataValue4(v CustomerMetadataValue4) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t CustomerMetadataValue) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *CustomerMetadataValue) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
