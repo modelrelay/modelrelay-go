@@ -323,6 +323,7 @@ type CustomerMeUsage struct {
 	// CreditsUsedCents Credits used so far in this billing window (only for paid tiers)
 	CreditsUsedCents *int64               `json:"credits_used_cents,omitempty"`
 	Daily            []CustomerUsagePoint `json:"daily"`
+	Images           int64                `json:"images"`
 
 	// Low Whether remaining credits are low (only for paid tiers)
 	Low *bool `json:"low,omitempty"`
@@ -396,6 +397,7 @@ type CustomerUsagePoint struct {
 
 	// Day UTC day bucket
 	Day      time.Time `json:"day"`
+	Images   *int64    `json:"images,omitempty"`
 	Requests int64     `json:"requests"`
 	Tokens   int64     `json:"tokens"`
 }

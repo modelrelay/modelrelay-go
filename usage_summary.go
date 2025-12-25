@@ -38,4 +38,5 @@ type UsageSummary struct {
 	Used        int64                 `json:"used"`
 	Remaining   int64                 `json:"remaining"`
 	State       UsageQuotaState       `json:"state"`
+	Images      int64                 `json:"images"`
 }

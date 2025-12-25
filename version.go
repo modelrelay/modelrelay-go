@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 1.7.1: Add image usage counters to usage summaries.
 // 1.7.0: Breaking - Rename subscription billing fields to billing_* and add billing_provider.
 // 1.6.0: Breaking - Rename end-user to customer across SDK/endpoints; update customer token providers.
 // 1.5.0: Breaking - Rename customer to end-user across SDK/endpoints; add end-user token providers.
@@ -89,4 +90,4 @@ package sdk
 // 0.79.2: Add MODEL_CAPABILITY_UNSUPPORTED API error code constant (#710).
 // 1.0.0: Breaking - remove deprecated Config-based SDK client constructor.
 // 0.80.0: Breaking - tighten tool typing (ToolName, ToolCallID, ToolExecutionResult) (#711).
-const Version = "1.7.0"
+const Version = "1.7.1"
