@@ -211,7 +211,7 @@ type AuthTokens struct {
 	RefreshToken *string    `json:"refresh_token,omitempty"`
 }
 
-// BillingProvider Billing provider backing the subscription.
+// BillingProvider Billing provider backing the subscription or tier.
 type BillingProvider string
 
 // CheckoutSessionResponse defines model for CheckoutSessionResponse.
@@ -742,7 +742,7 @@ type Subscription struct {
 	// BillingCustomerId Billing customer ID from the provider
 	BillingCustomerId *string `json:"billing_customer_id,omitempty"`
 
-	// BillingProvider Billing provider backing the subscription.
+	// BillingProvider Billing provider backing the subscription or tier.
 	BillingProvider *BillingProvider `json:"billing_provider,omitempty"`
 
 	// BillingSubscriptionId Billing subscription ID from the provider
@@ -772,7 +772,12 @@ type SubscriptionStatusKind string
 
 // Tier defines model for Tier.
 type Tier struct {
-	CreatedAt *time.Time `json:"created_at,omitempty"`
+	// BillingPriceRef Billing provider price reference for this tier
+	BillingPriceRef *string `json:"billing_price_ref,omitempty"`
+
+	// BillingProvider Billing provider backing the subscription or tier.
+	BillingProvider *BillingProvider `json:"billing_provider,omitempty"`
+	CreatedAt       *time.Time       `json:"created_at,omitempty"`
 
 	// DisplayName Human-readable tier name
 	DisplayName *string             `json:"display_name,omitempty"`
@@ -792,9 +797,6 @@ type Tier struct {
 	// SpendLimitCents Monthly spend limit in cents (e.g., 2000 = $20/month). Must be non-negative.
 	SpendLimitCents *uint64 `json:"spend_limit_cents,omitempty"`
 
-	// StripePriceId Stripe price ID for this tier
-	StripePriceId *string `json:"stripe_price_id,omitempty"`
-
 	// TierCode Tier code identifier (e.g., free, pro, enterprise).
 	TierCode *TierCode `json:"tier_code,omitempty"`
 
@@ -808,6 +810,9 @@ type TierCode = string
 
 // TierCreate defines model for TierCreate.
 type TierCreate struct {
+	// BillingProvider Billing provider backing the subscription or tier.
+	BillingProvider *BillingProvider `json:"billing_provider,omitempty"`
+
 	// DisplayName Human-readable tier name
 	DisplayName string            `json:"display_name"`
 	Models      []TierModelCreate `json:"models"`
@@ -877,6 +882,9 @@ type TierModelCreate struct {
 
 // TierUpdate defines model for TierUpdate.
 type TierUpdate struct {
+	// BillingProvider Billing provider backing the subscription or tier.
+	BillingProvider *BillingProvider `json:"billing_provider,omitempty"`
+
 	// DisplayName Human-readable tier name
 	DisplayName string             `json:"display_name"`
 	Models      *[]TierModelCreate `json:"models,omitempty"`

@@ -43,7 +43,8 @@ type Tier struct {
 	DisplayName      string        `json:"display_name"`
 	SpendLimitCents  int64         `json:"spend_limit_cents"` // Monthly spend limit in cents (e.g., 2000 = $20.00)
 	Models           []TierModel   `json:"models"`
-	StripePriceID    string        `json:"stripe_price_id,omitempty"`
+	BillingProvider  BillingProvider `json:"billing_provider,omitempty"`
+	BillingPriceRef  string        `json:"billing_price_ref,omitempty"`
 	PriceAmountCents int64         `json:"price_amount_cents,omitempty"`
 	PriceCurrency    string        `json:"price_currency,omitempty"`
 	PriceInterval    PriceInterval `json:"price_interval,omitempty"`
