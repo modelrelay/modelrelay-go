@@ -1,6 +1,10 @@
 package sdk
 
-import llm "github.com/modelrelay/modelrelay/sdk/go/llm"
+import (
+	"encoding/json"
+
+	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
+)
 
 // StreamEvent represents events from the unified NDJSON streaming format.
 type StreamEvent struct {
@@ -14,6 +18,7 @@ type StreamEvent struct {
 	TextDelta     string             // Text content for update/completion events
 	ToolCalls     []llm.ToolCall     // Completed tool calls (on tool_use_stop or message_stop)
 	ToolCallDelta *llm.ToolCallDelta // Incremental tool call data (on tool_use_start or tool_use_delta)
+	ToolResult    json.RawMessage    // Tool result payload (on tool_use_stop)
 
 	// Structured streaming fields
 	CompleteFields []string // Fields that have been fully received (from complete_fields)

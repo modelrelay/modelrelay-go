@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 1.8.3: Surface tool_result payloads on streaming tool_use_stop events.
 // 1.7.2: Breaking - Rename tier stripe_price_id to billing_price_ref, add billing_provider to tiers.
 // 1.7.1: Add image usage counters to usage summaries.
 // 1.7.0: Breaking - Rename subscription billing fields to billing_* and add billing_provider.
@@ -94,4 +95,4 @@ package sdk
 // 1.8.2: PluginRunner streams run events (NDJSON) instead of polling (#672).
 // 1.8.1: Add tools.v0 conformance fixtures/tests across SDKs (#709).
 // 1.8.0: Add image generation support (ImagesClient) (#854).
-const Version = "1.8.2"
+const Version = "1.8.3"

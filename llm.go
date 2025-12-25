@@ -573,6 +573,7 @@ func parseNDJSONEvent(line []byte) (StreamEvent, error) {
 		ToolCallDelta *llm.ToolCallDelta `json:"tool_call_delta,omitempty"`
 		ToolCalls     []llm.ToolCall     `json:"tool_calls,omitempty"`
 		ToolCall      *llm.ToolCall      `json:"tool_call,omitempty"` // Single tool call (alternative to array)
+		ToolResult    json.RawMessage    `json:"tool_result,omitempty"`
 	}
 	if err := json.Unmarshal(line, &envelope); err != nil {
 		return StreamEvent{}, err
@@ -628,6 +629,7 @@ func parseNDJSONEvent(line []byte) (StreamEvent, error) {
 		Usage:          envelope.Usage,
 		ToolCallDelta:  envelope.ToolCallDelta,
 		ToolCalls:      toolCalls,
+		ToolResult:     envelope.ToolResult,
 	}
 
 	// Handle error records

@@ -697,3 +697,106 @@ func TestResponsesCustomerHeaderAllowsMissingModel(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 }
+
+func TestResponsesStreamToolResultParsing(t *testing.T) {
+	toolResult := `{"data":[{"url":"https://example.com/image.png"}]}`
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != routes.Responses {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		w.Header().Set(headers.RequestID, "resp-tool-result")
+		flusher, _ := w.(http.Flusher)
+		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
+		flusher.Flush()
+		_, _ = w.Write([]byte(`{"type":"tool_use_start","tool_call_delta":{"index":0,"id":"call_1","type":"function","function":{"name":"image_generation"}}}` + "\n"))
+		flusher.Flush()
+		_, _ = w.Write([]byte(`{"type":"tool_use_delta","tool_call_delta":{"index":0,"function":{"arguments":"{\"prompt\":\"hello\"}"}}}` + "\n"))
+		flusher.Flush()
+		_, _ = w.Write([]byte(`{"type":"tool_use_stop","tool_calls":[{"id":"call_1","type":"function","function":{"name":"image_generation","arguments":"{\"prompt\":\"hello\"}"}}],"tool_result":` + toolResult + `}` + "\n"))
+		flusher.Flush()
+		_, _ = w.Write([]byte(`{"type":"completion","usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}` + "\n"))
+		flusher.Flush()
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv, "mr_sk_test")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req, opts, err := client.Responses.New().
+		Model(NewModelID("demo")).
+		User("hi").
+		RequestID("tool-result-test").
+		Build()
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	stream, err := client.Responses.Stream(ctx, req, opts...)
+	if err != nil {
+		t.Fatalf("stream: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	var sawToolUseStart, sawToolUseDelta, sawToolUseStop bool
+	var capturedToolResult json.RawMessage
+
+	for {
+		event, ok, err := stream.Next()
+		if err != nil {
+			t.Fatalf("stream error: %v", err)
+		}
+		if !ok {
+			break
+		}
+
+		switch event.Kind {
+		case llm.StreamEventKindToolUseStart:
+			sawToolUseStart = true
+			if event.ToolCallDelta == nil {
+				t.Error("tool_use_start missing ToolCallDelta")
+			} else if event.ToolCallDelta.ID != "call_1" {
+				t.Errorf("ToolCallDelta.ID = %q, want %q", event.ToolCallDelta.ID, "call_1")
+			}
+		case llm.StreamEventKindToolUseDelta:
+			sawToolUseDelta = true
+			if event.ToolCallDelta == nil {
+				t.Error("tool_use_delta missing ToolCallDelta")
+			}
+		case llm.StreamEventKindToolUseStop:
+			sawToolUseStop = true
+			if len(event.ToolCalls) != 1 {
+				t.Errorf("tool_use_stop has %d tool calls, want 1", len(event.ToolCalls))
+			}
+			capturedToolResult = event.ToolResult
+		default:
+			// Ignore other event types (start, delta, stop, ping, etc.)
+		}
+	}
+
+	if !sawToolUseStart {
+		t.Error("did not see tool_use_start event")
+	}
+	if !sawToolUseDelta {
+		t.Error("did not see tool_use_delta event")
+	}
+	if !sawToolUseStop {
+		t.Error("did not see tool_use_stop event")
+	}
+
+	// Verify ToolResult was parsed correctly
+	if len(capturedToolResult) == 0 {
+		t.Fatal("ToolResult was not populated on tool_use_stop event")
+	}
+
+	var parsed map[string]any
+	if err := json.Unmarshal(capturedToolResult, &parsed); err != nil {
+		t.Fatalf("failed to parse ToolResult: %v", err)
+	}
+	if _, ok := parsed["data"]; !ok {
+		t.Error("ToolResult missing 'data' field")
+	}
+}
