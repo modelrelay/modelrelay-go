@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
@@ -28,9 +27,6 @@ type PluginRunConfig struct {
 	UserTask string
 	// ToolHandler executes client-side tool calls when the run enters waiting status.
 	ToolHandler *ToolRegistry
-
-	// PollInterval controls how frequently the SDK polls /runs for status updates.
-	PollInterval time.Duration
 }
 
 type PluginRunResult struct {
@@ -73,18 +69,13 @@ func (e *PluginRunError) Error() string {
 	return "plugin run " + string(e.Status)
 }
 
-// Wait polls /runs until completion, executing client-side tools when the run enters waiting status.
+// Wait streams /runs/{run_id}/events until completion, executing client-side tools when the run enters waiting status.
 func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfig) (*PluginRunResult, error) {
 	if r == nil || r.client == nil {
 		return nil, errors.New("plugin runner: client required")
 	}
 	if !runID.Valid() {
 		return nil, errors.New("plugin runner: run id required")
-	}
-
-	poll := cfg.PollInterval
-	if poll <= 0 {
-		poll = 150 * time.Millisecond
 	}
 
 	var allEvents []RunEventV0
@@ -98,14 +89,22 @@ func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfi
 		default:
 		}
 
-		events, err := r.client.Runs.ListEvents(ctx, runID, WithRunEventsAfterSeq(lastSeq))
+		stream, err := r.client.Runs.StreamEvents(ctx, runID, WithRunEventsAfterSeq(lastSeq))
 		if err != nil {
 			return nil, err
 		}
 
-		var status RunStatusV0
-		var waiting []RunEventNodeWaitingV0
-		for _, ev := range events {
+		for {
+			ev, ok, err := stream.Next()
+			if err != nil {
+				_ = stream.Close()
+				return nil, err
+			}
+			if !ok {
+				_ = stream.Close()
+				break
+			}
+
 			allEvents = append(allEvents, ev)
 			if seq, ok := ev.(interface{ seqNum() int64 }); ok {
 				lastSeq = maxInt64(lastSeq, seq.seqNum())
@@ -113,14 +112,41 @@ func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfi
 
 			switch e := ev.(type) {
 			case RunEventRunCompletedV0:
-				status = RunStatusSucceeded
+				_ = stream.Close()
+				snap, err := r.client.Runs.Get(ctx, runID)
+				if err != nil {
+					return nil, err
+				}
+				return &PluginRunResult{
+					RunID:       snap.RunID,
+					Status:      snap.Status,
+					Outputs:     snap.Outputs,
+					CostSummary: snap.CostSummary,
+					Events:      allEvents,
+				}, nil
 			case RunEventRunFailedV0:
-				status = RunStatusFailed
+				_ = stream.Close()
+				return nil, &PluginRunError{
+					RunID:  runID,
+					Status: RunStatusFailed,
+					Events: allEvents,
+				}
 			case RunEventRunCanceledV0:
-				status = RunStatusCanceled
+				_ = stream.Close()
+				return nil, &PluginRunError{
+					RunID:  runID,
+					Status: RunStatusCanceled,
+					Events: allEvents,
+				}
 			case RunEventNodeWaitingV0:
-				waiting = append(waiting, e)
-				status = RunStatusWaiting
+				if cfg.ToolHandler == nil {
+					_ = stream.Close()
+					return nil, errors.New("plugin runner: tool handler required for client tool execution (run is waiting)")
+				}
+				if err := r.handleWaitingEvents(ctx, runID, []RunEventNodeWaitingV0{e}, cfg.ToolHandler, handledToolCallIDs); err != nil {
+					_ = stream.Close()
+					return nil, err
+				}
 			case RunEventNodeToolResultV0:
 				if e.ToolResult.ToolCallID != "" {
 					handledToolCallIDs[e.ToolResult.ToolCallID] = struct{}{}
@@ -128,44 +154,8 @@ func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfi
 			}
 		}
 
-		switch status {
-		case RunStatusSucceeded:
-			snap, err := r.client.Runs.Get(ctx, runID)
-			if err != nil {
-				return nil, err
-			}
-			return &PluginRunResult{
-				RunID:       snap.RunID,
-				Status:      snap.Status,
-				Outputs:     snap.Outputs,
-				CostSummary: snap.CostSummary,
-				Events:      allEvents,
-			}, nil
-		case RunStatusFailed, RunStatusCanceled:
-			return nil, &PluginRunError{
-				RunID:  runID,
-				Status: status,
-				Events: allEvents,
-			}
-		case RunStatusWaiting:
-			if cfg.ToolHandler == nil {
-				return nil, errors.New("plugin runner: tool handler required for client tool execution (run is waiting)")
-			}
-			if err := r.handleWaitingEvents(ctx, runID, waiting, cfg.ToolHandler, handledToolCallIDs); err != nil {
-				return nil, err
-			}
-			// Tools submitted; poll again immediately.
-			continue
-		default:
-			// pending/running/no new events: just wait
-		}
-
-		timer := time.NewTimer(poll)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return nil, ctx.Err()
-		case <-timer.C:
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 )
 
 // PluginsClient loads plugins from GitHub, converts them to workflow.v0, and executes via /runs.
@@ -59,13 +58,6 @@ func WithConverterModel(model string) PluginQuickRunOption {
 func WithPluginModel(model string) PluginQuickRunOption {
 	return func(o *pluginQuickRunOptions) {
 		o.cfg.Model = NewModelID(model)
-	}
-}
-
-// WithPluginPollInterval overrides the poll interval for run status updates.
-func WithPluginPollInterval(d time.Duration) PluginQuickRunOption {
-	return func(o *pluginQuickRunOptions) {
-		o.cfg.PollInterval = d
 	}
 }
 

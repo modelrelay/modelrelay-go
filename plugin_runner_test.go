@@ -21,6 +21,7 @@ func TestPluginRunner_Run_HandlesClientToolHandoff(t *testing.T) {
 	const planHash = "0000000000000000000000000000000000000000000000000000000000000000"
 
 	var toolResultsPosted int32
+	var eventsRequests int32
 	var toolsDone atomic.Bool
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +33,11 @@ func TestPluginRunner_Run_HandlesClientToolHandoff(t *testing.T) {
 			_, _ = w.Write([]byte(`{"run_id":"` + runID + `","status":"running","plan_hash":"` + planHash + `"}`))
 			return
 		case r.Method == http.MethodGet && r.URL.Path == "/runs/"+runID+"/events":
+			if q.Get("wait") == "0" {
+				t.Fatalf("expected streaming events (wait!=0), got wait=0")
+			}
 			w.Header().Set("Content-Type", "application/x-ndjson")
+			atomic.AddInt32(&eventsRequests, 1)
 
 			afterSeq := int64(0)
 			if raw := q.Get("after_seq"); raw != "" {
@@ -43,16 +48,18 @@ func TestPluginRunner_Run_HandlesClientToolHandoff(t *testing.T) {
 				afterSeq = v
 			}
 
-			// First poll: emit waiting. After tool-results submission: emit run_completed.
+			// First stream: emit waiting. After tool-results submission: emit run_completed.
 			if !toolsDone.Load() {
-				if afterSeq < 1 {
-					_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID + `","seq":1,"ts":"2025-12-17T00:00:00Z","type":"node_waiting","node_id":"n1","waiting":{"step":0,"request_id":"req_1","pending_tool_calls":[{"tool_call_id":"tc_1","name":"bash","arguments":"{\"command\":\"echo hi\"}"},{"tool_call_id":"tc_2","name":"write_file","arguments":"{\"path\":\"x.txt\",\"contents\":\"hi\"}"}],"reason":"client_tool_execution"}}` + "\n"))
+				if afterSeq != 0 {
+					t.Fatalf("expected initial after_seq=0, got %d", afterSeq)
 				}
+				_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID + `","seq":1,"ts":"2025-12-17T00:00:00Z","type":"node_waiting","node_id":"n1","waiting":{"step":0,"request_id":"req_1","pending_tool_calls":[{"tool_call_id":"tc_1","name":"bash","arguments":"{\"command\":\"echo hi\"}"},{"tool_call_id":"tc_2","name":"write_file","arguments":"{\"path\":\"x.txt\",\"contents\":\"hi\"}"}],"reason":"client_tool_execution"}}` + "\n"))
 				return
 			}
-			if afterSeq < 2 {
-				_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID + `","seq":2,"ts":"2025-12-17T00:00:01Z","type":"run_completed","plan_hash":"` + planHash + `","outputs_artifact_key":"run_outputs.v0","outputs_info":{"bytes":2,"sha256":"00","included":false}}` + "\n"))
+			if afterSeq != 1 {
+				t.Fatalf("expected resume after_seq=1, got %d", afterSeq)
 			}
+			_, _ = w.Write([]byte(`{"envelope_version":"v0","run_id":"` + runID + `","seq":2,"ts":"2025-12-17T00:00:01Z","type":"run_completed","plan_hash":"` + planHash + `","outputs_artifact_key":"run_outputs.v0","outputs_info":{"bytes":2,"sha256":"00","included":false}}` + "\n"))
 			return
 		case r.Method == http.MethodGet && r.URL.Path == "/runs/"+runID:
 			w.Header().Set("Content-Type", "application/json")
@@ -122,7 +129,7 @@ func TestPluginRunner_Run_HandlesClientToolHandoff(t *testing.T) {
 		Outputs: []WorkflowOutputRefV0{{Name: "result", From: "n1"}},
 	}
 
-	res, err := runner.Run(ctx, spec, PluginRunConfig{ToolHandler: registry, PollInterval: 10 * time.Millisecond})
+	res, err := runner.Run(ctx, spec, PluginRunConfig{ToolHandler: registry})
 	if err != nil {
 		t.Fatalf("Run() error: %v", err)
 	}
@@ -131,5 +138,8 @@ func TestPluginRunner_Run_HandlesClientToolHandoff(t *testing.T) {
 	}
 	if atomic.LoadInt32(&toolResultsPosted) != 1 {
 		t.Fatalf("expected 1 tool-results post, got %d", toolResultsPosted)
+	}
+	if atomic.LoadInt32(&eventsRequests) != 2 {
+		t.Fatalf("expected 2 event stream requests, got %d", eventsRequests)
 	}
 }
