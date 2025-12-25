@@ -791,6 +791,96 @@ type RunsGetResponse struct {
 	Status RunStatusV0 `json:"status"`
 }
 
+// SessionCreateRequest Request body for creating a session.
+type SessionCreateRequest struct {
+	// EndUserId Optional end user ID to associate with the session
+	EndUserId *openapi_types.UUID `json:"end_user_id,omitempty"`
+
+	// Metadata Optional metadata for the session
+	Metadata *map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// SessionListResponse Paginated list of sessions.
+type SessionListResponse struct {
+	// NextCursor Cursor for fetching the next page (if more results exist)
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Sessions List of sessions
+	Sessions []SessionResponse `json:"sessions"`
+}
+
+// SessionMessageResponse A message within a session.
+type SessionMessageResponse struct {
+	// Content Message content parts
+	Content []map[string]interface{} `json:"content"`
+
+	// CreatedAt Message creation timestamp
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id Message unique identifier
+	Id openapi_types.UUID `json:"id"`
+
+	// Role Message role (user, assistant, tool)
+	Role string `json:"role"`
+
+	// RunId Run ID that generated this message (for assistant messages)
+	RunId *openapi_types.UUID `json:"run_id,omitempty"`
+
+	// Seq Sequence number within the session
+	Seq int32 `json:"seq"`
+}
+
+// SessionResponse A session resource.
+type SessionResponse struct {
+	// CreatedAt Session creation timestamp
+	CreatedAt time.Time `json:"created_at"`
+
+	// EndUserId End user associated with the session (if any)
+	EndUserId *openapi_types.UUID `json:"end_user_id,omitempty"`
+
+	// Id Session unique identifier
+	Id openapi_types.UUID `json:"id"`
+
+	// MessageCount Number of messages in the session
+	MessageCount int64 `json:"message_count"`
+
+	// Metadata Session metadata
+	Metadata map[string]interface{} `json:"metadata"`
+
+	// ProjectId Project the session belongs to
+	ProjectId openapi_types.UUID `json:"project_id"`
+
+	// UpdatedAt Session last update timestamp
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// SessionWithMessagesResponse defines model for SessionWithMessagesResponse.
+type SessionWithMessagesResponse struct {
+	// CreatedAt Session creation timestamp
+	CreatedAt time.Time `json:"created_at"`
+
+	// EndUserId End user associated with the session (if any)
+	EndUserId *openapi_types.UUID `json:"end_user_id,omitempty"`
+
+	// Id Session unique identifier
+	Id openapi_types.UUID `json:"id"`
+
+	// MessageCount Number of messages in the session
+	MessageCount int64 `json:"message_count"`
+
+	// Messages All messages in the session
+	Messages []SessionMessageResponse `json:"messages"`
+
+	// Metadata Session metadata
+	Metadata map[string]interface{} `json:"metadata"`
+
+	// ProjectId Project the session belongs to
+	ProjectId openapi_types.UUID `json:"project_id"`
+
+	// UpdatedAt Session last update timestamp
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // Subscription defines model for Subscription.
 type Subscription struct {
 	// BillingCustomerId Billing customer ID from the provider
@@ -1194,6 +1284,18 @@ type StreamRunEventsParams struct {
 	Limit *uint32 `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// ListSessionsParams defines parameters for ListSessions.
+type ListSessionsParams struct {
+	// Limit Maximum number of sessions to return
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of sessions to skip
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// EndUserId Filter sessions by end user ID
+	EndUserId *openapi_types.UUID `form:"end_user_id,omitempty" json:"end_user_id,omitempty"`
+}
+
 // MintCustomerTokenJSONRequestBody defines body for MintCustomerToken for application/json ContentType.
 type MintCustomerTokenJSONRequestBody MintCustomerTokenJSONBody
 
@@ -1259,6 +1361,9 @@ type CreateResponsesBatchJSONRequestBody = ResponsesBatchRequest
 
 // CreateRunJSONRequestBody defines body for CreateRun for application/json ContentType.
 type CreateRunJSONRequestBody = RunsCreateRequest
+
+// CreateSessionJSONRequestBody defines body for CreateSession for application/json ContentType.
+type CreateSessionJSONRequestBody = SessionCreateRequest
 
 // AsCustomerMetadataValue0 returns the union data inside the CustomerMetadataValue as a CustomerMetadataValue0
 func (t CustomerMetadataValue) AsCustomerMetadataValue0() (CustomerMetadataValue0, error) {
