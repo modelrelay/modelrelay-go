@@ -16,6 +16,14 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Defines values for BillingProvider.
+const (
+	AppStore BillingProvider = "app_store"
+	Crypto   BillingProvider = "crypto"
+	External BillingProvider = "external"
+	Stripe   BillingProvider = "stripe"
+)
+
 // Defines values for ContentPartType.
 const (
 	ContentPartTypeText ContentPartType = "text"
@@ -202,6 +210,9 @@ type AuthTokens struct {
 	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
 	RefreshToken *string    `json:"refresh_token,omitempty"`
 }
+
+// BillingProvider Billing provider backing the subscription.
+type BillingProvider string
 
 // CheckoutSessionResponse defines model for CheckoutSessionResponse.
 type CheckoutSessionResponse struct {
@@ -726,7 +737,15 @@ type RunsGetResponse struct {
 
 // Subscription defines model for Subscription.
 type Subscription struct {
-	CreatedAt *time.Time `json:"created_at,omitempty"`
+	// BillingCustomerId Billing customer ID from the provider
+	BillingCustomerId *string `json:"billing_customer_id,omitempty"`
+
+	// BillingProvider Billing provider backing the subscription.
+	BillingProvider *BillingProvider `json:"billing_provider,omitempty"`
+
+	// BillingSubscriptionId Billing subscription ID from the provider
+	BillingSubscriptionId *string    `json:"billing_subscription_id,omitempty"`
+	CreatedAt             *time.Time `json:"created_at,omitempty"`
 
 	// CurrentPeriodEnd End of the current billing period
 	CurrentPeriodEnd *time.Time `json:"current_period_end,omitempty"`
@@ -736,12 +755,6 @@ type Subscription struct {
 	CustomerId         *openapi_types.UUID `json:"customer_id,omitempty"`
 	Id                 *openapi_types.UUID `json:"id,omitempty"`
 	ProjectId          *openapi_types.UUID `json:"project_id,omitempty"`
-
-	// StripeCustomerId Stripe customer ID
-	StripeCustomerId *string `json:"stripe_customer_id,omitempty"`
-
-	// StripeSubscriptionId Stripe subscription ID
-	StripeSubscriptionId *string `json:"stripe_subscription_id,omitempty"`
 
 	// SubscriptionStatus Subscription status (active, past_due, canceled, etc.)
 	SubscriptionStatus *SubscriptionStatusKind `json:"subscription_status,omitempty"`

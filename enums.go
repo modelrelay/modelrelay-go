@@ -85,7 +85,7 @@ func (s *StopReason) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// SubscriptionStatusKind mirrors Stripe subscription lifecycle states.
+// SubscriptionStatusKind mirrors subscription lifecycle states.
 type SubscriptionStatusKind string
 
 const (
@@ -129,6 +129,25 @@ func ParseSubscriptionStatus(val string) SubscriptionStatusKind {
 // IsActive reports whether the subscription should be treated as active.
 func (s SubscriptionStatusKind) IsActive() bool {
 	return s == SubscriptionStatusActive || s == SubscriptionStatusTrialing
+}
+
+// BillingProvider identifies the billing system backing a subscription.
+type BillingProvider string
+
+const (
+	BillingProviderStripe   BillingProvider = "stripe"
+	BillingProviderCrypto   BillingProvider = "crypto"
+	BillingProviderAppStore BillingProvider = "app_store"
+	BillingProviderExternal BillingProvider = "external"
+)
+
+func (p BillingProvider) Valid() bool {
+	switch p {
+	case BillingProviderStripe, BillingProviderCrypto, BillingProviderAppStore, BillingProviderExternal:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s SubscriptionStatusKind) MarshalJSON() ([]byte, error) {

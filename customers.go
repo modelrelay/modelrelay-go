@@ -32,55 +32,56 @@ func validateEmail(email string) error {
 
 // Customer represents a customer in a ModelRelay project.
 type Customer struct {
-	ID         uuid.UUID         `json:"id"`
-	ProjectID  uuid.UUID         `json:"project_id"`
+	ID         uuid.UUID          `json:"id"`
+	ProjectID  uuid.UUID          `json:"project_id"`
 	ExternalID CustomerExternalID `json:"external_id"`
-	Email      string            `json:"email"`
+	Email      string             `json:"email"`
 	Metadata   CustomerMetadata   `json:"metadata,omitempty"`
-	CreatedAt  time.Time         `json:"created_at"`
-	UpdatedAt  time.Time         `json:"updated_at"`
+	CreatedAt  time.Time          `json:"created_at"`
+	UpdatedAt  time.Time          `json:"updated_at"`
 }
 
 // Subscription represents billing state for a customer.
 type Subscription struct {
-	ID                   uuid.UUID              `json:"id"`
-	ProjectID            uuid.UUID              `json:"project_id"`
-	CustomerID           uuid.UUID              `json:"customer_id"`
-	TierID               uuid.UUID              `json:"tier_id"`
-	TierCode             TierCode               `json:"tier_code,omitempty"`
-	StripeCustomerID     string                 `json:"stripe_customer_id,omitempty"`
-	StripeSubscriptionID string                 `json:"stripe_subscription_id,omitempty"`
-	SubscriptionStatus   SubscriptionStatusKind `json:"subscription_status,omitempty"`
-	CurrentPeriodStart   *time.Time             `json:"current_period_start,omitempty"`
-	CurrentPeriodEnd     *time.Time             `json:"current_period_end,omitempty"`
-	CreatedAt            time.Time              `json:"created_at"`
-	UpdatedAt            time.Time              `json:"updated_at"`
+	ID                    uuid.UUID              `json:"id"`
+	ProjectID             uuid.UUID              `json:"project_id"`
+	CustomerID            uuid.UUID              `json:"customer_id"`
+	TierID                uuid.UUID              `json:"tier_id"`
+	TierCode              TierCode               `json:"tier_code,omitempty"`
+	BillingProvider       BillingProvider        `json:"billing_provider,omitempty"`
+	BillingCustomerID     string                 `json:"billing_customer_id,omitempty"`
+	BillingSubscriptionID string                 `json:"billing_subscription_id,omitempty"`
+	SubscriptionStatus    SubscriptionStatusKind `json:"subscription_status,omitempty"`
+	CurrentPeriodStart    *time.Time             `json:"current_period_start,omitempty"`
+	CurrentPeriodEnd      *time.Time             `json:"current_period_end,omitempty"`
+	CreatedAt             time.Time              `json:"created_at"`
+	UpdatedAt             time.Time              `json:"updated_at"`
 }
 
 // CustomerWithSubscription bundles customer identity with optional subscription state.
 type CustomerWithSubscription struct {
-	Customer      Customer       `json:"customer"`
+	Customer     Customer      `json:"customer"`
 	Subscription *Subscription `json:"subscription,omitempty"`
 }
 
 // CustomerCreateRequest contains the fields to create a customer.
 type CustomerCreateRequest struct {
 	ExternalID CustomerExternalID `json:"external_id"`
-	Email      string            `json:"email"`
+	Email      string             `json:"email"`
 	Metadata   CustomerMetadata   `json:"metadata,omitempty"`
 }
 
 // CustomerUpsertRequest contains the fields to upsert a customer by external_id.
 type CustomerUpsertRequest struct {
 	ExternalID CustomerExternalID `json:"external_id"`
-	Email      string            `json:"email"`
+	Email      string             `json:"email"`
 	Metadata   CustomerMetadata   `json:"metadata,omitempty"`
 }
 
 // CustomerClaimRequest contains the fields to link a customer identity to a customer by email.
 // Used when a customer subscribes via Stripe Checkout (email only) and later authenticates to the app.
 type CustomerClaimRequest struct {
-	Email    string                  `json:"email"`
+	Email    string                   `json:"email"`
 	Provider CustomerIdentityProvider `json:"provider"`
 	Subject  CustomerIdentitySubject  `json:"subject"`
 }
