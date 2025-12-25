@@ -91,4 +91,5 @@ package sdk
 // 0.79.2: Add MODEL_CAPABILITY_UNSUPPORTED API error code constant (#710).
 // 1.0.0: Breaking - remove deprecated Config-based SDK client constructor.
 // 0.80.0: Breaking - tighten tool typing (ToolName, ToolCallID, ToolExecutionResult) (#711).
-const Version = "1.7.2"
+// 1.8.0: Add image generation support (ImagesClient) (#854).
+const Version = "1.8.0"

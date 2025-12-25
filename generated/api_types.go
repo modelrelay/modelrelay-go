@@ -29,6 +29,12 @@ const (
 	ContentPartTypeText ContentPartType = "text"
 )
 
+// Defines values for ImageResponseFormat.
+const (
+	B64Json ImageResponseFormat = "b64_json"
+	Url     ImageResponseFormat = "url"
+)
+
 // Defines values for InputItemType.
 const (
 	InputItemTypeMessage InputItemType = "message"
@@ -439,6 +445,54 @@ type DeviceTokenError struct {
 
 	// Interval Updated recommended polling interval in seconds (when error is slow_down)
 	Interval *uint32 `json:"interval,omitempty"`
+}
+
+// ImageData A single generated image.
+type ImageData struct {
+	// B64Json Base64-encoded image data (when response_format is 'b64_json')
+	B64Json *string `json:"b64_json,omitempty"`
+
+	// MimeType MIME type of the image (e.g., 'image/png', 'image/webp')
+	MimeType *string `json:"mime_type,omitempty"`
+
+	// Url URL of the generated image (when response_format is 'url')
+	Url *string `json:"url,omitempty"`
+}
+
+// ImageRequest Request to generate images from a text prompt.
+type ImageRequest struct {
+	// Model Image generation model ID (e.g., gemini-2.5-flash-image). Optional when using a customer token with a tier that defines a default model.
+	Model *string `json:"model,omitempty"`
+
+	// Prompt Text description of the image to generate
+	Prompt string `json:"prompt"`
+
+	// ResponseFormat Output format for generated images.
+	ResponseFormat *ImageResponseFormat `json:"response_format,omitempty"`
+}
+
+// ImageResponse Response containing generated images.
+type ImageResponse struct {
+	// Data Generated images
+	Data []ImageData `json:"data"`
+
+	// Id Unique identifier for this generation request
+	Id string `json:"id"`
+
+	// Model Model used for generation
+	Model string `json:"model"`
+
+	// Usage Usage statistics for image generation.
+	Usage ImageUsage `json:"usage"`
+}
+
+// ImageResponseFormat Output format for generated images.
+type ImageResponseFormat string
+
+// ImageUsage Usage statistics for image generation.
+type ImageUsage struct {
+	// Images Number of images generated
+	Images int32 `json:"images"`
 }
 
 // InputItem defines model for InputItem.
@@ -1172,6 +1226,9 @@ type ClaimCustomerJSONRequestBody ClaimCustomerJSONBody
 
 // SubscribeCustomerJSONRequestBody defines body for SubscribeCustomer for application/json ContentType.
 type SubscribeCustomerJSONRequestBody SubscribeCustomerJSONBody
+
+// GenerateImageJSONRequestBody defines body for GenerateImage for application/json ContentType.
+type GenerateImageJSONRequestBody = ImageRequest
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody CreateProjectJSONBody
