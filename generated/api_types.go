@@ -115,18 +115,20 @@ const (
 
 // Defines values for ToolType.
 const (
-	ToolTypeCodeExecution ToolType = "code_execution"
-	ToolTypeFunction      ToolType = "function"
-	ToolTypeWeb           ToolType = "web"
-	ToolTypeXSearch       ToolType = "x_search"
+	ToolTypeCodeExecution   ToolType = "code_execution"
+	ToolTypeFunction        ToolType = "function"
+	ToolTypeImageGeneration ToolType = "image_generation"
+	ToolTypeWeb             ToolType = "web"
+	ToolTypeXSearch         ToolType = "x_search"
 )
 
 // Defines values for ToolCallType.
 const (
-	CodeExecution ToolCallType = "code_execution"
-	Function      ToolCallType = "function"
-	Web           ToolCallType = "web"
-	XSearch       ToolCallType = "x_search"
+	CodeExecution   ToolCallType = "code_execution"
+	Function        ToolCallType = "function"
+	ImageGeneration ToolCallType = "image_generation"
+	Web             ToolCallType = "web"
+	XSearch         ToolCallType = "x_search"
 )
 
 // Defines values for ToolChoiceType.
@@ -890,6 +892,12 @@ type Tool struct {
 		Name       *ToolName               `json:"name,omitempty"`
 		Parameters *map[string]interface{} `json:"parameters,omitempty"`
 	} `json:"function,omitempty"`
+
+	// ImageGeneration Configuration for server-side image generation tool
+	ImageGeneration *struct {
+		// Model Image generation model ID (e.g., gemini-2.5-flash-image)
+		Model string `json:"model"`
+	} `json:"image_generation,omitempty"`
 	Type    ToolType                `json:"type"`
 	Web     *map[string]interface{} `json:"web,omitempty"`
 	XSearch *map[string]interface{} `json:"x_search,omitempty"`
