@@ -98,6 +98,7 @@ package sdk
 // 1.8.2: PluginRunner streams run events (NDJSON) instead of polling (#672).
 // 1.8.1: Add tools.v0 conformance fixtures/tests across SDKs (#709).
 // 1.8.0: Add image generation support (ImagesClient) (#854).
+// 1.13.0: Add MapReduce workflow pattern helper - fixes #932.
 // 1.12.0: Add high-level workflow pattern helpers (Chain, Parallel) - fixes #913.
 // 1.11.0: Add workflow package with clean type names (workflow.SpecV0, workflow.Kind) - fixes #912.
-const Version = "1.12.0"
+const Version = "1.13.0"

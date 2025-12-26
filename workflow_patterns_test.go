@@ -362,3 +362,254 @@ func TestLLMStep_WithStream(t *testing.T) {
 		t.Error("original step should be unchanged")
 	}
 }
+
+func TestMapReduce_ThreeItems(t *testing.T) {
+	reqA, _, _ := (ResponseBuilder{}).Model(NewModelID("model")).User("Summarize A").Build()
+	reqB, _, _ := (ResponseBuilder{}).Model(NewModelID("model")).User("Summarize B").Build()
+	reqC, _, _ := (ResponseBuilder{}).Model(NewModelID("model")).User("Summarize C").Build()
+	reqReduce, _, _ := (ResponseBuilder{}).Model(NewModelID("model")).User("Combine summaries").Build()
+
+	spec, err := MapReduce("summarize-docs",
+		MapItem{ID: "a", Req: reqA},
+		MapItem{ID: "b", Req: reqB},
+		MapItem{ID: "c", Req: reqC},
+	).
+		Reduce("combine", reqReduce).
+		Output("result", "combine").
+		Build()
+
+	if err != nil {
+		t.Fatalf("Build failed: %v", err)
+	}
+
+	if spec.Name != "summarize-docs" {
+		t.Errorf("expected name 'summarize-docs', got %q", spec.Name)
+	}
+
+	// 3 mappers + 1 join + 1 reducer = 5 nodes
+	if len(spec.Nodes) != 5 {
+		t.Fatalf("expected 5 nodes, got %d", len(spec.Nodes))
+	}
+
+	// Check node types
+	nodeTypes := make(map[NodeID]WorkflowNodeType)
+	for _, n := range spec.Nodes {
+		nodeTypes[n.ID] = n.Type
+	}
+
+	if nodeTypes["map_a"] != WorkflowNodeTypeLLMResponses {
+		t.Errorf("expected node 'map_a' to be LLM responses, got %q", nodeTypes["map_a"])
+	}
+	if nodeTypes["map_b"] != WorkflowNodeTypeLLMResponses {
+		t.Errorf("expected node 'map_b' to be LLM responses, got %q", nodeTypes["map_b"])
+	}
+	if nodeTypes["map_c"] != WorkflowNodeTypeLLMResponses {
+		t.Errorf("expected node 'map_c' to be LLM responses, got %q", nodeTypes["map_c"])
+	}
+	if nodeTypes["combine_join"] != WorkflowNodeTypeJoinAll {
+		t.Errorf("expected node 'combine_join' to be join.all, got %q", nodeTypes["combine_join"])
+	}
+	if nodeTypes["combine"] != WorkflowNodeTypeLLMResponses {
+		t.Errorf("expected node 'combine' to be LLM responses, got %q", nodeTypes["combine"])
+	}
+
+	// 3 mappers -> join + 1 join -> reducer = 4 edges
+	if len(spec.Edges) != 4 {
+		t.Fatalf("expected 4 edges, got %d", len(spec.Edges))
+	}
+
+	edgeSet := make(map[string]bool)
+	for _, e := range spec.Edges {
+		edgeSet[string(e.From)+"->"+string(e.To)] = true
+	}
+
+	if !edgeSet["map_a->combine_join"] {
+		t.Error("missing edge map_a->combine_join")
+	}
+	if !edgeSet["map_b->combine_join"] {
+		t.Error("missing edge map_b->combine_join")
+	}
+	if !edgeSet["map_c->combine_join"] {
+		t.Error("missing edge map_c->combine_join")
+	}
+	if !edgeSet["combine_join->combine"] {
+		t.Error("missing edge combine_join->combine")
+	}
+
+	// Verify reducer binding
+	var reducerInput llmResponsesNodeInputV0
+	for _, n := range spec.Nodes {
+		if n.ID == "combine" {
+			if err := json.Unmarshal(n.Input, &reducerInput); err != nil {
+				t.Fatalf("failed to unmarshal reducer input: %v", err)
+			}
+			break
+		}
+	}
+
+	if len(reducerInput.Bindings) != 1 {
+		t.Fatalf("expected 1 binding on reducer, got %d", len(reducerInput.Bindings))
+	}
+
+	if reducerInput.Bindings[0].From != "combine_join" {
+		t.Errorf("expected binding from 'combine_join', got %q", reducerInput.Bindings[0].From)
+	}
+
+	// Verify output
+	if len(spec.Outputs) != 1 {
+		t.Fatalf("expected 1 output, got %d", len(spec.Outputs))
+	}
+
+	if spec.Outputs[0].Name != "result" || spec.Outputs[0].From != "combine" {
+		t.Errorf("expected output 'result' from 'combine', got %q from %q",
+			spec.Outputs[0].Name, spec.Outputs[0].From)
+	}
+}
+
+func TestMapReduce_WithStreaming(t *testing.T) {
+	reqA, _, _ := (ResponseBuilder{}).Model(NewModelID("model")).User("A").Build()
+	reqB, _, _ := (ResponseBuilder{}).Model(NewModelID("model")).User("B").Build()
+	reqReduce, _, _ := (ResponseBuilder{}).Model(NewModelID("model")).User("Reduce").Build()
+
+	spec, err := MapReduce("stream-test",
+		MapItem{ID: "a", Req: reqA}.WithStream(),
+		MapItem{ID: "b", Req: reqB}, // b not streaming
+	).
+		ReduceWithStream("reducer", reqReduce).
+		Output("result", "reducer").
+		Build()
+
+	if err != nil {
+		t.Fatalf("Build failed: %v", err)
+	}
+
+	// Check streaming on mapper a
+	for _, n := range spec.Nodes {
+		if n.ID == "map_a" {
+			var input llmResponsesNodeInputV0
+			if err := json.Unmarshal(n.Input, &input); err != nil {
+				t.Fatalf("failed to unmarshal map_a input: %v", err)
+			}
+			if input.Stream == nil || !*input.Stream {
+				t.Error("expected streaming enabled on map_a")
+			}
+		}
+		if n.ID == "map_b" {
+			var input llmResponsesNodeInputV0
+			if err := json.Unmarshal(n.Input, &input); err != nil {
+				t.Fatalf("failed to unmarshal map_b input: %v", err)
+			}
+			if input.Stream != nil && *input.Stream {
+				t.Error("expected streaming disabled on map_b")
+			}
+		}
+		if n.ID == "reducer" {
+			var input llmResponsesNodeInputV0
+			if err := json.Unmarshal(n.Input, &input); err != nil {
+				t.Fatalf("failed to unmarshal reducer input: %v", err)
+			}
+			if input.Stream == nil || !*input.Stream {
+				t.Error("expected streaming enabled on reducer")
+			}
+		}
+	}
+}
+
+func TestMapReduce_Empty(t *testing.T) {
+	_, err := MapReduce("empty").
+		Reduce("reducer", ResponseRequest{}).
+		Build()
+	if err == nil {
+		t.Error("expected error for empty map-reduce")
+	}
+	if err.Error() != "map-reduce requires at least one item" {
+		t.Errorf("expected 'map-reduce requires at least one item', got %q", err.Error())
+	}
+}
+
+func TestMapReduce_NoReducer(t *testing.T) {
+	req, _, _ := (ResponseBuilder{}).Model(NewModelID("model")).User("test").Build()
+	_, err := MapReduce("no-reducer",
+		MapItem{ID: "a", Req: req},
+	).Build()
+	if err == nil {
+		t.Error("expected error for map-reduce without reducer")
+	}
+	if err.Error() != "map-reduce requires a reducer (call Reduce)" {
+		t.Errorf("expected 'map-reduce requires a reducer (call Reduce)', got %q", err.Error())
+	}
+}
+
+func TestMapReduce_DuplicateItemID(t *testing.T) {
+	req, _, _ := (ResponseBuilder{}).Model(NewModelID("model")).User("test").Build()
+	_, err := MapReduce("dup-id",
+		MapItem{ID: "same", Req: req},
+		MapItem{ID: "same", Req: req},
+	).
+		Reduce("reducer", req).
+		Build()
+	if err == nil {
+		t.Error("expected error for duplicate item ID")
+	}
+}
+
+func TestMapReduce_EmptyItemID(t *testing.T) {
+	req, _, _ := (ResponseBuilder{}).Model(NewModelID("model")).User("test").Build()
+	_, err := MapReduce("empty-id",
+		MapItem{ID: "", Req: req},
+	).
+		Reduce("reducer", req).
+		Build()
+	if err == nil {
+		t.Error("expected error for empty item ID")
+	}
+	if err.Error() != "item ID cannot be empty" {
+		t.Errorf("expected 'item ID cannot be empty', got %q", err.Error())
+	}
+}
+
+func TestMapReduce_WithExecution(t *testing.T) {
+	req, _, _ := (ResponseBuilder{}).Model(NewModelID("model")).User("test").Build()
+
+	maxPar := int64(4)
+	exec := WorkflowExecutionV0{MaxParallelism: &maxPar}
+
+	spec, err := MapReduce("with-exec",
+		MapItem{ID: "a", Req: req},
+	).
+		Execution(exec).
+		Reduce("reducer", req).
+		Output("result", "reducer").
+		Build()
+
+	if err != nil {
+		t.Fatalf("Build failed: %v", err)
+	}
+
+	if spec.Execution == nil {
+		t.Fatal("expected execution config")
+	}
+
+	if spec.Execution.MaxParallelism == nil || *spec.Execution.MaxParallelism != 4 {
+		t.Error("expected max parallelism of 4")
+	}
+}
+
+func TestMapItem_WithStream(t *testing.T) {
+	req, _, _ := (ResponseBuilder{}).Model(NewModelID("model")).User("test").Build()
+
+	item := MapItem{ID: "test", Req: req}
+	if item.Stream {
+		t.Error("expected stream to be false by default")
+	}
+
+	streamItem := item.WithStream()
+	if !streamItem.Stream {
+		t.Error("expected stream to be true after WithStream()")
+	}
+
+	// Verify original is unchanged (value copy)
+	if item.Stream {
+		t.Error("original item should be unchanged")
+	}
+}
