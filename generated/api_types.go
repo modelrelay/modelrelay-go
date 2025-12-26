@@ -790,6 +790,18 @@ type SessionListResponse struct {
 	Sessions []SessionResponse `json:"sessions"`
 }
 
+// SessionMessageCreateRequest Request body for appending a message to a session.
+type SessionMessageCreateRequest struct {
+	// Content Message content parts
+	Content []map[string]interface{} `json:"content"`
+
+	// Role Message role (user, assistant, tool)
+	Role string `json:"role"`
+
+	// RunId Run ID that generated this message (for assistant messages)
+	RunId *openapi_types.UUID `json:"run_id,omitempty"`
+}
+
 // SessionMessageResponse A message within a session.
 type SessionMessageResponse struct {
 	// Content Message content parts
@@ -1345,3 +1357,6 @@ type CreateRunJSONRequestBody = RunsCreateRequest
 
 // CreateSessionJSONRequestBody defines body for CreateSession for application/json ContentType.
 type CreateSessionJSONRequestBody = SessionCreateRequest
+
+// AddSessionMessageJSONRequestBody defines body for AddSessionMessage for application/json ContentType.
+type AddSessionMessageJSONRequestBody = SessionMessageCreateRequest
