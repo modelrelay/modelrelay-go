@@ -91,8 +91,8 @@ func TestNewWorkflow_MultipleBindings(t *testing.T) {
 		AddLLMNode("agent_a", reqA).
 		AddLLMNode("agent_b", reqB).
 		AddLLMNode("aggregate", reqC).
-			BindFromTo("agent_a", "/output/0", "/request/input/1/content/0/text", LLMResponsesBindingEncodingJSONString).
-			BindFromTo("agent_b", "/output/0", "/request/input/2/content/0/text", LLMResponsesBindingEncodingJSONString).
+			BindFromTo("agent_a", "/output/0", "/input/1/content/0/text", LLMResponsesBindingEncodingJSONString).
+			BindFromTo("agent_b", "/output/0", "/input/2/content/0/text", LLMResponsesBindingEncodingJSONString).
 		Output("final", "aggregate").
 		Build()
 	if err != nil {
@@ -432,7 +432,7 @@ func TestLLMTextOutput_Constants(t *testing.T) {
 	if LLMTextOutput != "/output/0/content/0/text" {
 		t.Errorf("LLMTextOutput = %q, want %q", LLMTextOutput, "/output/0/content/0/text")
 	}
-	if LLMUserMessageText != "/request/input/1/content/0/text" {
-		t.Errorf("LLMUserMessageText = %q, want %q", LLMUserMessageText, "/request/input/1/content/0/text")
+	if LLMUserMessageText != "/input/1/content/0/text" {
+		t.Errorf("LLMUserMessageText = %q, want %q", LLMUserMessageText, "/input/1/content/0/text")
 	}
 }

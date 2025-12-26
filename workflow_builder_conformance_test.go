@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/modelrelay/modelrelay/platform/workflow"
 )
 
 func conformanceWorkflowsV0DirForTest(t *testing.T) (string, bool) {
@@ -218,5 +220,35 @@ func TestWorkflowBuilderV0_ConformanceBindingsJoinIntoAggregate(t *testing.T) {
 
 	if string(got) != string(want) {
 		t.Fatalf("spec mismatch\nwant: %s\ngot:  %s", want, got)
+	}
+}
+
+// TestSDKBindingPointerConstants_MatchPlatformCanonical verifies that SDK JSON pointer
+// constants match the canonical definitions in the platform package.
+// This test would have caught the "/request/input/..." vs "/input/..." bug.
+func TestSDKBindingPointerConstants_MatchPlatformCanonical(t *testing.T) {
+	// Verify SDK constants match platform expectations.
+	// The platform package defines the canonical values - SDKs must match.
+
+	// LLMTextOutput should match exactly.
+	if string(LLMTextOutput) != workflow.LLMTextOutputPointer {
+		t.Errorf("LLMTextOutput mismatch:\n  SDK:      %q\n  Platform: %q",
+			LLMTextOutput, workflow.LLMTextOutputPointer)
+	}
+
+	// LLMUserMessageText uses index 1 (assumes system message at index 0).
+	// This is valid when ResponseBuilder.System() is used.
+	if string(LLMUserMessageText) != workflow.LLMUserMessageTextPointerIndex1 {
+		t.Errorf("LLMUserMessageText mismatch:\n  SDK:      %q\n  Platform: %q",
+			LLMUserMessageText, workflow.LLMUserMessageTextPointerIndex1)
+	}
+
+	// Verify constants don't have the old "/request/..." prefix that caused
+	// the production bug. The binding target is relative to the request object,
+	// so the pointer should NOT start with "/request".
+	if len(LLMUserMessageText) > 8 && string(LLMUserMessageText)[:9] == "/request/" {
+		t.Errorf("LLMUserMessageText has invalid /request/ prefix: %q\n"+
+			"Binding targets are relative to the request object, not the full node input",
+			LLMUserMessageText)
 	}
 }

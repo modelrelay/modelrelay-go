@@ -17,15 +17,19 @@ import (
 )
 
 // Semantic JSON pointer constants for LLM responses nodes.
-// These eliminate magic strings and make bindings self-documenting.
-const (
+// These are derived from the typed path builders to ensure consistency.
+// Use the typed builders (LLMOutput, LLMInput) for custom paths.
+var (
 	// LLMTextOutput is the JSON pointer to extract text content from an LLM response.
 	// Use this when binding from an llm.responses node's output.
-	LLMTextOutput JSONPointer = "/output/0/content/0/text"
+	// Equivalent to: LLMOutput().Content(0).Text()
+	LLMTextOutput = LLMOutputText
 
 	// LLMUserMessageText is the JSON pointer to inject text into the user message.
 	// Use this when binding to an llm.responses node's input.
-	LLMUserMessageText JSONPointer = "/request/input/1/content/0/text"
+	// The pointer is relative to the request object (not the full node input).
+	// Equivalent to: LLMInput().UserMessage().Text()
+	LLMUserMessageText = LLMInputUserText
 )
 
 // Workflow is a fluent builder for constructing workflow specifications.
