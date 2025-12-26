@@ -166,6 +166,9 @@ func TestTransportTimeout(t *testing.T) {
 	if !errors.As(err, &terr) {
 		t.Fatalf("expected TransportError, got %T", err)
 	}
+	if terr.Kind != TransportErrorTimeout {
+		t.Fatalf("expected kind=%s got %s", TransportErrorTimeout, terr.Kind)
+	}
 }
 
 func TestDisableRetry(t *testing.T) {

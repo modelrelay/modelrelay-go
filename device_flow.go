@@ -174,8 +174,15 @@ func handleDeviceTokenError(apiErr *APIError) DeviceTokenResult {
 
 // asAPIError checks if the error is an APIError and extracts it.
 func asAPIError(err error, target **APIError) bool {
+	if err == nil {
+		return false
+	}
 	if e, ok := err.(*APIError); ok {
 		*target = e
+		return true
+	}
+	if e, ok := err.(APIError); ok {
+		*target = &e
 		return true
 	}
 	return false

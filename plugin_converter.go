@@ -87,15 +87,15 @@ func (c *PluginConverter) ToWorkflow(ctx context.Context, plugin *Plugin, cmd st
 
 	raw := strings.TrimSpace(resp.AssistantText())
 	if raw == "" {
-		return nil, TransportError{Message: "converter returned empty output"}
+		return nil, TransportError{Kind: TransportErrorOther, Message: "converter returned empty output"}
 	}
 
 	var spec WorkflowSpecV0
 	if err := json.Unmarshal([]byte(raw), &spec); err != nil {
-		return nil, TransportError{Message: "converter returned invalid workflow JSON"}
+		return nil, TransportError{Kind: TransportErrorOther, Message: "converter returned invalid workflow JSON"}
 	}
 	if spec.Kind != WorkflowKindV0 {
-		return nil, TransportError{Message: "converter returned wrong kind"}
+		return nil, TransportError{Kind: TransportErrorOther, Message: "converter returned wrong kind"}
 	}
 	if err := normalizeWorkflowToolExecutionModes(&spec); err != nil {
 		return nil, err

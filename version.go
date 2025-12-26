@@ -98,6 +98,8 @@ package sdk
 // 1.8.2: PluginRunner streams run events (NDJSON) instead of polling (#672).
 // 1.8.1: Add tools.v0 conformance fixtures/tests across SDKs (#709).
 // 1.8.0: Add image generation support (ImagesClient) (#854).
+// 1.17.0: Add transport error kinds, NDJSON test helpers, and structured stream timeout coverage.
+// 1.16.1: Allow empty-body responses when decoding into nil; expand SDK test coverage.
 // 1.16.0: Add typed JSON path builders (LLMOutput, LLMInput) for compile-time safe pointer construction.
 // 1.15.1: Fix LLMUserMessageText binding pointer (remove /request prefix) - fixes #942.
 // 1.15.0: Add Item() and ItemWithStream() builder methods to MapReduceBuilder.
@@ -106,4 +108,4 @@ package sdk
 // 1.13.0: Add MapReduce workflow pattern helper - fixes #932.
 // 1.12.0: Add high-level workflow pattern helpers (Chain, Parallel) - fixes #913.
 // 1.11.0: Add workflow package with clean type names (workflow.SpecV0, workflow.Kind) - fixes #912.
-const Version = "1.16.0"
+const Version = "1.17.0"

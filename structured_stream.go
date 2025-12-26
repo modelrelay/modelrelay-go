@@ -351,7 +351,12 @@ func (s *StructuredJSONStream[T]) markTerminal() {
 }
 
 func (s *StructuredJSONStream[T]) transportError(message string, cause error) error {
+	kind := classifyTransportErrorKind(cause)
+	if kind == TransportErrorOther {
+		kind = TransportErrorRequest
+	}
 	return TransportError{
+		Kind:    kind,
 		Message: message,
 		Cause:   cause,
 		Retry:   s.retry,
@@ -360,6 +365,7 @@ func (s *StructuredJSONStream[T]) transportError(message string, cause error) er
 
 func (s *StructuredJSONStream[T]) protocolError(message string) error {
 	return TransportError{
+		Kind:    TransportErrorRequest,
 		Message: message,
 		Cause:   nil,
 		Retry:   s.retry,

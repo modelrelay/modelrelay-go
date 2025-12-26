@@ -13,20 +13,8 @@ import (
 	"github.com/modelrelay/modelrelay/sdk/go/headers"
 	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 	"github.com/modelrelay/modelrelay/sdk/go/routes"
+	"github.com/modelrelay/modelrelay/sdk/go/testutil"
 )
-
-func newTestClient(t *testing.T, srv *httptest.Server, key string) *Client {
-	t.Helper()
-	client, err := NewClientWithKey(
-		mustSecretKey(t, key),
-		WithBaseURL(srv.URL),
-		WithHTTPClient(srv.Client()),
-	)
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
-	return client
-}
 
 func TestResponsesCreate(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -455,15 +443,13 @@ func TestResponsesStreamJSONRejectsNonNDJSONContentType(t *testing.T) {
 }
 
 func TestResponsesStreamTTFTTimeout(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/x-ndjson")
-		flusher, _ := w.(http.Flusher)
-		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
-		flusher.Flush()
-		time.Sleep(75 * time.Millisecond)
-		_, _ = w.Write([]byte(`{"type":"completion","content":"Hello world"}` + "\n"))
-		flusher.Flush()
-	}))
+	srv := testutil.NewNDJSONServer(
+		[]testutil.NDJSONStep{
+			{Line: `{"type":"start","request_id":"resp_1","model":"demo"}`},
+			{Delay: 75 * time.Millisecond, Line: `{"type":"completion","content":"Hello world"}`},
+		},
+		testutil.NDJSONServerConfig{},
+	)
 	defer srv.Close()
 
 	client := newTestClient(t, srv, "mr_sk_test")
@@ -507,15 +493,13 @@ func TestResponsesStreamTTFTTimeout(t *testing.T) {
 }
 
 func TestResponsesStreamIdleTimeout(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/x-ndjson")
-		flusher, _ := w.(http.Flusher)
-		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
-		flusher.Flush()
-		time.Sleep(75 * time.Millisecond)
-		_, _ = w.Write([]byte(`{"type":"completion","content":"Hello world"}` + "\n"))
-		flusher.Flush()
-	}))
+	srv := testutil.NewNDJSONServer(
+		[]testutil.NDJSONStep{
+			{Line: `{"type":"start","request_id":"resp_1","model":"demo"}`},
+			{Delay: 75 * time.Millisecond, Line: `{"type":"completion","content":"Hello world"}`},
+		},
+		testutil.NDJSONServerConfig{},
+	)
 	defer srv.Close()
 
 	client := newTestClient(t, srv, "mr_sk_test")
@@ -557,19 +541,12 @@ func TestResponsesStreamIdleTimeout(t *testing.T) {
 }
 
 func TestResponsesStreamTotalTimeout(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/x-ndjson")
-		flusher, _ := w.(http.Flusher)
-		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
-		flusher.Flush()
-
-		// Keep the connection active so idle doesn't fire.
-		for i := 0; i < 20; i++ {
-			time.Sleep(10 * time.Millisecond)
-			_, _ = w.Write([]byte(`{"type":"keepalive"}` + "\n"))
-			flusher.Flush()
-		}
-	}))
+	steps := make([]testutil.NDJSONStep, 0, 21)
+	steps = append(steps, testutil.NDJSONStep{Line: `{"type":"start","request_id":"resp_1","model":"demo"}`})
+	for i := 0; i < 20; i++ {
+		steps = append(steps, testutil.NDJSONStep{Delay: 10 * time.Millisecond, Line: `{"type":"keepalive"}`})
+	}
+	srv := testutil.NewNDJSONServer(steps, testutil.NDJSONServerConfig{})
 	defer srv.Close()
 
 	client := newTestClient(t, srv, "mr_sk_test")
@@ -616,16 +593,13 @@ func TestResponsesStreamJSONTTFTTimeout(t *testing.T) {
 	type Simple struct {
 		Name string `json:"name"`
 	}
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/x-ndjson")
-		flusher, _ := w.(http.Flusher)
-		_, _ = w.Write([]byte(`{"type":"start","request_id":"resp_1","model":"demo"}` + "\n"))
-		flusher.Flush()
-		time.Sleep(75 * time.Millisecond)
-		_, _ = w.Write([]byte(`{"type":"completion","payload":{"name":"Jane"}}` + "\n"))
-		flusher.Flush()
-	}))
+	srv := testutil.NewNDJSONServer(
+		[]testutil.NDJSONStep{
+			{Line: `{"type":"start","request_id":"resp_1","model":"demo"}`},
+			{Delay: 75 * time.Millisecond, Line: `{"type":"completion","payload":{"name":"Jane"}}`},
+		},
+		testutil.NDJSONServerConfig{},
+	)
 	defer srv.Close()
 
 	client := newTestClient(t, srv, "mr_sk_test")
@@ -661,6 +635,124 @@ func TestResponsesStreamJSONTTFTTimeout(t *testing.T) {
 	}
 	if te.Kind != StreamTimeoutTTFT {
 		t.Fatalf("expected kind=%s got %s", StreamTimeoutTTFT, te.Kind)
+	}
+}
+
+func TestResponsesStreamJSONIdleTimeout(t *testing.T) {
+	type Simple struct {
+		Name string `json:"name"`
+	}
+
+	srv := testutil.NewNDJSONServer(
+		[]testutil.NDJSONStep{
+			{Line: `{"type":"start","request_id":"resp_1","model":"demo"}`},
+			{Line: `{"type":"update","patch":[{"op":"add","path":"/name","value":"Jane"}]}`},
+			{Delay: 75 * time.Millisecond, Line: `{"type":"completion","payload":{"name":"Jane"}}`},
+		},
+		testutil.NDJSONServerConfig{},
+	)
+	defer srv.Close()
+
+	client := newTestClient(t, srv, "mr_sk_test")
+
+	format, err := OutputFormatFromType[Simple]("simple")
+	if err != nil {
+		t.Fatalf("OutputFormatFromType: %v", err)
+	}
+
+	req, opts, err := client.Responses.New().
+		Model(NewModelID("demo")).
+		User("hi").
+		OutputFormat(*format).
+		StreamIdleTimeout(25 * time.Millisecond).
+		Build()
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	stream, err := StreamJSON[Simple](context.Background(), client.Responses, req, opts...)
+	if err != nil {
+		t.Fatalf("stream json: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	_, ok, err := stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected update event got err=%v ok=%v", err, ok)
+	}
+
+	_, _, err = stream.Next()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var te StreamTimeoutError
+	if !errors.As(err, &te) {
+		t.Fatalf("expected StreamTimeoutError, got %T", err)
+	}
+	if te.Kind != StreamTimeoutIdle {
+		t.Fatalf("expected kind=%s got %s", StreamTimeoutIdle, te.Kind)
+	}
+}
+
+func TestResponsesStreamJSONTotalTimeout(t *testing.T) {
+	type Simple struct {
+		Name string `json:"name"`
+	}
+
+	steps := make([]testutil.NDJSONStep, 0, 12)
+	steps = append(steps, testutil.NDJSONStep{Line: `{"type":"start","request_id":"resp_1","model":"demo"}`})
+	steps = append(steps, testutil.NDJSONStep{Line: `{"type":"update","patch":[{"op":"add","path":"/name","value":"Jane"}]}`})
+	for i := 0; i < 10; i++ {
+		steps = append(steps, testutil.NDJSONStep{Delay: 10 * time.Millisecond, Line: `{"type":"keepalive"}`})
+	}
+	srv := testutil.NewNDJSONServer(steps, testutil.NDJSONServerConfig{})
+	defer srv.Close()
+
+	client := newTestClient(t, srv, "mr_sk_test")
+
+	format, err := OutputFormatFromType[Simple]("simple")
+	if err != nil {
+		t.Fatalf("OutputFormatFromType: %v", err)
+	}
+
+	req, opts, err := client.Responses.New().
+		Model(NewModelID("demo")).
+		User("hi").
+		OutputFormat(*format).
+		StreamTotalTimeout(35 * time.Millisecond).
+		Build()
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	stream, err := StreamJSON[Simple](context.Background(), client.Responses, req, opts...)
+	if err != nil {
+		t.Fatalf("stream json: %v", err)
+	}
+	t.Cleanup(func() { _ = stream.Close() })
+
+	_, ok, err := stream.Next()
+	if err != nil || !ok {
+		t.Fatalf("expected update event got err=%v ok=%v", err, ok)
+	}
+
+	var gotErr error
+	for i := 0; i < 50; i++ {
+		_, _, err := stream.Next()
+		if err != nil {
+			gotErr = err
+			break
+		}
+	}
+	if gotErr == nil {
+		t.Fatal("expected error")
+	}
+	var te StreamTimeoutError
+	if !errors.As(gotErr, &te) {
+		t.Fatalf("expected StreamTimeoutError, got %T", gotErr)
+	}
+	if te.Kind != StreamTimeoutTotal {
+		t.Fatalf("expected kind=%s got %s", StreamTimeoutTotal, te.Kind)
 	}
 }
 

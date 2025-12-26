@@ -128,7 +128,11 @@ func (p *CustomerTokenProvider) mint(ctx context.Context) (CustomerToken, error)
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return CustomerToken{}, TransportError{Message: "customer token request failed", Cause: err}
+		return CustomerToken{}, TransportError{
+			Kind:    classifyTransportErrorKind(err),
+			Message: "customer token request failed",
+			Cause:   err,
+		}
 	}
 	//nolint:errcheck // best-effort cleanup on return
 	defer func() { _ = resp.Body.Close() }()
@@ -254,7 +258,11 @@ func (p *OIDCExchangeTokenProvider) exchange(ctx context.Context) (CustomerToken
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return CustomerToken{}, TransportError{Message: "oidc exchange request failed", Cause: err}
+		return CustomerToken{}, TransportError{
+			Kind:    classifyTransportErrorKind(err),
+			Message: "oidc exchange request failed",
+			Cause:   err,
+		}
 	}
 	//nolint:errcheck // best-effort cleanup on return
 	defer func() { _ = resp.Body.Close() }()

@@ -89,7 +89,10 @@ func (c *ResponsesClient) Text(
 	}
 	text := resp.AssistantText()
 	if strings.TrimSpace(text) == "" {
-		return "", TransportError{Message: "response contained no assistant text output"}
+		return "", TransportError{
+			Kind:    TransportErrorEmptyResponse,
+			Message: "response contained no assistant text output",
+		}
 	}
 	return text, nil
 }
@@ -119,7 +122,10 @@ func (c *ResponsesClient) TextForCustomer(
 	}
 	text := resp.AssistantText()
 	if strings.TrimSpace(text) == "" {
-		return "", TransportError{Message: "response contained no assistant text output"}
+		return "", TransportError{
+			Kind:    TransportErrorEmptyResponse,
+			Message: "response contained no assistant text output",
+		}
 	}
 	return text, nil
 }

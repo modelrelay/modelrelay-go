@@ -472,6 +472,9 @@ func (c *Client) sendAndDecode(ctx context.Context, method, path string, payload
 	}
 	//nolint:errcheck // best-effort cleanup on return
 	defer func() { _ = resp.Body.Close() }()
+	if result == nil {
+		return nil
+	}
 	return json.NewDecoder(resp.Body).Decode(result)
 }
 
@@ -508,7 +511,12 @@ func (c *Client) sendWithRetry(req *http.Request, cfg RetryConfig) (*http.Respon
 	for attempt := 1; attempt <= cfg.MaxAttempts; attempt++ {
 		cloned, err := cloneRequest(req)
 		if err != nil {
-			return nil, &meta, TransportError{Message: "request not rewindable", Cause: err, Retry: &meta}
+			return nil, &meta, TransportError{
+				Kind:    TransportErrorOther,
+				Message: "request not rewindable",
+				Cause:   err,
+				Retry:   &meta,
+			}
 		}
 		prepErr := c.prepare(cloned)
 		if prepErr != nil {
@@ -538,7 +546,12 @@ func (c *Client) sendWithRetry(req *http.Request, cfg RetryConfig) (*http.Respon
 		}
 		if !retriable || attempt == cfg.MaxAttempts {
 			if err != nil {
-				return nil, copyRetryMeta(meta), TransportError{Message: reason, Cause: err, Retry: copyRetryMeta(meta)}
+				return nil, copyRetryMeta(meta), TransportError{
+					Kind:    classifyTransportErrorKind(err),
+					Message: reason,
+					Cause:   err,
+					Retry:   copyRetryMeta(meta),
+				}
 			}
 			//nolint:errcheck,gocritic // best-effort cleanup on error in retry loop
 			defer func() { _ = resp.Body.Close() }()

@@ -1,10 +1,14 @@
 package sdk
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -40,6 +44,7 @@ func (e TokenProviderError) Unwrap() error { return e.Cause }
 
 // TransportError wraps network/timeout failures.
 type TransportError struct {
+	Kind    TransportErrorKind
 	Message string
 	Cause   error
 	Retry   *RetryMetadata
@@ -56,6 +61,49 @@ func (e TransportError) Error() string {
 }
 
 func (e TransportError) Unwrap() error { return e.Cause }
+
+// TransportErrorKind classifies transport errors for programmatic handling.
+type TransportErrorKind string
+
+const (
+	TransportErrorTimeout       TransportErrorKind = "timeout"
+	TransportErrorConnect       TransportErrorKind = "connect"
+	TransportErrorRequest       TransportErrorKind = "request"
+	TransportErrorEmptyResponse TransportErrorKind = "empty_response"
+	TransportErrorOther         TransportErrorKind = "other"
+)
+
+func classifyTransportErrorKind(err error) TransportErrorKind {
+	if err == nil {
+		return TransportErrorOther
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return TransportErrorTimeout
+	}
+	if errors.Is(err, context.Canceled) {
+		return TransportErrorRequest
+	}
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		if urlErr.Timeout() {
+			return TransportErrorTimeout
+		}
+		if urlErr.Op == "dial" || urlErr.Op == "connect" {
+			return TransportErrorConnect
+		}
+	}
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		return TransportErrorConnect
+	}
+	if ne, ok := err.(net.Error); ok {
+		//nolint:staticcheck // Temporary() is deprecated but still useful for classification
+		if ne.Timeout() || ne.Temporary() {
+			return TransportErrorTimeout
+		}
+	}
+	return TransportErrorOther
+}
 
 // StreamProtocolError indicates the server did not return the expected NDJSON stream.
 // This typically happens when an upstream proxy returns HTML (e.g., 504 pages).
