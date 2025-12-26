@@ -37,31 +37,34 @@ type ChainBuilder struct {
 // Chain creates a workflow builder for sequential LLM steps.
 // Each step after the first automatically binds its input from
 // the previous step's text output.
-func Chain(name string, steps ...LLMStepConfig) *ChainBuilder {
-	return &ChainBuilder{
+func Chain(name string, steps ...LLMStepConfig) ChainBuilder {
+	return ChainBuilder{
 		name:  name,
-		steps: steps,
+		steps: append([]LLMStepConfig(nil), steps...),
 	}
 }
 
 // Execution sets the workflow execution configuration.
-func (c *ChainBuilder) Execution(exec WorkflowExecutionV0) *ChainBuilder {
+func (c ChainBuilder) Execution(exec WorkflowExecutionV0) ChainBuilder {
 	c.execution = &exec
 	return c
 }
 
 // Output adds an output reference from a specific step.
-func (c *ChainBuilder) Output(name OutputName, from NodeID) *ChainBuilder {
-	c.outputs = append(c.outputs, WorkflowOutputRefV0{
+func (c ChainBuilder) Output(name OutputName, from NodeID) ChainBuilder {
+	next := make([]WorkflowOutputRefV0, len(c.outputs)+1)
+	copy(next, c.outputs)
+	next[len(c.outputs)] = WorkflowOutputRefV0{
 		Name:    name,
 		From:    from,
 		Pointer: LLMTextOutput,
-	})
+	}
+	c.outputs = next
 	return c
 }
 
 // OutputLast adds an output reference from the last step.
-func (c *ChainBuilder) OutputLast(name OutputName) *ChainBuilder {
+func (c ChainBuilder) OutputLast(name OutputName) ChainBuilder {
 	if len(c.steps) == 0 {
 		return c
 	}
@@ -69,7 +72,7 @@ func (c *ChainBuilder) OutputLast(name OutputName) *ChainBuilder {
 }
 
 // Build returns the compiled workflow spec.
-func (c *ChainBuilder) Build() (WorkflowSpecV0, error) {
+func (c ChainBuilder) Build() (WorkflowSpecV0, error) {
 	if len(c.steps) == 0 {
 		return WorkflowSpecV0{}, errors.New("chain requires at least one step")
 	}
@@ -160,15 +163,15 @@ type aggregateConfig struct {
 
 // Parallel creates a workflow builder for parallel LLM steps.
 // All steps execute concurrently with no dependencies between them.
-func Parallel(name string, steps ...LLMStepConfig) *ParallelBuilder {
-	return &ParallelBuilder{
+func Parallel(name string, steps ...LLMStepConfig) ParallelBuilder {
+	return ParallelBuilder{
 		name:  name,
-		steps: steps,
+		steps: append([]LLMStepConfig(nil), steps...),
 	}
 }
 
 // Execution sets the workflow execution configuration.
-func (p *ParallelBuilder) Execution(exec WorkflowExecutionV0) *ParallelBuilder {
+func (p ParallelBuilder) Execution(exec WorkflowExecutionV0) ParallelBuilder {
 	p.execution = &exec
 	return p
 }
@@ -176,29 +179,32 @@ func (p *ParallelBuilder) Execution(exec WorkflowExecutionV0) *ParallelBuilder {
 // Aggregate adds a join node that waits for all parallel steps,
 // followed by an aggregator LLM node that receives the combined output.
 // The join node ID is automatically generated as "<id>_join".
-func (p *ParallelBuilder) Aggregate(id NodeID, req ResponseRequest) *ParallelBuilder {
+func (p ParallelBuilder) Aggregate(id NodeID, req ResponseRequest) ParallelBuilder {
 	p.aggregate = &aggregateConfig{id: id, req: req}
 	return p
 }
 
 // AggregateWithStream is like Aggregate but enables streaming on the aggregator node.
-func (p *ParallelBuilder) AggregateWithStream(id NodeID, req ResponseRequest) *ParallelBuilder {
+func (p ParallelBuilder) AggregateWithStream(id NodeID, req ResponseRequest) ParallelBuilder {
 	p.aggregate = &aggregateConfig{id: id, req: req, stream: true}
 	return p
 }
 
 // Output adds an output reference from a specific step.
-func (p *ParallelBuilder) Output(name OutputName, from NodeID) *ParallelBuilder {
-	p.outputs = append(p.outputs, WorkflowOutputRefV0{
+func (p ParallelBuilder) Output(name OutputName, from NodeID) ParallelBuilder {
+	next := make([]WorkflowOutputRefV0, len(p.outputs)+1)
+	copy(next, p.outputs)
+	next[len(p.outputs)] = WorkflowOutputRefV0{
 		Name:    name,
 		From:    from,
 		Pointer: LLMTextOutput,
-	})
+	}
+	p.outputs = next
 	return p
 }
 
 // Build returns the compiled workflow spec.
-func (p *ParallelBuilder) Build() (WorkflowSpecV0, error) {
+func (p ParallelBuilder) Build() (WorkflowSpecV0, error) {
 	if len(p.steps) == 0 {
 		return WorkflowSpecV0{}, errors.New("parallel requires at least one step")
 	}
@@ -380,15 +386,15 @@ type reducerConfig struct {
 //	    Reduce("combine", combineReq).
 //	    Output("result", "combine").
 //	    Build()
-func MapReduce(name string, items ...MapItem) *MapReduceBuilder {
-	return &MapReduceBuilder{
+func MapReduce(name string, items ...MapItem) MapReduceBuilder {
+	return MapReduceBuilder{
 		name:  name,
-		items: items,
+		items: append([]MapItem(nil), items...),
 	}
 }
 
 // Execution sets the workflow execution configuration.
-func (m *MapReduceBuilder) Execution(exec WorkflowExecutionV0) *MapReduceBuilder {
+func (m MapReduceBuilder) Execution(exec WorkflowExecutionV0) MapReduceBuilder {
 	m.execution = &exec
 	return m
 }
@@ -396,30 +402,33 @@ func (m *MapReduceBuilder) Execution(exec WorkflowExecutionV0) *MapReduceBuilder
 // Reduce adds a reducer node that receives all mapper outputs.
 // The reducer receives a JSON object mapping each mapper ID to its text output.
 // The join node ID is automatically generated as "<id>_join".
-func (m *MapReduceBuilder) Reduce(id NodeID, req ResponseRequest) *MapReduceBuilder {
+func (m MapReduceBuilder) Reduce(id NodeID, req ResponseRequest) MapReduceBuilder {
 	m.reducer = &reducerConfig{id: id, req: req}
 	return m
 }
 
 // ReduceWithStream is like Reduce but enables streaming on the reducer node.
-func (m *MapReduceBuilder) ReduceWithStream(id NodeID, req ResponseRequest) *MapReduceBuilder {
+func (m MapReduceBuilder) ReduceWithStream(id NodeID, req ResponseRequest) MapReduceBuilder {
 	m.reducer = &reducerConfig{id: id, req: req, stream: true}
 	return m
 }
 
 // Output adds an output reference from a specific node.
 // Typically used to output from the reducer node.
-func (m *MapReduceBuilder) Output(name OutputName, from NodeID) *MapReduceBuilder {
-	m.outputs = append(m.outputs, WorkflowOutputRefV0{
+func (m MapReduceBuilder) Output(name OutputName, from NodeID) MapReduceBuilder {
+	next := make([]WorkflowOutputRefV0, len(m.outputs)+1)
+	copy(next, m.outputs)
+	next[len(m.outputs)] = WorkflowOutputRefV0{
 		Name:    name,
 		From:    from,
 		Pointer: LLMTextOutput,
-	})
+	}
+	m.outputs = next
 	return m
 }
 
 // Build returns the compiled workflow spec.
-func (m *MapReduceBuilder) Build() (WorkflowSpecV0, error) {
+func (m MapReduceBuilder) Build() (WorkflowSpecV0, error) {
 	if len(m.items) == 0 {
 		return WorkflowSpecV0{}, errors.New("map-reduce requires at least one item")
 	}
