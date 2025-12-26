@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 1.9.0: Add ergonomic workflow builder pattern (NewWorkflow/AddLLMNode) with auto-edge inference (#908).
 // 1.8.5: Add session message append request type.
 // 1.8.4: Simplify CustomerMetadata types in OpenAPI spec (remove recursive type alias).
 // 1.8.3: Surface tool_result payloads on streaming tool_use_stop events.
@@ -97,4 +98,4 @@ package sdk
 // 1.8.2: PluginRunner streams run events (NDJSON) instead of polling (#672).
 // 1.8.1: Add tools.v0 conformance fixtures/tests across SDKs (#709).
 // 1.8.0: Add image generation support (ImagesClient) (#854).
-const Version = "1.8.5"
+const Version = "1.9.0"
