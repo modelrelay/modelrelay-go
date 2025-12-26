@@ -445,6 +445,9 @@ type ImageRequest struct {
 	// Model Image generation model ID (e.g., gemini-2.5-flash-image). Optional when using a customer token with a tier that defines a default model.
 	Model *string `json:"model,omitempty"`
 
+	// N Number of images to generate (1-10, default 1)
+	N *int `json:"n,omitempty"`
+
 	// Prompt Text description of the image to generate
 	Prompt string `json:"prompt"`
 
