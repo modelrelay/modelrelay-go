@@ -363,3 +363,76 @@ func TestNewWorkflow_MatchesOldBuilder(t *testing.T) {
 		t.Errorf("specs don't match\nold: %s\nnew: %s", oldJSON, newJSON)
 	}
 }
+
+// TestNewWorkflow_SemanticAccessors verifies BindTextFrom and OutputText use correct pointers.
+func TestNewWorkflow_SemanticAccessors(t *testing.T) {
+	reqA, _, _ := (ResponseBuilder{}).Model(NewModelID("echo-1")).User("Hello").Build()
+	reqB, _, _ := (ResponseBuilder{}).Model(NewModelID("echo-1")).User("World").Build()
+
+	// Build with semantic accessors
+	spec, err := NewWorkflow("semantic_test").
+		AddLLMNode("first", reqA).Stream(true).
+		AddLLMNode("second", reqB).
+			BindTextFrom("first"). // Should use LLMTextOutput and LLMUserMessageText
+		OutputText("result", "second"). // Should use LLMTextOutput
+		Build()
+	if err != nil {
+		t.Fatalf("build workflow: %v", err)
+	}
+
+	// Verify output uses the correct pointer
+	if len(spec.Outputs) != 1 {
+		t.Fatalf("outputs = %d, want 1", len(spec.Outputs))
+	}
+	if spec.Outputs[0].Pointer != LLMTextOutput {
+		t.Errorf("output pointer = %q, want %q", spec.Outputs[0].Pointer, LLMTextOutput)
+	}
+
+	// Verify binding uses the correct pointers by checking the node input
+	if len(spec.Nodes) != 2 {
+		t.Fatalf("nodes = %d, want 2", len(spec.Nodes))
+	}
+
+	// Find the second node and check its bindings
+	var secondNode WorkflowNodeV0
+	for _, n := range spec.Nodes {
+		if n.ID == "second" {
+			secondNode = n
+			break
+		}
+	}
+
+	var input llmResponsesNodeInputV0
+	if err := json.Unmarshal(secondNode.Input, &input); err != nil {
+		t.Fatalf("unmarshal node input: %v", err)
+	}
+
+	if len(input.Bindings) != 1 {
+		t.Fatalf("bindings = %d, want 1", len(input.Bindings))
+	}
+	binding := input.Bindings[0]
+	if binding.Pointer != LLMTextOutput {
+		t.Errorf("binding.Pointer = %q, want %q", binding.Pointer, LLMTextOutput)
+	}
+	if binding.To != LLMUserMessageText {
+		t.Errorf("binding.To = %q, want %q", binding.To, LLMUserMessageText)
+	}
+
+	// Verify edge was auto-inferred
+	if len(spec.Edges) != 1 {
+		t.Fatalf("edges = %d, want 1", len(spec.Edges))
+	}
+	if spec.Edges[0].From != "first" || spec.Edges[0].To != "second" {
+		t.Errorf("edge = %v -> %v, want first -> second", spec.Edges[0].From, spec.Edges[0].To)
+	}
+}
+
+// TestLLMTextOutput_Constants verifies the constant values are correct.
+func TestLLMTextOutput_Constants(t *testing.T) {
+	if LLMTextOutput != "/output/0/content/0/text" {
+		t.Errorf("LLMTextOutput = %q, want %q", LLMTextOutput, "/output/0/content/0/text")
+	}
+	if LLMUserMessageText != "/request/input/1/content/0/text" {
+		t.Errorf("LLMUserMessageText = %q, want %q", LLMUserMessageText, "/request/input/1/content/0/text")
+	}
+}

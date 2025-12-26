@@ -5,15 +5,27 @@
 //	spec, err := sdk.NewWorkflow("tier_generation").
 //		AddLLMNode("tier_generator", tierReq).Stream(true).
 //		AddLLMNode("business_summary", summaryReq).
-//			BindFrom("tier_generator", "/output/0/content/0/text").
-//		Output("tiers", "tier_generator").
-//		Output("summary", "business_summary").
+//			BindTextFrom("tier_generator").  // Uses semantic accessor
+//		OutputText("tiers", "tier_generator").
+//		OutputText("summary", "business_summary").
 //		Build()
 package sdk
 
 import (
 	"encoding/json"
 	"sort"
+)
+
+// Semantic JSON pointer constants for LLM responses nodes.
+// These eliminate magic strings and make bindings self-documenting.
+const (
+	// LLMTextOutput is the JSON pointer to extract text content from an LLM response.
+	// Use this when binding from an llm.responses node's output.
+	LLMTextOutput JSONPointer = "/output/0/content/0/text"
+
+	// LLMUserMessageText is the JSON pointer to inject text into the user message.
+	// Use this when binding to an llm.responses node's input.
+	LLMUserMessageText JSONPointer = "/request/input/1/content/0/text"
 )
 
 // Workflow is a fluent builder for constructing workflow specifications.
@@ -92,6 +104,12 @@ func (w *Workflow) AddTransformJSONNode(id NodeID) *TransformJSONNode {
 // Output adds an output reference extracting the full node output.
 func (w *Workflow) Output(name OutputName, from NodeID) *Workflow {
 	return w.OutputAt(name, from, "")
+}
+
+// OutputText adds an output reference extracting the text content from an LLM response.
+// This is a convenience method that uses the LLMTextOutput pointer.
+func (w *Workflow) OutputText(name OutputName, from NodeID) *Workflow {
+	return w.OutputAt(name, from, LLMTextOutput)
 }
 
 // OutputAt adds an output reference with a JSON pointer.
@@ -208,11 +226,18 @@ func (n *LLMNode) Stream(enabled bool) *LLMNode {
 	return n
 }
 
+// BindTextFrom adds a binding from another LLM node's text output to this node's user message.
+// This is the most common binding pattern: LLM text → user message with JSON string encoding.
+// The edge from the source node is automatically inferred.
+func (n *LLMNode) BindTextFrom(from NodeID) *LLMNode {
+	return n.BindFromTo(from, LLMTextOutput, LLMUserMessageText, LLMResponsesBindingEncodingJSONString)
+}
+
 // BindFrom adds a binding from another node's output to this node's user message text.
-// This is a convenience method that binds to /request/input/1/content/0/text with JSON string encoding.
+// Use BindTextFrom for the common case of binding LLM text output.
 // The edge from the source node is automatically inferred.
 func (n *LLMNode) BindFrom(from NodeID, pointer JSONPointer) *LLMNode {
-	return n.BindFromTo(from, pointer, "/request/input/1/content/0/text", LLMResponsesBindingEncodingJSONString)
+	return n.BindFromTo(from, pointer, LLMUserMessageText, LLMResponsesBindingEncodingJSONString)
 }
 
 // BindFromTo adds a full binding with explicit source/destination pointers and encoding.
@@ -268,6 +293,11 @@ func (n *LLMNode) Edge(from, to NodeID) *Workflow {
 // Output finishes configuring this node and adds an output reference.
 func (n *LLMNode) Output(name OutputName, from NodeID) *Workflow {
 	return n.workflow.Output(name, from)
+}
+
+// OutputText finishes configuring this node and adds an LLM text output reference.
+func (n *LLMNode) OutputText(name OutputName, from NodeID) *Workflow {
+	return n.workflow.OutputText(name, from)
 }
 
 // OutputAt finishes configuring this node and adds an output with pointer.

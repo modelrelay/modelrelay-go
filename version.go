@@ -98,4 +98,4 @@ package sdk
 // 1.8.2: PluginRunner streams run events (NDJSON) instead of polling (#672).
 // 1.8.1: Add tools.v0 conformance fixtures/tests across SDKs (#709).
 // 1.8.0: Add image generation support (ImagesClient) (#854).
-const Version = "1.9.0"
+const Version = "1.10.0"
