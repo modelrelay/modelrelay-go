@@ -125,85 +125,76 @@ for {
 }
 ```
 
-## Workflow Runs (workflow.v0)
+## Workflows
+
+High-level helpers for common workflow patterns:
+
+### Chain (Sequential)
+
+Sequential LLM calls where each step's output feeds the next step's input:
 
 ```go
-ctx := context.Background()
-client, _ := sdk.NewClientFromAPIKey(os.Getenv("MODELRELAY_API_KEY"))
+summarizeReq, _, _ := (sdk.ResponseBuilder{}).
+    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    System("Summarize the input concisely.").
+    User("The quick brown fox...").
+    Build()
 
-exec := workflow.ExecutionV0{
-	MaxParallelism: sdk.Int64Ptr(3),
-	NodeTimeoutMS:  sdk.Int64Ptr(60_000),
-	RunTimeoutMS:   sdk.Int64Ptr(180_000),
-}
+translateReq, _, _ := (sdk.ResponseBuilder{}).
+    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    System("Translate the input to French.").
+    User(""). // Bound from previous step
+    Build()
 
-reqA, _, _ := (sdk.ResponseBuilder{}).
-	Model(sdk.NewModelID("claude-sonnet-4-20250514")).
-	MaxOutputTokens(64).
-	System("You are Agent A.").
-	User("Analyze the question.").
-	Build()
-reqB, _, _ := (sdk.ResponseBuilder{}).
-	Model(sdk.NewModelID("claude-sonnet-4-20250514")).
-	MaxOutputTokens(64).
-	System("You are Agent B.").
-	User("Find edge cases.").
-	Build()
-reqC, _, _ := (sdk.ResponseBuilder{}).
-	Model(sdk.NewModelID("claude-sonnet-4-20250514")).
-	MaxOutputTokens(64).
-	System("You are Agent C.").
-	User("Propose a solution.").
-	Build()
-reqAgg, _, _ := (sdk.ResponseBuilder{}).
-	Model(sdk.NewModelID("claude-sonnet-4-20250514")).
-	MaxOutputTokens(256).
-	System("Synthesize the best answer.").
-	User(""). // overwritten by bindings
-	Build()
-
-b := sdk.WorkflowV0().
-	Name("parallel_agents_aggregate").
-	Execution(exec)
-b, _ = b.LLMResponsesNode("agent_a", reqA, sdk.BoolPtr(false))
-b, _ = b.LLMResponsesNode("agent_b", reqB, nil)
-b, _ = b.LLMResponsesNode("agent_c", reqC, nil)
-b = b.JoinAllNode("join")
-b, _ = b.LLMResponsesNodeWithBindings("aggregate", reqAgg, nil, []workflow.LLMResponsesBindingV0{
-	{
-		From:     "join",
-		To:       "/input/1/content/0/text",
-		Encoding: workflow.LLMResponsesBindingEncodingJSONString,
-	},
-})
-b = b.
-	Edge("agent_a", "join").
-	Edge("agent_b", "join").
-	Edge("agent_c", "join").
-	Edge("join", "aggregate").
-	Output("final", "aggregate", "")
-
-spec, _ := b.Build()
-
-created, _ := client.Runs.Create(ctx, spec)
-
-stream, _ := client.Runs.StreamEvents(ctx, created.RunID)
-defer stream.Close()
-for {
-	ev, ok, _ := stream.Next()
-	if !ok {
-		break
-	}
-	switch ev.(type) {
-	case sdk.RunEventRunCompletedV0:
-		status, _ := client.Runs.Get(ctx, created.RunID)
-		b, _ := json.MarshalIndent(status.Outputs, "", "  ")
-		fmt.Printf("outputs: %s\n", string(b))
-	}
-}
+spec, _ := sdk.Chain("summarize-translate",
+    sdk.LLMStep("summarize", summarizeReq),
+    sdk.LLMStep("translate", translateReq).WithStream(),
+).
+    OutputLast("result").
+    Build()
 ```
 
-See the full example in `sdk/go/examples/workflows/main.go`.
+### Parallel (Fan-out with Aggregation)
+
+Concurrent LLM calls with optional aggregation:
+
+```go
+gpt4Req, _, _ := (sdk.ResponseBuilder{}).Model(sdk.NewModelID("gpt-4.1")).User("Analyze this...").Build()
+claudeReq, _, _ := (sdk.ResponseBuilder{}).Model(sdk.NewModelID("claude-sonnet-4-20250514")).User("Analyze this...").Build()
+synthesizeReq, _, _ := (sdk.ResponseBuilder{}).
+    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    System("Synthesize the analyses into a unified view.").
+    User(""). // Bound from join output
+    Build()
+
+spec, _ := sdk.Parallel("multi-model-compare",
+    sdk.LLMStep("gpt4", gpt4Req),
+    sdk.LLMStep("claude", claudeReq),
+).
+    Aggregate("synthesize", synthesizeReq).
+    Output("result", "synthesize").
+    Build()
+```
+
+### MapReduce (Parallel Map with Reduce)
+
+Process items in parallel, then combine results:
+
+```go
+combineReq, _, _ := (sdk.ResponseBuilder{}).
+    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    System("Combine summaries into a cohesive overview.").
+    User(""). // Bound from join output
+    Build()
+
+spec, _ := sdk.MapReduce("summarize-docs").
+    Item("doc1", doc1Req).
+    Item("doc2", doc2Req).
+    Item("doc3", doc3Req).
+    Reduce("combine", combineReq).
+    Output("result", "combine").
+    Build()
+```
 
 ## Structured Outputs
 

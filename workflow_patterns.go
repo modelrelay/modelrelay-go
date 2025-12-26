@@ -334,6 +334,21 @@ type MapItem struct {
 	Stream bool
 }
 
+// NewMapItem creates a map item configuration.
+// This is the preferred constructor for MapItem.
+//
+// Example:
+//
+//	spec, _ := sdk.MapReduce("summarize-docs",
+//	    sdk.NewMapItem("doc1", doc1Req),
+//	    sdk.NewMapItem("doc2", doc2Req).WithStream(),
+//	).
+//	    Reduce("combine", combineReq).
+//	    Build()
+func NewMapItem(id string, req ResponseRequest) MapItem {
+	return MapItem{ID: id, Req: req}
+}
+
 // WithStream returns a copy with streaming enabled.
 func (m MapItem) WithStream() MapItem {
 	m.Stream = true
@@ -371,18 +386,10 @@ type reducerConfig struct {
 //
 // Example:
 //
-//	// Build items with their individual prompts
-//	items := make([]sdk.MapItem, len(documents))
-//	for i, doc := range documents {
-//	    req, _, _ := sdk.NewResponseBuilder().
-//	        Model(model).
-//	        User(fmt.Sprintf("Summarize: %s", doc)).
-//	        Build()
-//	    items[i] = sdk.MapItem{ID: fmt.Sprintf("doc_%d", i), Req: req}
-//	}
-//
-//	// Build the MapReduce workflow
-//	spec, _ := sdk.MapReduce("summarize-docs", items...).
+//	spec, _ := sdk.MapReduce("summarize-docs").
+//	    Item("doc1", doc1Req).
+//	    Item("doc2", doc2Req).
+//	    ItemWithStream("doc3", doc3Req).
 //	    Reduce("combine", combineReq).
 //	    Output("result", "combine").
 //	    Build()
@@ -391,6 +398,19 @@ func MapReduce(name string, items ...MapItem) MapReduceBuilder {
 		name:  name,
 		items: append([]MapItem(nil), items...),
 	}
+}
+
+// Item adds a mapper item to the workflow.
+// Each item becomes a separate LLM node that runs in parallel.
+func (m *MapReduceBuilder) Item(id string, req ResponseRequest) *MapReduceBuilder {
+	m.items = append(m.items, MapItem{ID: id, Req: req})
+	return m
+}
+
+// ItemWithStream adds a mapper item with streaming enabled.
+func (m *MapReduceBuilder) ItemWithStream(id string, req ResponseRequest) *MapReduceBuilder {
+	m.items = append(m.items, MapItem{ID: id, Req: req, Stream: true})
+	return m
 }
 
 // Execution sets the workflow execution configuration.
