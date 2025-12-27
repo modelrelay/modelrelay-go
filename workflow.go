@@ -258,6 +258,28 @@ func (n *LLMNode) BindFromTo(from NodeID, fromPointer, toPointer JSONPointer, en
 	return n
 }
 
+// BindToPlaceholder adds a binding that replaces a {{placeholder}} in the prompt text.
+// This is useful when the prompt contains placeholder markers like {{tier_data}}.
+// The edge from the source node is automatically inferred.
+func (n *LLMNode) BindToPlaceholder(from NodeID, fromPointer JSONPointer, placeholder PlaceholderName) *LLMNode {
+	if n.workflow.pendingNode != nil {
+		n.workflow.pendingNode.bindings = append(n.workflow.pendingNode.bindings, LLMResponsesBindingV0{
+			From:          from,
+			Pointer:       fromPointer,
+			ToPlaceholder: placeholder,
+			Encoding:      LLMResponsesBindingEncodingJSONString,
+		})
+	}
+	return n
+}
+
+// BindTextToPlaceholder adds a binding from an LLM node's text output to a placeholder.
+// This is the most common placeholder binding: LLM text → {{placeholder}}.
+// The edge from the source node is automatically inferred.
+func (n *LLMNode) BindTextToPlaceholder(from NodeID, placeholder PlaceholderName) *LLMNode {
+	return n.BindToPlaceholder(from, LLMTextOutput, placeholder)
+}
+
 // ToolExecution sets the tool execution mode (server or client).
 func (n *LLMNode) ToolExecution(mode ToolExecutionModeV0) *LLMNode {
 	if n.workflow.pendingNode != nil {
