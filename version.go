@@ -114,4 +114,5 @@ package sdk
 // 1.13.0: Add MapReduce workflow pattern helper - fixes #932.
 // 1.12.0: Add high-level workflow pattern helpers (Chain, Parallel) - fixes #913.
 // 1.11.0: Add workflow package with clean type names (workflow.SpecV0, workflow.Kind) - fixes #912.
-const Version = "1.23.0"
+// 1.24.0: Add image pinning support (Get, Pin, Unpin) for hosted image storage (#877).
+const Version = "1.24.0"

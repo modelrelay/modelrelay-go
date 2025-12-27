@@ -433,11 +433,35 @@ type ImageData struct {
 	// B64Json Base64-encoded image data (when response_format is 'b64_json')
 	B64Json *string `json:"b64_json,omitempty"`
 
+	// ExpiresAt When the image URL expires (null if pinned)
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// ImageId Unique identifier for the image (used for pinning)
+	ImageId *string `json:"image_id,omitempty"`
+
 	// MimeType MIME type of the image (e.g., 'image/png', 'image/webp')
 	MimeType *string `json:"mime_type,omitempty"`
 
+	// PinUrl URL to pin this image for permanent storage
+	PinUrl *string `json:"pin_url,omitempty"`
+
 	// Url URL of the generated image (when response_format is 'url')
 	Url *string `json:"url,omitempty"`
+}
+
+// ImagePinResponse Response from pin/unpin operations.
+type ImagePinResponse struct {
+	// ExpiresAt When the image expires (null if pinned)
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// Id Image ID
+	Id string `json:"id"`
+
+	// Pinned Whether the image is currently pinned
+	Pinned bool `json:"pinned"`
+
+	// Url URL of the image
+	Url string `json:"url"`
 }
 
 // ImageRequest Request to generate images from a text prompt.

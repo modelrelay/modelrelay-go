@@ -61,6 +61,9 @@ func (c *ImagesClient) ensureInitialized() error {
 	return nil
 }
 
+// ImagePinResponse contains the result of pin/unpin operations.
+type ImagePinResponse = generated.ImagePinResponse
+
 // Generate creates images from a text prompt.
 //
 // By default, returns URLs (requires storage configuration on the server).
@@ -78,6 +81,65 @@ func (c *ImagesClient) Generate(ctx context.Context, req ImageRequest) (ImageRes
 	var resp ImageResponse
 	if err := c.client.sendAndDecode(ctx, http.MethodPost, "/images/generate", req, &resp); err != nil {
 		return ImageResponse{}, err
+	}
+	return resp, nil
+}
+
+// Get retrieves information about a specific image.
+//
+// Returns the image's pinned status, expiration time, and URL.
+func (c *ImagesClient) Get(ctx context.Context, imageID string) (ImagePinResponse, error) {
+	if err := c.ensureInitialized(); err != nil {
+		return ImagePinResponse{}, err
+	}
+	if strings.TrimSpace(imageID) == "" {
+		return ImagePinResponse{}, fmt.Errorf("sdk: image_id is required")
+	}
+
+	var resp ImagePinResponse
+	path := fmt.Sprintf("/images/%s", imageID)
+	if err := c.client.sendAndDecode(ctx, http.MethodGet, path, nil, &resp); err != nil {
+		return ImagePinResponse{}, err
+	}
+	return resp, nil
+}
+
+// Pin pins an image to prevent it from expiring.
+//
+// Pinned images remain accessible permanently (subject to tier limits).
+// Returns the updated image state including its permanent URL.
+func (c *ImagesClient) Pin(ctx context.Context, imageID string) (ImagePinResponse, error) {
+	if err := c.ensureInitialized(); err != nil {
+		return ImagePinResponse{}, err
+	}
+	if strings.TrimSpace(imageID) == "" {
+		return ImagePinResponse{}, fmt.Errorf("sdk: image_id is required")
+	}
+
+	var resp ImagePinResponse
+	path := fmt.Sprintf("/images/%s/pin", imageID)
+	if err := c.client.sendAndDecode(ctx, http.MethodPost, path, nil, &resp); err != nil {
+		return ImagePinResponse{}, err
+	}
+	return resp, nil
+}
+
+// Unpin removes the pinned status from an image.
+//
+// The image will be set to expire after the default ephemeral period (7 days).
+// Returns the updated image state including the new expiration time.
+func (c *ImagesClient) Unpin(ctx context.Context, imageID string) (ImagePinResponse, error) {
+	if err := c.ensureInitialized(); err != nil {
+		return ImagePinResponse{}, err
+	}
+	if strings.TrimSpace(imageID) == "" {
+		return ImagePinResponse{}, fmt.Errorf("sdk: image_id is required")
+	}
+
+	var resp ImagePinResponse
+	path := fmt.Sprintf("/images/%s/pin", imageID)
+	if err := c.client.sendAndDecode(ctx, http.MethodDelete, path, nil, &resp); err != nil {
+		return ImagePinResponse{}, err
 	}
 	return resp, nil
 }
