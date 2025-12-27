@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/modelrelay/modelrelay/sdk/go/routes"
 )
 
@@ -354,7 +355,8 @@ func (c *RunsClient) RunEventSchemaV0(ctx context.Context) (json.RawMessage, err
 }
 
 type runsCreateRequest struct {
-	Spec WorkflowSpecV0 `json:"spec"`
+	Spec      WorkflowSpecV0 `json:"spec"`
+	SessionID *uuid.UUID     `json:"session_id,omitempty"`
 }
 
 type RunsCreateResponse struct {
@@ -519,6 +521,12 @@ func (c *RunsClient) Create(ctx context.Context, spec WorkflowSpecV0, opts ...Ru
 	options := buildRunCreateOptions(opts)
 
 	payload := runsCreateRequest{Spec: spec}
+	if options.sessionID != nil {
+		if *options.sessionID == uuid.Nil {
+			return nil, ConfigError{Reason: "session id is required"}
+		}
+		payload.SessionID = options.sessionID
+	}
 	req, err := c.client.newJSONRequest(ctx, http.MethodPost, routes.Runs, payload)
 	if err != nil {
 		return nil, err
@@ -643,8 +651,9 @@ func (c *RunsClient) PendingTools(ctx context.Context, runID RunID, opts ...RunP
 }
 
 type runCreateOptions struct {
-	timeout *time.Duration
-	retry   *RetryConfig
+	timeout   *time.Duration
+	retry     *RetryConfig
+	sessionID *uuid.UUID
 }
 
 type RunCreateOption func(*runCreateOptions)
@@ -665,6 +674,14 @@ func WithRunCreateTimeout(d time.Duration) RunCreateOption {
 
 func WithRunCreateRetry(cfg RetryConfig) RunCreateOption {
 	return func(o *runCreateOptions) { o.retry = &cfg }
+}
+
+func WithRunSessionID(sessionID uuid.UUID) RunCreateOption {
+	return func(o *runCreateOptions) {
+		if sessionID != uuid.Nil {
+			o.sessionID = &sessionID
+		}
+	}
 }
 
 type runGetOptions struct {

@@ -747,6 +747,9 @@ type RunsCreateRequest struct {
 	Input   *map[string]interface{} `json:"input,omitempty"`
 	Options *RunsCreateOptionsV0    `json:"options,omitempty"`
 
+	// SessionId Optional session ID to link this run to a session.
+	SessionId *openapi_types.UUID `json:"session_id,omitempty"`
+
 	// Spec A `workflow.v0` spec. The canonical JSON Schema is available at `/schemas/workflow_v0.schema.json`.
 	Spec WorkflowSpecV0 `json:"spec"`
 }
