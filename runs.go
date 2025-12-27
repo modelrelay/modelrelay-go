@@ -359,6 +359,11 @@ type runsCreateRequest struct {
 	SessionID *uuid.UUID     `json:"session_id,omitempty"`
 }
 
+type runsCreateRequestV1 struct {
+	Spec      WorkflowSpecV1 `json:"spec"`
+	SessionID *uuid.UUID     `json:"session_id,omitempty"`
+}
+
 type RunsCreateResponse struct {
 	RunID    RunID       `json:"run_id"`
 	Status   RunStatusV0 `json:"status"`
@@ -521,6 +526,50 @@ func (c *RunsClient) Create(ctx context.Context, spec WorkflowSpecV0, opts ...Ru
 	options := buildRunCreateOptions(opts)
 
 	payload := runsCreateRequest{Spec: spec}
+	if options.sessionID != nil {
+		if *options.sessionID == uuid.Nil {
+			return nil, ConfigError{Reason: "session id is required"}
+		}
+		payload.SessionID = options.sessionID
+	}
+	req, err := c.client.newJSONRequest(ctx, http.MethodPost, routes.Runs, payload)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, _, err := c.client.send(req, options.timeout, options.retry)
+	if err != nil {
+		return nil, err
+	}
+	body, readErr := io.ReadAll(resp.Body)
+	//nolint:errcheck // best-effort cleanup on return
+	_ = resp.Body.Close()
+	if readErr != nil {
+		return nil, readErr
+	}
+	if resp.StatusCode >= 400 {
+		if resp.StatusCode == http.StatusBadRequest {
+			var verr WorkflowValidationError
+			if err := json.Unmarshal(body, &verr); err == nil && len(verr.Issues) > 0 {
+				return nil, verr
+			}
+		}
+		return nil, decodeAPIErrorFromBytes(resp.StatusCode, body, nil)
+	}
+
+	var out RunsCreateResponse
+	if err := json.Unmarshal(body, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// CreateV1 starts a workflow run using a v1 spec and returns its run id.
+func (c *RunsClient) CreateV1(ctx context.Context, spec WorkflowSpecV1, opts ...RunCreateOption) (*RunsCreateResponse, error) {
+	options := buildRunCreateOptions(opts)
+
+	payload := runsCreateRequestV1{Spec: spec}
 	if options.sessionID != nil {
 		if *options.sessionID == uuid.Nil {
 			return nil, ConfigError{Reason: "session id is required"}
