@@ -100,3 +100,23 @@ func TestTypedPaths_ProduceValidRFC6901(t *testing.T) {
 		}
 	}
 }
+
+func TestJoinOutputPath_BuildsCorrectPointers(t *testing.T) {
+	cases := []struct {
+		name string
+		got  JSONPointer
+		want string
+	}{
+		{"Text()", JoinOutput("cost_analyst").Text(), "/cost_analyst/output/0/content/0/text"},
+		{"Output().Content(0).Text()", JoinOutput("revenue").Output().Content(0).Text(), "/revenue/output/0/content/0/text"},
+		{"Output().Index(1).Content(0).Text()", JoinOutput("agent").Output().Index(1).Content(0).Text(), "/agent/output/1/content/0/text"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if string(tc.got) != tc.want {
+				t.Errorf("got %q, want %q", tc.got, tc.want)
+			}
+		})
+	}
+}

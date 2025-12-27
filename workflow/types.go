@@ -30,8 +30,24 @@ const (
 type NodeType string
 
 const (
-	NodeTypeLLMResponses  NodeType = "llm.responses"
-	NodeTypeJoinAll       NodeType = "join.all"
+	// NodeTypeLLMResponses makes an LLM API call.
+	NodeTypeLLMResponses NodeType = "llm.responses"
+
+	// NodeTypeJoinAll waits for all upstream nodes to complete before continuing.
+	// The output is an object keyed by upstream node IDs:
+	//
+	//	{
+	//	  "node_a": { "id": "...", "output": [...], "usage": {...} },
+	//	  "node_b": { "id": "...", "output": [...], "usage": {...} }
+	//	}
+	//
+	// Access values from the join output using JSON Pointers:
+	//   - "" (empty): Full join object with all upstream outputs
+	//   - "/node_a": Complete output from node_a
+	//   - "/node_a/output/0/content/0/text": Text from first content block
+	NodeTypeJoinAll NodeType = "join.all"
+
+	// NodeTypeTransformJSON transforms JSON outputs from upstream nodes.
 	NodeTypeTransformJSON NodeType = "transform.json"
 )
 
@@ -161,6 +177,15 @@ func (n PlaceholderName) Valid() bool               { return strings.TrimSpace(s
 // Either To or ToPlaceholder must be specified (but not both):
 //   - To: a JSON pointer path to the target location (e.g., "/input/2/content/0/text")
 //   - ToPlaceholder: a named placeholder to find and replace (e.g., "tier_data" finds {{tier_data}})
+//
+// When binding from a join.all node, use Pointer to access specific upstream outputs:
+//
+//	{
+//	  From: "join",
+//	  Pointer: "/cost_analyst/output/0/content/0/text",
+//	  ToPlaceholder: "cost_analysis",
+//	  Encoding: LLMResponsesBindingEncodingJSONString,
+//	}
 type LLMResponsesBindingV0 struct {
 	From          NodeID                        `json:"from"`
 	Pointer       JSONPointer                   `json:"pointer,omitempty"`

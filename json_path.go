@@ -153,3 +153,37 @@ var (
 	// Use when there's no system message and user message is at index 0.
 	LLMInputFirstMessageText = LLMInput().Message(0).Text()
 )
+
+// JoinOutputPath builds paths for accessing outputs from a join.all node.
+// A join.all node produces an object keyed by upstream node IDs.
+//
+// Example:
+//
+//	// Access text from a specific node in the join output:
+//	pointer := JoinOutput("cost_analyst").Text()
+//	// Produces: "/cost_analyst/output/0/content/0/text"
+type JoinOutputPath struct {
+	path string
+}
+
+// JoinOutput starts building a path to access a specific node's output
+// from a join.all node. The nodeID is the ID of the upstream node.
+func JoinOutput(nodeID string) JoinOutputPath {
+	return JoinOutputPath{path: "/" + nodeID}
+}
+
+// Output accesses the output array of the node.
+func (p JoinOutputPath) Output() LLMOutputPath {
+	return LLMOutputPath{path: p.path + "/output"}
+}
+
+// Text is a shorthand for accessing the first text content from the node.
+// Equivalent to: JoinOutput(nodeID).Output().Content(0).Text()
+func (p JoinOutputPath) Text() JSONPointer {
+	return p.Output().Content(0).Text()
+}
+
+// String returns the JSON pointer string.
+func (p JoinOutputPath) String() string {
+	return p.path
+}
