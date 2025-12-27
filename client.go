@@ -113,6 +113,7 @@ type Client struct {
 	Customers *CustomersClient
 	Tiers     *TiersClient
 	Models    *ModelsClient
+	Sessions  *SessionsClient
 
 	pluginsOnce sync.Once
 	plugins     *PluginsClient
@@ -259,6 +260,7 @@ func newClientFromOptions(apiKey APIKeyAuth, accessToken string, opts clientOpti
 	client.Customers = &CustomersClient{client: client}
 	client.Tiers = &TiersClient{client: client}
 	client.Models = &ModelsClient{client: client}
+	client.Sessions = &SessionsClient{client: client}
 	return client, nil
 }
 

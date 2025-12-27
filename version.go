@@ -115,4 +115,5 @@ package sdk
 // 1.12.0: Add high-level workflow pattern helpers (Chain, Parallel) - fixes #913.
 // 1.11.0: Add workflow package with clean type names (workflow.SpecV0, workflow.Kind) - fixes #912.
 // 1.24.0: Add image pinning support (Get, Pin, Unpin) for hosted image storage (#877).
-const Version = "1.24.0"
+// 1.25.0: Add sessions client for multi-turn conversation management (Create, Get, List, Delete, AddMessage).
+const Version = "1.25.0"
