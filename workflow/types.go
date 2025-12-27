@@ -149,10 +149,22 @@ const (
 	LLMResponsesBindingEncodingJSONString LLMResponsesBindingEncodingV0 = "json_string"
 )
 
+// PlaceholderName is a named placeholder marker in a prompt (e.g., "tier_data" for {{tier_data}}).
+type PlaceholderName string
+
+func NewPlaceholderName(val string) PlaceholderName { return PlaceholderName(strings.TrimSpace(val)) }
+func (n PlaceholderName) String() string            { return string(n) }
+func (n PlaceholderName) Valid() bool               { return strings.TrimSpace(string(n)) != "" }
+
 // LLMResponsesBindingV0 binds output from one node to input of another.
+//
+// Either To or ToPlaceholder must be specified (but not both):
+//   - To: a JSON pointer path to the target location (e.g., "/input/2/content/0/text")
+//   - ToPlaceholder: a named placeholder to find and replace (e.g., "tier_data" finds {{tier_data}})
 type LLMResponsesBindingV0 struct {
-	From     NodeID                        `json:"from"`
-	Pointer  JSONPointer                   `json:"pointer,omitempty"`
-	To       JSONPointer                   `json:"to"`
-	Encoding LLMResponsesBindingEncodingV0 `json:"encoding,omitempty"`
+	From          NodeID                        `json:"from"`
+	Pointer       JSONPointer                   `json:"pointer,omitempty"`
+	To            JSONPointer                   `json:"to,omitempty"`
+	ToPlaceholder PlaceholderName               `json:"to_placeholder,omitempty"`
+	Encoding      LLMResponsesBindingEncodingV0 `json:"encoding,omitempty"`
 }

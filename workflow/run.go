@@ -262,8 +262,8 @@ func (id ModelID) String() string { return string(id) }
 
 // CostSummaryV0 summarizes the cost of a workflow run.
 type CostSummaryV0 struct {
-	TotalUSDCents int64             `json:"total_usd_cents"`
-	LineItems     []CostLineItemV0  `json:"line_items"`
+	TotalUSDCents int64            `json:"total_usd_cents"`
+	LineItems     []CostLineItemV0 `json:"line_items"`
 }
 
 // CostLineItemV0 represents a line item in a cost summary.

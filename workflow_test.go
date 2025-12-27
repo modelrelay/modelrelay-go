@@ -66,7 +66,7 @@ func TestNewWorkflow_AutoEdgeFromBinding(t *testing.T) {
 	spec, err := NewWorkflow("binding_test").
 		AddLLMNode("node_a", reqA).
 		AddLLMNode("node_b", reqB).
-			BindFrom("node_a", "/output/0/content/0/text").
+		BindFrom("node_a", "/output/0/content/0/text").
 		Output("result", "node_b").
 		Build()
 	if err != nil {
@@ -91,8 +91,8 @@ func TestNewWorkflow_MultipleBindings(t *testing.T) {
 		AddLLMNode("agent_a", reqA).
 		AddLLMNode("agent_b", reqB).
 		AddLLMNode("aggregate", reqC).
-			BindFromTo("agent_a", "/output/0", "/input/1/content/0/text", LLMResponsesBindingEncodingJSONString).
-			BindFromTo("agent_b", "/output/0", "/input/2/content/0/text", LLMResponsesBindingEncodingJSONString).
+		BindFromTo("agent_a", "/output/0", "/input/1/content/0/text", LLMResponsesBindingEncodingJSONString).
+		BindFromTo("agent_b", "/output/0", "/input/2/content/0/text", LLMResponsesBindingEncodingJSONString).
 		Output("final", "aggregate").
 		Build()
 	if err != nil {
@@ -128,7 +128,7 @@ func TestNewWorkflow_JoinAllNode(t *testing.T) {
 		Edge("a", "join").
 		Edge("b", "join").
 		AddLLMNode("agg", reqAgg).
-			BindFrom("join", "").
+		BindFrom("join", "").
 		Output("out", "agg").
 		Build()
 	if err != nil {
@@ -192,10 +192,10 @@ func TestNewWorkflow_TransformJSONNode(t *testing.T) {
 		AddLLMNode("a", reqA).
 		AddLLMNode("b", reqB).
 		AddTransformJSONNode("transform").
-			Object(map[string]TransformJSONFieldRefV0{
-				"result_a": {From: "a", Pointer: "/output/0/content/0/text"},
-				"result_b": {From: "b", Pointer: "/output/0/content/0/text"},
-			}).
+		Object(map[string]TransformJSONFieldRefV0{
+			"result_a": {From: "a", Pointer: "/output/0/content/0/text"},
+			"result_b": {From: "b", Pointer: "/output/0/content/0/text"},
+		}).
 		Output("combined", "transform").
 		Build()
 	if err != nil {
@@ -228,8 +228,8 @@ func TestNewWorkflow_ToolExecution(t *testing.T) {
 
 	spec, err := NewWorkflow("with_tools").
 		AddLLMNode("n", req).
-			ToolExecution(ToolExecutionModeServer).
-			ToolLimits(LLMResponsesToolLimitsV0{MaxLLMCallsPerNode: Int64Ptr(5)}).
+		ToolExecution(ToolExecutionModeServer).
+		ToolLimits(LLMResponsesToolLimitsV0{MaxLLMCallsPerNode: Int64Ptr(5)}).
 		Output("o", "n").
 		Build()
 	if err != nil {
@@ -275,7 +275,7 @@ func TestNewWorkflow_EdgeDeduplication(t *testing.T) {
 	spec, err := NewWorkflow("dedup").
 		AddLLMNode("a", req).
 		AddLLMNode("b", req).
-			BindFrom("a", "/output").
+		BindFrom("a", "/output").
 		Edge("a", "b"). // Explicit edge that duplicates the auto-inferred one
 		Output("o", "b").
 		Build()
@@ -299,9 +299,9 @@ func TestNewWorkflow_FluentChaining(t *testing.T) {
 		AddLLMNode("a", reqA).Stream(true).
 		AddLLMNode("b", reqB).Stream(false).BindFrom("a", "/out").
 		AddLLMNode("c", reqC).
-			Stream(true).
-			BindFromTo("b", "/x", "/y", LLMResponsesBindingEncodingJSONString).
-			ToolExecution(ToolExecutionModeClient).
+		Stream(true).
+		BindFromTo("b", "/x", "/y", LLMResponsesBindingEncodingJSONString).
+		ToolExecution(ToolExecutionModeClient).
 		Output("final", "c").
 		Build()
 	if err != nil {
@@ -348,7 +348,7 @@ func TestNewWorkflow_MatchesOldBuilder(t *testing.T) {
 		Edge("a", "join").
 		Edge("b", "join").
 		AddLLMNode("agg", reqAgg).
-			BindFromTo("join", "", "/input/0/content/0/text", LLMResponsesBindingEncodingJSONString).
+		BindFromTo("join", "", "/input/0/content/0/text", LLMResponsesBindingEncodingJSONString).
 		OutputAt("final", "agg", "/output/0/content/0/text").
 		Build()
 	if err != nil {
@@ -373,7 +373,7 @@ func TestNewWorkflow_SemanticAccessors(t *testing.T) {
 	spec, err := NewWorkflow("semantic_test").
 		AddLLMNode("first", reqA).Stream(true).
 		AddLLMNode("second", reqB).
-			BindTextFrom("first"). // Should use LLMTextOutput and LLMUserMessageText
+		BindTextFrom("first").          // Should use LLMTextOutput and LLMUserMessageText
 		OutputText("result", "second"). // Should use LLMTextOutput
 		Build()
 	if err != nil {

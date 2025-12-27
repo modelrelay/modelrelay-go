@@ -37,20 +37,20 @@ type TierModel struct {
 
 // Tier represents a pricing tier in a ModelRelay project.
 type Tier struct {
-	ID               uuid.UUID     `json:"id"`
-	ProjectID        uuid.UUID     `json:"project_id"`
-	TierCode         TierCode      `json:"tier_code"`
-	DisplayName      string        `json:"display_name"`
-	SpendLimitCents  int64         `json:"spend_limit_cents"` // Monthly spend limit in cents (e.g., 2000 = $20.00)
-	Models           []TierModel   `json:"models"`
+	ID               uuid.UUID       `json:"id"`
+	ProjectID        uuid.UUID       `json:"project_id"`
+	TierCode         TierCode        `json:"tier_code"`
+	DisplayName      string          `json:"display_name"`
+	SpendLimitCents  int64           `json:"spend_limit_cents"` // Monthly spend limit in cents (e.g., 2000 = $20.00)
+	Models           []TierModel     `json:"models"`
 	BillingProvider  BillingProvider `json:"billing_provider,omitempty"`
-	BillingPriceRef  string        `json:"billing_price_ref,omitempty"`
-	PriceAmountCents int64         `json:"price_amount_cents,omitempty"`
-	PriceCurrency    string        `json:"price_currency,omitempty"`
-	PriceInterval    PriceInterval `json:"price_interval,omitempty"`
-	TrialDays        int32         `json:"trial_days,omitempty"`
-	CreatedAt        time.Time     `json:"created_at"`
-	UpdatedAt        time.Time     `json:"updated_at"`
+	BillingPriceRef  string          `json:"billing_price_ref,omitempty"`
+	PriceAmountCents int64           `json:"price_amount_cents,omitempty"`
+	PriceCurrency    string          `json:"price_currency,omitempty"`
+	PriceInterval    PriceInterval   `json:"price_interval,omitempty"`
+	TrialDays        int32           `json:"trial_days,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	UpdatedAt        time.Time       `json:"updated_at"`
 }
 
 // DefaultModel returns the tier's default model, if configured.

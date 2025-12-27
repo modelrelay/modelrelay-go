@@ -18,12 +18,12 @@ type ResponseBuilder struct {
 	client *Client
 	req    ResponseRequest
 
-	requestID string
+	requestID  string
 	customerID string
-	headers   http.Header
-	timeout   *time.Duration
-	stream    StreamTimeouts
-	retry     *RetryConfig
+	headers    http.Header
+	timeout    *time.Duration
+	stream     StreamTimeouts
+	retry      *RetryConfig
 }
 
 // New returns a fresh builder. Set either Model(...) or CustomerID(...).

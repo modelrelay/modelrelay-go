@@ -13,43 +13,44 @@ import (
 //	import "github.com/modelrelay/modelrelay/sdk/go/workflow"
 //	spec := workflow.SpecV0{...}
 type (
-	WorkflowKind              = workflow.Kind
-	WorkflowNodeType          = workflow.NodeType
-	NodeID                    = workflow.NodeID
-	OutputName                = workflow.OutputName
-	JSONPointer               = workflow.JSONPointer
-	WorkflowExecutionV0       = workflow.ExecutionV0
-	WorkflowNodeV0            = workflow.NodeV0
-	WorkflowEdgeV0            = workflow.EdgeV0
-	WorkflowOutputRefV0       = workflow.OutputRefV0
-	WorkflowSpecV0            = workflow.SpecV0
-	WorkflowIssue             = workflow.Issue
-	WorkflowValidationError   = workflow.ValidationError
-	ToolExecutionModeV0       = workflow.ToolExecutionModeV0
-	ToolExecutionV0           = workflow.ToolExecutionV0
-	LLMResponsesToolLimitsV0  = workflow.LLMResponsesToolLimitsV0
+	WorkflowKind                  = workflow.Kind
+	WorkflowNodeType              = workflow.NodeType
+	NodeID                        = workflow.NodeID
+	OutputName                    = workflow.OutputName
+	JSONPointer                   = workflow.JSONPointer
+	PlaceholderName               = workflow.PlaceholderName
+	WorkflowExecutionV0           = workflow.ExecutionV0
+	WorkflowNodeV0                = workflow.NodeV0
+	WorkflowEdgeV0                = workflow.EdgeV0
+	WorkflowOutputRefV0           = workflow.OutputRefV0
+	WorkflowSpecV0                = workflow.SpecV0
+	WorkflowIssue                 = workflow.Issue
+	WorkflowValidationError       = workflow.ValidationError
+	ToolExecutionModeV0           = workflow.ToolExecutionModeV0
+	ToolExecutionV0               = workflow.ToolExecutionV0
+	LLMResponsesToolLimitsV0      = workflow.LLMResponsesToolLimitsV0
 	LLMResponsesBindingEncodingV0 = workflow.LLMResponsesBindingEncodingV0
-	LLMResponsesBindingV0     = workflow.LLMResponsesBindingV0
-	RunID                     = workflow.RunID
-	PlanHash                  = workflow.PlanHash
-	RunEventTypeV0            = workflow.EventTypeV0
-	RunStatusV0               = workflow.StatusV0
-	NodeStatusV0              = workflow.NodeStatusV0
-	NodeErrorV0               = workflow.NodeErrorV0
-	NodeResultV0              = workflow.NodeResultV0
-	RunEventV0Envelope        = workflow.EventV0Envelope
-	PayloadInfoV0             = workflow.PayloadInfoV0
-	TokenUsageV0              = workflow.TokenUsageV0
-	NodeOutputDeltaV0         = workflow.NodeOutputDeltaV0
-	NodeLLMCallV0             = workflow.NodeLLMCallV0
-	FunctionToolCallV0        = workflow.FunctionToolCallV0
-	NodeToolCallV0            = workflow.NodeToolCallV0
-	NodeToolResultV0          = workflow.NodeToolResultV0
-	PendingToolCallV0         = workflow.PendingToolCallV0
-	NodeWaitingV0             = workflow.NodeWaitingV0
-	RunCostSummaryV0          = workflow.CostSummaryV0
-	RunCostLineItemV0         = workflow.CostLineItemV0
-	StreamEventKind           = workflow.StreamEventKind
+	LLMResponsesBindingV0         = workflow.LLMResponsesBindingV0
+	RunID                         = workflow.RunID
+	PlanHash                      = workflow.PlanHash
+	RunEventTypeV0                = workflow.EventTypeV0
+	RunStatusV0                   = workflow.StatusV0
+	NodeStatusV0                  = workflow.NodeStatusV0
+	NodeErrorV0                   = workflow.NodeErrorV0
+	NodeResultV0                  = workflow.NodeResultV0
+	RunEventV0Envelope            = workflow.EventV0Envelope
+	PayloadInfoV0                 = workflow.PayloadInfoV0
+	TokenUsageV0                  = workflow.TokenUsageV0
+	NodeOutputDeltaV0             = workflow.NodeOutputDeltaV0
+	NodeLLMCallV0                 = workflow.NodeLLMCallV0
+	FunctionToolCallV0            = workflow.FunctionToolCallV0
+	NodeToolCallV0                = workflow.NodeToolCallV0
+	NodeToolResultV0              = workflow.NodeToolResultV0
+	PendingToolCallV0             = workflow.PendingToolCallV0
+	NodeWaitingV0                 = workflow.NodeWaitingV0
+	RunCostSummaryV0              = workflow.CostSummaryV0
+	RunCostLineItemV0             = workflow.CostLineItemV0
+	StreamEventKind               = workflow.StreamEventKind
 )
 
 // Re-export workflow constants.
@@ -100,12 +101,13 @@ const (
 
 // Re-export workflow functions.
 var (
-	NewNodeID      = workflow.NewNodeID
-	NewOutputName  = workflow.NewOutputName
-	NewJSONPointer = workflow.NewJSONPointer
-	NewRunID       = workflow.NewRunID
-	ParseRunID     = workflow.ParseRunID
-	ParsePlanHash  = workflow.ParsePlanHash
+	NewNodeID          = workflow.NewNodeID
+	NewOutputName      = workflow.NewOutputName
+	NewJSONPointer     = workflow.NewJSONPointer
+	NewPlaceholderName = workflow.NewPlaceholderName
+	NewRunID           = workflow.NewRunID
+	ParseRunID         = workflow.ParseRunID
+	ParsePlanHash      = workflow.ParsePlanHash
 )
 
 // ResponseID is a stable identifier for a /responses completion.

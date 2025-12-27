@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 1.19.0: Add ToPlaceholder binding support for ergonomic prompt injection - fixes #953.
 // 1.18.0: Bindings imply edges - LLMResponsesNodeWithBindings auto-adds edges for binding sources.
 // 1.9.0: Add ergonomic workflow builder pattern (NewWorkflow/AddLLMNode) with auto-edge inference (#908).
 // 1.8.5: Add session message append request type.
@@ -109,4 +110,4 @@ package sdk
 // 1.13.0: Add MapReduce workflow pattern helper - fixes #932.
 // 1.12.0: Add high-level workflow pattern helpers (Chain, Parallel) - fixes #913.
 // 1.11.0: Add workflow package with clean type names (workflow.SpecV0, workflow.Kind) - fixes #912.
-const Version = "1.18.0"
+const Version = "1.19.0"
