@@ -89,7 +89,7 @@ const (
 	// RunsPendingTools returns the currently pending tool calls for an in-progress run.
 	RunsPendingTools = "/runs/{run_id}/pending-tools"
 
-	// WorkflowsCompile compiles a workflow.v0 spec into a canonical plan and plan_hash.
+	// WorkflowsCompile compiles a workflow spec (workflow.v0 or workflow.v1) into a canonical plan and plan_hash.
 	WorkflowsCompile = "/workflows/compile"
 
 	// WorkflowV0Schema returns the workflow.v0 JSON Schema (draft-07).

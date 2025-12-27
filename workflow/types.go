@@ -1,4 +1,4 @@
-// Package workflow provides workflow specification types for workflow.v0.
+// Package workflow provides workflow specification types for workflow.v0 and workflow.v1.
 //
 // Types in this package use concise names without the "Workflow" prefix.
 // For example, use workflow.SpecV0 instead of sdk.WorkflowSpecV0.

@@ -20,6 +20,11 @@ type WorkflowsCompileResponseV0 struct {
 	PlanHash PlanHash        `json:"plan_hash"`
 }
 
+type WorkflowsCompileResponseV1 struct {
+	PlanJSON json.RawMessage `json:"plan_json"`
+	PlanHash PlanHash        `json:"plan_hash"`
+}
+
 type workflowsCompileOptions struct {
 	timeout *time.Duration
 	retry   *RetryConfig
@@ -79,6 +84,46 @@ func (c *WorkflowsClient) CompileV0(ctx context.Context, spec WorkflowSpecV0, op
 	}
 
 	var out WorkflowsCompileResponseV0
+	if err := json.Unmarshal(body, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// CompileV1 compiles a workflow.v1 spec into a canonical plan JSON and plan_hash.
+//
+// On validation failures, it returns WorkflowValidationError.
+func (c *WorkflowsClient) CompileV1(ctx context.Context, spec WorkflowSpecV1, opts ...WorkflowsCompileOption) (*WorkflowsCompileResponseV1, error) {
+	options := buildWorkflowsCompileOptions(opts)
+
+	req, err := c.client.newJSONRequest(ctx, http.MethodPost, routes.WorkflowsCompile, spec)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, _, err := c.client.send(req, options.timeout, options.retry)
+	if err != nil {
+		return nil, err
+	}
+	body, readErr := io.ReadAll(resp.Body)
+	//nolint:errcheck // best-effort cleanup on return
+	_ = resp.Body.Close()
+	if readErr != nil {
+		return nil, readErr
+	}
+
+	if resp.StatusCode >= 400 {
+		if resp.StatusCode == http.StatusBadRequest {
+			var verr WorkflowValidationError
+			if err := json.Unmarshal(body, &verr); err == nil && len(verr.Issues) > 0 {
+				return nil, verr
+			}
+		}
+		return nil, decodeAPIErrorFromBytes(resp.StatusCode, body, nil)
+	}
+
+	var out WorkflowsCompileResponseV1
 	if err := json.Unmarshal(body, &out); err != nil {
 		return nil, err
 	}

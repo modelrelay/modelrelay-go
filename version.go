@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 1.26.0: Add workflow.v1 builders/types + compile helpers.
 // 1.23.0: Add session-linked runs (session_id) for server-managed sessions.
 // 1.22.0: Add placeholder binding methods to fluent workflow builder (BindToPlaceholder, BindTextToPlaceholder).
 // 1.21.0: Validate binding targets at workflow build time - fixes #956.
@@ -116,4 +117,4 @@ package sdk
 // 1.11.0: Add workflow package with clean type names (workflow.SpecV0, workflow.Kind) - fixes #912.
 // 1.24.0: Add image pinning support (Get, Pin, Unpin) for hosted image storage (#877).
 // 1.25.0: Add sessions client for multi-turn conversation management (Create, Get, List, Delete, AddMessage).
-const Version = "1.25.0"
+const Version = "1.27.0"
