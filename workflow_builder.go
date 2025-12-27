@@ -2,8 +2,13 @@ package sdk
 
 import (
 	"encoding/json"
+	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+
+	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
 
 type llmResponsesNodeInputV0 struct {
@@ -74,6 +79,11 @@ func (b WorkflowBuilderV0) LLMResponsesNodeWithBindings(id NodeID, req ResponseR
 }
 
 func (b WorkflowBuilderV0) LLMResponsesNodeWithOptions(id NodeID, req ResponseRequest, stream *bool, opts LLMResponsesNodeOptionsV0) (WorkflowBuilderV0, error) {
+	// Validate binding targets before building the node
+	if err := validateBindingTargets(id, req, opts.Bindings); err != nil {
+		return WorkflowBuilderV0{}, err
+	}
+
 	payload := llmResponsesNodeInputV0{
 		Request:       newResponseRequestPayload(req),
 		Stream:        stream,
@@ -162,4 +172,81 @@ func (b WorkflowBuilderV0) Build() (WorkflowSpecV0, error) {
 	})
 
 	return spec, nil
+}
+
+// inputPointerPattern matches /input/{index}/... paths
+var inputPointerPattern = regexp.MustCompile(`^/input/(\d+)(?:/content/(\d+))?`)
+
+// BindingTargetError describes a binding that targets a non-existent path.
+type BindingTargetError struct {
+	NodeID       NodeID
+	BindingIndex int
+	Pointer      JSONPointer
+	Message      string
+}
+
+func (e BindingTargetError) Error() string {
+	return fmt.Sprintf("node %q binding %d: %s", e.NodeID, e.BindingIndex, e.Message)
+}
+
+// validateBindingTargets checks that binding targets exist in the request.
+// Returns nil if all bindings are valid, or an error describing the first invalid binding.
+func validateBindingTargets(nodeID NodeID, req ResponseRequest, bindings []LLMResponsesBindingV0) error {
+	input := req.Input()
+	for i, binding := range bindings {
+		if binding.To == "" {
+			// ToPlaceholder bindings don't target a specific path
+			continue
+		}
+		if err := validateInputPointer(binding.To, input); err != nil {
+			return BindingTargetError{
+				NodeID:       nodeID,
+				BindingIndex: i,
+				Pointer:      binding.To,
+				Message:      err.Error(),
+			}
+		}
+	}
+	return nil
+}
+
+// validateInputPointer checks that a pointer targeting /input/... exists.
+func validateInputPointer(pointer JSONPointer, input []llm.InputItem) error {
+	p := string(pointer)
+	if !strings.HasPrefix(p, "/input/") {
+		// Not an input pointer (e.g., /output/...), skip validation
+		return nil
+	}
+
+	matches := inputPointerPattern.FindStringSubmatch(p)
+	if matches == nil {
+		// Doesn't match /input/{index}/... pattern, skip validation
+		return nil
+	}
+
+	// Parse message index
+	msgIndex, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return fmt.Errorf("invalid message index in %s", pointer)
+	}
+
+	if msgIndex >= len(input) {
+		return fmt.Errorf("targets %s but request only has %d messages (indices 0-%d); add placeholder messages or adjust binding target",
+			pointer, len(input), len(input)-1)
+	}
+
+	// Optionally validate content block index
+	if matches[2] != "" {
+		contentIndex, err := strconv.Atoi(matches[2])
+		if err != nil {
+			return fmt.Errorf("invalid content index in %s", pointer)
+		}
+		msg := input[msgIndex]
+		if contentIndex >= len(msg.Content) {
+			return fmt.Errorf("targets %s but message %d only has %d content blocks (indices 0-%d)",
+				pointer, msgIndex, len(msg.Content), len(msg.Content)-1)
+		}
+	}
+
+	return nil
 }

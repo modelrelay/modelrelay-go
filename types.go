@@ -63,6 +63,12 @@ func (r ResponseRequest) validate(requireModel bool) error {
 	return nil
 }
 
+// Input returns a copy of the input items for validation and introspection.
+// Mutating the returned slice does not affect the request.
+func (r ResponseRequest) Input() []llm.InputItem {
+	return append([]llm.InputItem(nil), r.input...)
+}
+
 // Response wraps the server response and surfaces the echoed request ID.
 type Response struct {
 	ID         string           `json:"id"`
