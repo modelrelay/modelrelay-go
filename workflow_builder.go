@@ -85,7 +85,17 @@ func (b WorkflowBuilderV0) LLMResponsesNodeWithOptions(id NodeID, req ResponseRe
 	if err != nil {
 		return WorkflowBuilderV0{}, err
 	}
-	return b.Node(WorkflowNodeV0{ID: id, Type: WorkflowNodeTypeLLMResponses, Input: raw}), nil
+	result := b.Node(WorkflowNodeV0{ID: id, Type: WorkflowNodeTypeLLMResponses, Input: raw})
+
+	// Bindings imply edges: a binding from node A means this node depends on A.
+	// Automatically add edges for each binding source to avoid "must be an incoming dependency" errors.
+	for _, binding := range opts.Bindings {
+		if binding.From != "" {
+			result = result.Edge(binding.From, id)
+		}
+	}
+
+	return result, nil
 }
 
 func (b WorkflowBuilderV0) JoinAllNode(id NodeID) WorkflowBuilderV0 {
@@ -101,6 +111,12 @@ func (b WorkflowBuilderV0) TransformJSONNode(id NodeID, input TransformJSONNodeI
 }
 
 func (b WorkflowBuilderV0) Edge(from, to NodeID) WorkflowBuilderV0 {
+	// Check if edge already exists (dedup for bindings that imply edges)
+	for _, e := range b.edges {
+		if e.From == from && e.To == to {
+			return b // Edge already exists, no-op
+		}
+	}
 	next := make([]WorkflowEdgeV0, len(b.edges)+1)
 	copy(next, b.edges)
 	next[len(b.edges)] = WorkflowEdgeV0{From: from, To: to}
