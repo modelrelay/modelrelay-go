@@ -156,6 +156,54 @@ const (
 	Required ToolChoiceType = "required"
 )
 
+// Defines values for ToolHookConfigFailBehavior.
+const (
+	ToolHookConfigFailBehaviorFailClosed ToolHookConfigFailBehavior = "fail_closed"
+	ToolHookConfigFailBehaviorFailOpen   ToolHookConfigFailBehavior = "fail_open"
+)
+
+// Defines values for ToolHookConfigHookType.
+const (
+	ToolHookConfigHookTypePostToolUse ToolHookConfigHookType = "post_tool_use"
+	ToolHookConfigHookTypePreToolUse  ToolHookConfigHookType = "pre_tool_use"
+	ToolHookConfigHookTypeToolExecute ToolHookConfigHookType = "tool_execute"
+)
+
+// Defines values for ToolHookConfigInputFailBehavior.
+const (
+	ToolHookConfigInputFailBehaviorFailClosed ToolHookConfigInputFailBehavior = "fail_closed"
+	ToolHookConfigInputFailBehaviorFailOpen   ToolHookConfigInputFailBehavior = "fail_open"
+)
+
+// Defines values for ToolHookConfigInputHookType.
+const (
+	ToolHookConfigInputHookTypePostToolUse ToolHookConfigInputHookType = "post_tool_use"
+	ToolHookConfigInputHookTypePreToolUse  ToolHookConfigInputHookType = "pre_tool_use"
+	ToolHookConfigInputHookTypeToolExecute ToolHookConfigInputHookType = "tool_execute"
+)
+
+// Defines values for ToolHookConfigUpdateFailBehavior.
+const (
+	FailClosed ToolHookConfigUpdateFailBehavior = "fail_closed"
+	FailOpen   ToolHookConfigUpdateFailBehavior = "fail_open"
+)
+
+// Defines values for ToolHookEventStatus.
+const (
+	ToolHookEventStatusBlocked ToolHookEventStatus = "blocked"
+	ToolHookEventStatusError   ToolHookEventStatus = "error"
+	ToolHookEventStatusSuccess ToolHookEventStatus = "success"
+	ToolHookEventStatusTimeout ToolHookEventStatus = "timeout"
+)
+
+// Defines values for ToolHookTestResultStatus.
+const (
+	ToolHookTestResultStatusBlocked ToolHookTestResultStatus = "blocked"
+	ToolHookTestResultStatusError   ToolHookTestResultStatus = "error"
+	ToolHookTestResultStatusSuccess ToolHookTestResultStatus = "success"
+	ToolHookTestResultStatusTimeout ToolHookTestResultStatus = "timeout"
+)
+
 // Defines values for WebhookConfigEvents.
 const (
 	WebhookConfigEventsBillingSubscriptionChanged WebhookConfigEvents = "billing.subscription_changed"
@@ -1136,6 +1184,87 @@ type ToolChoice struct {
 // ToolChoiceType defines model for ToolChoice.Type.
 type ToolChoiceType string
 
+// ToolHookConfig defines model for ToolHookConfig.
+type ToolHookConfig struct {
+	AllowMutation  *bool                       `json:"allow_mutation,omitempty"`
+	CreatedAt      *time.Time                  `json:"created_at,omitempty"`
+	Enabled        *bool                       `json:"enabled,omitempty"`
+	EndpointUrl    *string                     `json:"endpoint_url,omitempty"`
+	FailBehavior   *ToolHookConfigFailBehavior `json:"fail_behavior,omitempty"`
+	HookType       *ToolHookConfigHookType     `json:"hook_type,omitempty"`
+	Id             *openapi_types.UUID         `json:"id,omitempty"`
+	ProjectId      *openapi_types.UUID         `json:"project_id,omitempty"`
+	TimeoutMs      *int32                      `json:"timeout_ms,omitempty"`
+	ToolsAllowlist *[]string                   `json:"tools_allowlist,omitempty"`
+	UpdatedAt      *time.Time                  `json:"updated_at,omitempty"`
+}
+
+// ToolHookConfigFailBehavior defines model for ToolHookConfig.FailBehavior.
+type ToolHookConfigFailBehavior string
+
+// ToolHookConfigHookType defines model for ToolHookConfig.HookType.
+type ToolHookConfigHookType string
+
+// ToolHookConfigInput defines model for ToolHookConfigInput.
+type ToolHookConfigInput struct {
+	AllowMutation  *bool                            `json:"allow_mutation,omitempty"`
+	Enabled        *bool                            `json:"enabled,omitempty"`
+	EndpointUrl    string                           `json:"endpoint_url"`
+	FailBehavior   *ToolHookConfigInputFailBehavior `json:"fail_behavior,omitempty"`
+	HookType       ToolHookConfigInputHookType      `json:"hook_type"`
+	TimeoutMs      *int32                           `json:"timeout_ms,omitempty"`
+	ToolsAllowlist *[]string                        `json:"tools_allowlist,omitempty"`
+}
+
+// ToolHookConfigInputFailBehavior defines model for ToolHookConfigInput.FailBehavior.
+type ToolHookConfigInputFailBehavior string
+
+// ToolHookConfigInputHookType defines model for ToolHookConfigInput.HookType.
+type ToolHookConfigInputHookType string
+
+// ToolHookConfigUpdate defines model for ToolHookConfigUpdate.
+type ToolHookConfigUpdate struct {
+	AllowMutation  *bool                             `json:"allow_mutation,omitempty"`
+	Enabled        *bool                             `json:"enabled,omitempty"`
+	EndpointUrl    *string                           `json:"endpoint_url,omitempty"`
+	FailBehavior   *ToolHookConfigUpdateFailBehavior `json:"fail_behavior,omitempty"`
+	RotateSecret   *bool                             `json:"rotate_secret,omitempty"`
+	TimeoutMs      *int32                            `json:"timeout_ms,omitempty"`
+	ToolsAllowlist *[]string                         `json:"tools_allowlist,omitempty"`
+}
+
+// ToolHookConfigUpdateFailBehavior defines model for ToolHookConfigUpdate.FailBehavior.
+type ToolHookConfigUpdateFailBehavior string
+
+// ToolHookEvent defines model for ToolHookEvent.
+type ToolHookEvent struct {
+	CreatedAt      *time.Time           `json:"created_at,omitempty"`
+	Error          *string              `json:"error,omitempty"`
+	HookConfigId   *openapi_types.UUID  `json:"hook_config_id,omitempty"`
+	Id             *openapi_types.UUID  `json:"id,omitempty"`
+	LatencyMs      *int32               `json:"latency_ms,omitempty"`
+	RequestId      *string              `json:"request_id,omitempty"`
+	ResponseBody   *string              `json:"response_body,omitempty"`
+	ResponseStatus *int32               `json:"response_status,omitempty"`
+	Status         *ToolHookEventStatus `json:"status,omitempty"`
+	ToolCallId     *string              `json:"tool_call_id,omitempty"`
+}
+
+// ToolHookEventStatus defines model for ToolHookEvent.Status.
+type ToolHookEventStatus string
+
+// ToolHookTestResult defines model for ToolHookTestResult.
+type ToolHookTestResult struct {
+	Error          *string                   `json:"error,omitempty"`
+	LatencyMs      *int32                    `json:"latency_ms,omitempty"`
+	ResponseBody   *string                   `json:"response_body,omitempty"`
+	ResponseStatus *int32                    `json:"response_status,omitempty"`
+	Status         *ToolHookTestResultStatus `json:"status,omitempty"`
+}
+
+// ToolHookTestResultStatus defines model for ToolHookTestResult.Status.
+type ToolHookTestResultStatus string
+
 // ToolName Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
 type ToolName = string
 
@@ -1197,6 +1326,9 @@ type WorkflowSpecV1 map[string]interface{}
 
 // ProjectID defines model for ProjectID.
 type ProjectID = openapi_types.UUID
+
+// ToolHookID defines model for ToolHookID.
+type ToolHookID = openapi_types.UUID
 
 // WebhookID defines model for WebhookID.
 type WebhookID = openapi_types.UUID
@@ -1302,6 +1434,11 @@ type UpdateProjectJSONBody struct {
 // UpdateProjectJSONBodyCustomerOauthProviders defines parameters for UpdateProject.
 type UpdateProjectJSONBodyCustomerOauthProviders string
 
+// ListProjectToolHookEventsParams defines parameters for ListProjectToolHookEvents.
+type ListProjectToolHookEventsParams struct {
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // ListProjectWebhookEventsParams defines parameters for ListProjectWebhookEvents.
 type ListProjectWebhookEventsParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
@@ -1381,6 +1518,12 @@ type CreateTierJSONRequestBody = TierCreate
 
 // UpdateTierJSONRequestBody defines body for UpdateTier for application/json ContentType.
 type UpdateTierJSONRequestBody = TierUpdate
+
+// CreateProjectToolHookJSONRequestBody defines body for CreateProjectToolHook for application/json ContentType.
+type CreateProjectToolHookJSONRequestBody = ToolHookConfigInput
+
+// UpdateProjectToolHookJSONRequestBody defines body for UpdateProjectToolHook for application/json ContentType.
+type UpdateProjectToolHookJSONRequestBody = ToolHookConfigUpdate
 
 // CreateProjectWebhookJSONRequestBody defines body for CreateProjectWebhook for application/json ContentType.
 type CreateProjectWebhookJSONRequestBody = WebhookConfigInput
