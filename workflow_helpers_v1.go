@@ -160,6 +160,38 @@ func BindToPointerWithSourceV1(from NodeID, sourcePointer JSONPointer, to JSONPo
 	}
 }
 
+// BindInputToPlaceholderV1 creates a binding that injects a workflow input value into a {{placeholder}}.
+// Uses json_string encoding by default.
+//
+// Example:
+//
+//	builder.LLMResponsesNodeWithOptions("analyzer", request, nil, sdk.LLMResponsesNodeOptionsV1{
+//	    Bindings: []LLMResponsesBindingV1{BindInputToPlaceholderV1("tier_data", "tiers")},
+//	})
+func BindInputToPlaceholderV1(inputName InputName, placeholder PlaceholderName) LLMResponsesBindingV1 {
+	return LLMResponsesBindingV1{
+		FromInput:     inputName,
+		ToPlaceholder: placeholder,
+		Encoding:      LLMResponsesBindingEncodingJSONStringV1,
+	}
+}
+
+// BindInputToPlaceholderWithPointerV1 creates a binding with a source pointer into the input value.
+//
+// Example:
+//
+//	builder.LLMResponsesNodeWithOptions("reducer", request, nil, sdk.LLMResponsesNodeOptionsV1{
+//	    Bindings: []LLMResponsesBindingV1{BindInputToPlaceholderWithPointerV1("data", "/results", "mapper_outputs")},
+//	})
+func BindInputToPlaceholderWithPointerV1(inputName InputName, pointer JSONPointer, placeholder PlaceholderName) LLMResponsesBindingV1 {
+	return LLMResponsesBindingV1{
+		FromInput:     inputName,
+		Pointer:       pointer,
+		ToPlaceholder: placeholder,
+		Encoding:      LLMResponsesBindingEncodingJSONStringV1,
+	}
+}
+
 // BindingBuilderV1 provides a fluent API for constructing v1 bindings.
 type BindingBuilderV1 struct {
 	binding LLMResponsesBindingV1

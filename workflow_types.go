@@ -21,6 +21,7 @@ type (
 	JSONPointer                   = workflow.JSONPointer
 	JSONPath                      = workflow.JSONPath
 	PlaceholderName               = workflow.PlaceholderName
+	InputName                     = workflow.InputName
 	WorkflowExecutionV0           = workflow.ExecutionV0
 	WorkflowNodeV0                = workflow.NodeV0
 	WorkflowEdgeV0                = workflow.EdgeV0
@@ -46,6 +47,7 @@ type (
 	LLMResponsesToolLimitsV1      = workflow.LLMResponsesToolLimitsV1
 	LLMResponsesBindingEncodingV1 = workflow.LLMResponsesBindingEncodingV1
 	LLMResponsesBindingV1         = workflow.LLMResponsesBindingV1
+	RetryConfigV1                 = workflow.RetryConfigV1
 	MapFanoutItemsV1              = workflow.MapFanoutItemsV1
 	MapFanoutItemBindingV1        = workflow.MapFanoutItemBindingV1
 	MapFanoutSubNodeV1            = workflow.MapFanoutSubNodeV1
@@ -140,14 +142,15 @@ const (
 
 // Re-export workflow functions.
 var (
-	NewNodeID               = workflow.NewNodeID
-	NewOutputName           = workflow.NewOutputName
-	NewJSONPointer          = workflow.NewJSONPointer
-	NewPlaceholderName      = workflow.NewPlaceholderName
-	NewRunID                = workflow.NewRunID
-	ParseRunID              = workflow.ParseRunID
-	ParsePlanHash           = workflow.ParsePlanHash
-	MapFanoutItemsFromLLM   = workflow.MapFanoutItemsFromLLM
+	NewNodeID                = workflow.NewNodeID
+	NewOutputName            = workflow.NewOutputName
+	NewJSONPointer           = workflow.NewJSONPointer
+	NewPlaceholderName       = workflow.NewPlaceholderName
+	NewRunID                 = workflow.NewRunID
+	ParseRunID               = workflow.ParseRunID
+	ParsePlanHash            = workflow.ParsePlanHash
+	MapFanoutItemsFromLLM    = workflow.MapFanoutItemsFromLLM
+	MapFanoutItemsFromInput  = workflow.MapFanoutItemsFromInput
 )
 
 // ResponseID is a stable identifier for a /responses completion.

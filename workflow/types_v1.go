@@ -145,6 +145,22 @@ type LLMResponsesToolLimitsV1 struct {
 	WaitTTLMS           *int64 `json:"wait_ttl_ms,omitempty"`
 }
 
+// RetryConfigV1 configures retry behavior for LLM nodes.
+type RetryConfigV1 struct {
+	// MaxAttempts is the maximum number of attempts (including the first).
+	// Default is 1 (no retries). Set to 2+ to enable retries.
+	MaxAttempts int `json:"max_attempts,omitempty"`
+
+	// RetryableErrors specifies which error types should trigger a retry.
+	// Supported values: "invalid_json", "truncated", "rate_limit", "timeout".
+	// If empty, defaults to ["invalid_json", "truncated"].
+	RetryableErrors []string `json:"retryable_errors,omitempty"`
+
+	// BackoffMS is the initial backoff delay in milliseconds.
+	// Default is 1000ms. Doubles after each retry (exponential backoff).
+	BackoffMS int `json:"backoff_ms,omitempty"`
+}
+
 type LLMResponsesBindingEncodingV1 string
 
 const (
@@ -161,8 +177,11 @@ func (e LLMResponsesBindingEncodingV1) Valid() bool {
 	}
 }
 
+// LLMResponsesBindingV1 defines how to bind data to an LLM request.
+// Exactly one of From or FromInput must be set.
 type LLMResponsesBindingV1 struct {
-	From          NodeID                        `json:"from"`
+	From          NodeID                        `json:"from,omitempty"`       // Reference to an upstream node's output
+	FromInput     InputName                     `json:"from_input,omitempty"` // Reference to a workflow input (mutually exclusive with From)
 	Pointer       JSONPointer                   `json:"pointer,omitempty"`
 	To            JSONPointer                   `json:"to,omitempty"`
 	ToPlaceholder PlaceholderName               `json:"to_placeholder,omitempty"`

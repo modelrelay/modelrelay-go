@@ -360,8 +360,9 @@ type runsCreateRequest struct {
 }
 
 type runsCreateRequestV1 struct {
-	Spec      WorkflowSpecV1 `json:"spec"`
-	SessionID *uuid.UUID     `json:"session_id,omitempty"`
+	Spec      WorkflowSpecV1         `json:"spec"`
+	SessionID *uuid.UUID             `json:"session_id,omitempty"`
+	Input     map[string]interface{} `json:"input,omitempty"`
 }
 
 type RunsCreateResponse struct {
@@ -576,6 +577,9 @@ func (c *RunsClient) CreateV1(ctx context.Context, spec WorkflowSpecV1, opts ...
 		}
 		payload.SessionID = options.sessionID
 	}
+	if options.inputs != nil {
+		payload.Input = options.inputs
+	}
 	req, err := c.client.newJSONRequest(ctx, http.MethodPost, routes.Runs, payload)
 	if err != nil {
 		return nil, err
@@ -703,6 +707,7 @@ type runCreateOptions struct {
 	timeout   *time.Duration
 	retry     *RetryConfig
 	sessionID *uuid.UUID
+	inputs    map[string]interface{}
 }
 
 type RunCreateOption func(*runCreateOptions)
@@ -730,6 +735,14 @@ func WithRunSessionID(sessionID uuid.UUID) RunCreateOption {
 		if sessionID != uuid.Nil {
 			o.sessionID = &sessionID
 		}
+	}
+}
+
+// WithRunInputs provides input values for workflow.v1 runs that use from_input bindings.
+// The inputs map keys correspond to InputName values referenced in the workflow spec.
+func WithRunInputs(inputs map[string]interface{}) RunCreateOption {
+	return func(o *runCreateOptions) {
+		o.inputs = inputs
 	}
 }
 

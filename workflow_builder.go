@@ -47,12 +47,14 @@ type llmResponsesNodeInputV1 struct {
 	ToolExecution *ToolExecutionV1          `json:"tool_execution,omitempty"`
 	ToolLimits    *LLMResponsesToolLimitsV1 `json:"tool_limits,omitempty"`
 	Bindings      []LLMResponsesBindingV1   `json:"bindings,omitempty"`
+	Retry         *RetryConfigV1            `json:"retry,omitempty"`
 }
 
 type LLMResponsesNodeOptionsV1 struct {
 	ToolExecution *ToolExecutionV1
 	ToolLimits    *LLMResponsesToolLimitsV1
 	Bindings      []LLMResponsesBindingV1
+	Retry         *RetryConfigV1
 }
 
 type TransformJSONNodeInputV1 struct {
@@ -262,6 +264,7 @@ func (b WorkflowBuilderV1) LLMResponsesNodeWithOptions(id NodeID, req ResponseRe
 		ToolExecution: opts.ToolExecution,
 		ToolLimits:    opts.ToolLimits,
 		Bindings:      append([]LLMResponsesBindingV1{}, opts.Bindings...),
+		Retry:         opts.Retry,
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -297,6 +300,7 @@ func (b WorkflowBuilderV1) RouteSwitchNodeWithOptions(id NodeID, req ResponseReq
 		ToolExecution: opts.ToolExecution,
 		ToolLimits:    opts.ToolLimits,
 		Bindings:      append([]LLMResponsesBindingV1{}, opts.Bindings...),
+		Retry:         opts.Retry,
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -432,6 +436,7 @@ func MapFanoutSubNodeLLMResponses(id NodeID, req ResponseRequest, stream *bool, 
 		ToolExecution: opts.ToolExecution,
 		ToolLimits:    opts.ToolLimits,
 		Bindings:      append([]LLMResponsesBindingV1{}, opts.Bindings...),
+		Retry:         opts.Retry,
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -447,6 +452,7 @@ func MapFanoutSubNodeRouteSwitch(id NodeID, req ResponseRequest, stream *bool, o
 		ToolExecution: opts.ToolExecution,
 		ToolLimits:    opts.ToolLimits,
 		Bindings:      append([]LLMResponsesBindingV1{}, opts.Bindings...),
+		Retry:         opts.Retry,
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
