@@ -934,6 +934,12 @@ type SessionResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// SessionUpdateRequest Request body for updating session metadata. Null values remove keys.
+type SessionUpdateRequest struct {
+	// Metadata Metadata fields to set or remove
+	Metadata map[string]interface{} `json:"metadata"`
+}
+
 // SessionWithMessagesResponse defines model for SessionWithMessagesResponse.
 type SessionWithMessagesResponse struct {
 	// CreatedAt Session creation timestamp
@@ -1542,6 +1548,9 @@ type CreateRunJSONRequestBody = RunsCreateRequest
 
 // CreateSessionJSONRequestBody defines body for CreateSession for application/json ContentType.
 type CreateSessionJSONRequestBody = SessionCreateRequest
+
+// UpdateSessionJSONRequestBody defines body for UpdateSession for application/json ContentType.
+type UpdateSessionJSONRequestBody = SessionUpdateRequest
 
 // AddSessionMessageJSONRequestBody defines body for AddSessionMessage for application/json ContentType.
 type AddSessionMessageJSONRequestBody = SessionMessageCreateRequest
