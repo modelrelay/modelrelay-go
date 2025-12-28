@@ -821,7 +821,7 @@ type RunsCreateOptionsV0 struct {
 
 // RunsCreateRequest defines model for RunsCreateRequest.
 type RunsCreateRequest struct {
-	// Input Reserved for future use.
+	// Input Runtime inputs for the workflow. Required when the spec uses from_input references (e.g., map.fanout with items.from_input). Each key is the input name, and the value is the JSON data to provide.
 	Input   *map[string]interface{} `json:"input,omitempty"`
 	Options *RunsCreateOptionsV0    `json:"options,omitempty"`
 

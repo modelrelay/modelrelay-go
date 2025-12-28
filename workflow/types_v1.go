@@ -169,10 +169,20 @@ type LLMResponsesBindingV1 struct {
 	Encoding      LLMResponsesBindingEncodingV1 `json:"encoding,omitempty"`
 }
 
+// InputName identifies an input to the workflow. Inputs are provided at runtime.
+type InputName string
+
+func (n InputName) Valid() bool {
+	return strings.TrimSpace(string(n)) != ""
+}
+
+// MapFanoutItemsV1 specifies where to get the items array for a map.fanout node.
+// Exactly one of From or FromInput must be set.
 type MapFanoutItemsV1 struct {
-	From    NodeID      `json:"from"`
-	Pointer JSONPointer `json:"pointer,omitempty"` // RFC 6901 pointer to extract before parsing; if value is string, parsed as JSON
-	Path    JSONPointer `json:"path,omitempty"`    // RFC 6901 pointer to select items array from the document (empty = root)
+	From      NodeID      `json:"from,omitempty"`       // Reference to an upstream node's output
+	FromInput InputName   `json:"from_input,omitempty"` // Reference to a workflow input (mutually exclusive with From)
+	Pointer   JSONPointer `json:"pointer,omitempty"`    // RFC 6901 pointer to extract before parsing; if value is string, parsed as JSON
+	Path      JSONPointer `json:"path,omitempty"`       // RFC 6901 pointer to select items array from the document (empty = root)
 }
 
 // LLMTextOutputPointer is the JSON pointer to extract text content from an LLM response.
@@ -191,6 +201,21 @@ func MapFanoutItemsFromLLM(from NodeID, path JSONPointer) MapFanoutItemsV1 {
 		From:    from,
 		Pointer: LLMTextOutputPointer,
 		Path:    path,
+	}
+}
+
+// MapFanoutItemsFromInput creates a MapFanoutItemsV1 that extracts items from a workflow input.
+// Use this when you want to fan out over an array provided at runtime rather than from a node output.
+//
+// Example:
+//
+//	Items: workflow.MapFanoutItemsFromInput("models", "")
+//
+// This expects the workflow to be called with an input named "models" containing a JSON array.
+func MapFanoutItemsFromInput(inputName InputName, path JSONPointer) MapFanoutItemsV1 {
+	return MapFanoutItemsV1{
+		FromInput: inputName,
+		Path:      path,
 	}
 }
 
