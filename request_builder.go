@@ -112,6 +112,13 @@ func (b ResponseBuilder) Input(items []llm.InputItem) ResponseBuilder {
 	return b
 }
 
+// Items is a variadic version of Input for convenience.
+// Example: .Items(llm.NewSystemText("..."), llm.NewUserText("..."))
+func (b ResponseBuilder) Items(items ...llm.InputItem) ResponseBuilder {
+	b.req.input = append([]llm.InputItem(nil), items...)
+	return b
+}
+
 func (b ResponseBuilder) Item(item llm.InputItem) ResponseBuilder {
 	next := make([]llm.InputItem, len(b.req.input)+1)
 	copy(next, b.req.input)

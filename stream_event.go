@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"encoding/json"
+	"time"
 
 	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
@@ -27,6 +28,9 @@ type StreamEvent struct {
 	ErrorCode    string // Error code from error records
 	ErrorMessage string // Error message from error records
 	ErrorStatus  int    // HTTP status code from error records
+
+	// Timing fields (populated by StreamHandle.Next())
+	Elapsed time.Duration // Time since stream started when this event was received
 }
 
 // EventName returns the SSE event name that should be emitted for this event.

@@ -83,9 +83,10 @@ type Response struct {
 
 // StreamHandle exposes the streaming interface plus associated metadata.
 type StreamHandle struct {
-	RequestID string
-	stream    streamReader
-	startedAt time.Time
+	RequestID      string
+	stream         streamReader
+	startedAt      time.Time
+	firstTokenTime time.Time // Set when first text content is received
 }
 
 type streamReader interface {
@@ -94,13 +95,56 @@ type streamReader interface {
 }
 
 // Next advances the stream, returning false when the stream is complete.
+// Each event includes an Elapsed field showing time since stream start.
 func (s *StreamHandle) Next() (StreamEvent, bool, error) {
-	return s.stream.Next()
+	ev, ok, err := s.stream.Next()
+	if err != nil || !ok {
+		return ev, ok, err
+	}
+
+	// Populate timing information
+	now := time.Now()
+	if !s.startedAt.IsZero() {
+		ev.Elapsed = now.Sub(s.startedAt)
+	}
+
+	// Track first token time for TTFT
+	if s.firstTokenTime.IsZero() && ev.TextDelta != "" {
+		s.firstTokenTime = now
+	}
+
+	return ev, ok, nil
 }
 
 // Close terminates the underlying stream.
 func (s *StreamHandle) Close() error {
 	return s.stream.Close()
+}
+
+// TTFT returns the time-to-first-token as observed during streaming.
+// Returns 0 if no content has been received yet.
+func (s *StreamHandle) TTFT() time.Duration {
+	if s.firstTokenTime.IsZero() || s.startedAt.IsZero() {
+		return 0
+	}
+	ttft := s.firstTokenTime.Sub(s.startedAt)
+	if ttft < 0 {
+		return 0
+	}
+	return ttft
+}
+
+// StartedAt returns when the stream request was initiated.
+func (s *StreamHandle) StartedAt() time.Time {
+	return s.startedAt
+}
+
+// Elapsed returns the time since the stream started.
+func (s *StreamHandle) Elapsed() time.Duration {
+	if s.startedAt.IsZero() {
+		return 0
+	}
+	return time.Since(s.startedAt)
 }
 
 // Collect drains the stream into an aggregated Response using the same
