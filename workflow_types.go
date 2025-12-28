@@ -101,6 +101,7 @@ const (
 	LLMResponsesBindingEncodingJSONString   = workflow.LLMResponsesBindingEncodingJSONString
 	LLMResponsesBindingEncodingJSONV1       = workflow.LLMResponsesBindingEncodingJSONV1
 	LLMResponsesBindingEncodingJSONStringV1 = workflow.LLMResponsesBindingEncodingJSONStringV1
+	LLMTextOutputPointer                    = workflow.LLMTextOutputPointer
 	RunEventEnvelopeVersionV0               = workflow.EventEnvelopeVersionV0
 	ArtifactKeyNodeOutputV0                 = workflow.ArtifactKeyNodeOutputV0
 	ArtifactKeyRunOutputsV0                 = workflow.ArtifactKeyRunOutputsV0
@@ -139,13 +140,14 @@ const (
 
 // Re-export workflow functions.
 var (
-	NewNodeID          = workflow.NewNodeID
-	NewOutputName      = workflow.NewOutputName
-	NewJSONPointer     = workflow.NewJSONPointer
-	NewPlaceholderName = workflow.NewPlaceholderName
-	NewRunID           = workflow.NewRunID
-	ParseRunID         = workflow.ParseRunID
-	ParsePlanHash      = workflow.ParsePlanHash
+	NewNodeID               = workflow.NewNodeID
+	NewOutputName           = workflow.NewOutputName
+	NewJSONPointer          = workflow.NewJSONPointer
+	NewPlaceholderName      = workflow.NewPlaceholderName
+	NewRunID                = workflow.NewRunID
+	ParseRunID              = workflow.ParseRunID
+	ParsePlanHash           = workflow.ParsePlanHash
+	MapFanoutItemsFromLLM   = workflow.MapFanoutItemsFromLLM
 )
 
 // ResponseID is a stable identifier for a /responses completion.

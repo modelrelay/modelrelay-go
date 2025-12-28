@@ -202,10 +202,9 @@ func TestWorkflowBuilderV1_ConformanceFanout(t *testing.T) {
 	}
 
 	fanoutInput := MapFanoutNodeInputV1{
-		Items: MapFanoutItemsV1{From: "question_generator", Path: "$.questions"},
+		Items: MapFanoutItemsV1{From: "question_generator", Path: "/questions"},
 		ItemBindings: []MapFanoutItemBindingV1{
 			{
-				Path:          "$",
 				ToPlaceholder: "question",
 				Encoding:      LLMResponsesBindingEncodingJSONStringV1,
 			},

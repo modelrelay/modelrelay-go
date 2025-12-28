@@ -170,12 +170,32 @@ type LLMResponsesBindingV1 struct {
 }
 
 type MapFanoutItemsV1 struct {
-	From NodeID   `json:"from"`
-	Path JSONPath `json:"path,omitempty"`
+	From    NodeID      `json:"from"`
+	Pointer JSONPointer `json:"pointer,omitempty"` // RFC 6901 pointer to extract before parsing; if value is string, parsed as JSON
+	Path    JSONPointer `json:"path,omitempty"`    // RFC 6901 pointer to select items array from the document (empty = root)
+}
+
+// LLMTextOutputPointer is the JSON pointer to extract text content from an LLM response.
+// Use this when the source node uses structured output and you need to parse the JSON text.
+const LLMTextOutputPointer JSONPointer = "/output/0/content/0/text"
+
+// MapFanoutItemsFromLLM creates a MapFanoutItemsV1 that extracts items from an LLM node's
+// structured output. It automatically handles the response envelope by extracting the text
+// from /output/0/content/0/text and parsing it as JSON before applying the path.
+//
+// Example:
+//
+//	Items: workflow.MapFanoutItemsFromLLM(nodeID, "/items")
+func MapFanoutItemsFromLLM(from NodeID, path JSONPointer) MapFanoutItemsV1 {
+	return MapFanoutItemsV1{
+		From:    from,
+		Pointer: LLMTextOutputPointer,
+		Path:    path,
+	}
 }
 
 type MapFanoutItemBindingV1 struct {
-	Path          JSONPath                      `json:"path,omitempty"`
+	Path          JSONPointer                   `json:"path,omitempty"` // RFC 6901 pointer to select from item (empty = whole item)
 	To            JSONPointer                   `json:"to,omitempty"`
 	ToPlaceholder PlaceholderName               `json:"to_placeholder,omitempty"`
 	Encoding      LLMResponsesBindingEncodingV1 `json:"encoding,omitempty"`

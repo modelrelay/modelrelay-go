@@ -316,7 +316,7 @@ type FanoutReduceBuilderV1 struct {
 	generatorID        NodeID
 	generatorReq       ResponseRequest
 	generatorStream    bool
-	itemsPath          workflow.JSONPath
+	itemsPath          workflow.JSONPointer
 	mapperReq          ResponseRequest
 	mapperPlaceholder  PlaceholderName
 	maxParallelism     *int64
@@ -335,7 +335,7 @@ func FanoutReduceV1(name string, generatorReq, mapperReq, reducerReq ResponseReq
 		name:              name,
 		generatorID:       "generator",
 		generatorReq:      generatorReq,
-		itemsPath:         "$.items",
+		itemsPath:         "/items",
 		mapperReq:         mapperReq,
 		mapperPlaceholder: "item",
 		reducerID:         "reducer",
@@ -358,10 +358,10 @@ func (f *FanoutReduceBuilderV1) GeneratorStream() *FanoutReduceBuilderV1 {
 	return f
 }
 
-// ItemsPath sets the JSONPath to extract items from generator output.
-// Defaults to "$.items".
+// ItemsPath sets the JSON Pointer to extract items from generator output.
+// Defaults to "/items".
 func (f *FanoutReduceBuilderV1) ItemsPath(path string) *FanoutReduceBuilderV1 {
-	f.itemsPath = workflow.JSONPath(path)
+	f.itemsPath = workflow.JSONPointer(path)
 	return f
 }
 
@@ -459,7 +459,6 @@ func (f *FanoutReduceBuilderV1) Build() (WorkflowSpecV1, error) {
 			Path: f.itemsPath,
 		},
 		ItemBindings: []MapFanoutItemBindingV1{{
-			Path:          "$",
 			ToPlaceholder: f.mapperPlaceholder,
 			Encoding:      LLMResponsesBindingEncodingJSONStringV1,
 		}},
