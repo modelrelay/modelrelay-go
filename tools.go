@@ -450,15 +450,15 @@ func MustFunctionTool(name ToolName, description string, schema any) llm.Tool {
 	return tool
 }
 
-// NewWebTool creates a web tool with optional domain filters and mode.
-func NewWebTool(mode llm.WebToolMode, allowedDomains, excludedDomains []string, maxUses *int) llm.Tool {
+// NewWebTool creates a web tool with optional domain filters and intent.
+func NewWebTool(intent llm.WebToolIntent, allowedDomains, excludedDomains []string, maxUses *int) llm.Tool {
 	return llm.Tool{
 		Type: llm.ToolTypeWeb,
 		Web: &llm.WebToolConfig{
 			AllowedDomains:  allowedDomains,
 			ExcludedDomains: excludedDomains,
 			MaxUses:         maxUses,
-			Mode:            mode,
+			Intent:          intent,
 		},
 	}
 }

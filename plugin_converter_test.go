@@ -307,7 +307,7 @@ func TestPluginConverter_ToWorkflow_RejectsNonFunctionTools(t *testing.T) {
 							Model: "x",
 							Input: []llm.InputItem{llm.NewSystemText("x"), llm.NewUserText("x")},
 							Tools: []llm.Tool{
-								{Type: llm.ToolTypeWeb, Web: &llm.WebToolConfig{Mode: llm.WebToolModeAuto}},
+								{Type: llm.ToolTypeWeb, Web: &llm.WebToolConfig{Intent: llm.WebIntentAuto}},
 							},
 						},
 					}),

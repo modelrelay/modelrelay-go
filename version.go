@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 1.32.0: Breaking - replace web tool mode with intent (search_web/fetch_url/auto).
 // 1.30.0: Add streaming timing helpers (StreamEvent.Elapsed, StreamHandle.TTFT/Elapsed/StartedAt) + Items() variadic builder.
 // 1.29.0: Add Pointer field to MapFanoutItemsV1 for extracting structured output from LLM response envelopes.
 // 1.28.0: Add CreateV1 method to RunsClient for workflow.v1 specs (#974).
@@ -122,4 +123,4 @@ package sdk
 // 1.25.0: Add sessions client for multi-turn conversation management (Create, Get, List, Delete, AddMessage).
 // 1.31.0: Breaking - Remove per-tier token pricing; pricing now derived from model_pricing (provider cost + 4.5% fee).
 // TierModel fields renamed: InputPricePerMillionCents → ModelInputCostCents, OutputPricePerMillionCents → ModelOutputCostCents.
-const Version = "1.31.0"
+const Version = "1.32.0"

@@ -175,14 +175,14 @@ const (
 	ToolTypeCodeExecution ToolType = "code_execution"
 )
 
-// WebToolMode specifies how providers should use the web.
-type WebToolMode string
+// WebToolIntent describes the user's intent for web access.
+// Providers map intent to their supported web tooling.
+type WebToolIntent string
 
 const (
-	WebToolModeAuto           WebToolMode = "auto"
-	WebToolModeSearchOnly     WebToolMode = "search_only"
-	WebToolModeFetchOnly      WebToolMode = "fetch_only"
-	WebToolModeSearchAndFetch WebToolMode = "search_and_fetch"
+	WebIntentAuto      WebToolIntent = "auto"
+	WebIntentSearchWeb WebToolIntent = "search_web"
+	WebIntentFetchURL  WebToolIntent = "fetch_url"
 )
 
 // Tool represents a tool the model can invoke.
@@ -201,12 +201,12 @@ type FunctionTool struct {
 	Parameters  json.RawMessage `json:"parameters,omitempty"`
 }
 
-// WebToolConfig configures web search/fetch behavior.
+// WebToolConfig configures web search/fetch intent and constraints.
 type WebToolConfig struct {
-	AllowedDomains  []string    `json:"allowed_domains,omitempty"`
-	ExcludedDomains []string    `json:"excluded_domains,omitempty"`
-	MaxUses         *int        `json:"max_uses,omitempty"` // Anthropic only
-	Mode            WebToolMode `json:"mode,omitempty"`
+	AllowedDomains  []string      `json:"allowed_domains,omitempty"`
+	ExcludedDomains []string      `json:"excluded_domains,omitempty"`
+	MaxUses         *int          `json:"max_uses,omitempty"` // Anthropic only
+	Intent          WebToolIntent `json:"intent,omitempty"`
 }
 
 // XSearchConfig configures X/Twitter search (Grok only).
