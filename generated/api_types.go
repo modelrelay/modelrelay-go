@@ -50,12 +50,14 @@ const (
 
 // Defines values for ModelCapability.
 const (
-	ModelCapabilityCodeExecution ModelCapability = "code_execution"
-	ModelCapabilityComputerUse   ModelCapability = "computer_use"
-	ModelCapabilityTools         ModelCapability = "tools"
-	ModelCapabilityVision        ModelCapability = "vision"
-	ModelCapabilityWebFetch      ModelCapability = "web_fetch"
-	ModelCapabilityWebSearch     ModelCapability = "web_search"
+	ModelCapabilityCodeExecution   ModelCapability = "code_execution"
+	ModelCapabilityComputerUse     ModelCapability = "computer_use"
+	ModelCapabilityImageGeneration ModelCapability = "image_generation"
+	ModelCapabilityTextGeneration  ModelCapability = "text_generation"
+	ModelCapabilityTools           ModelCapability = "tools"
+	ModelCapabilityVision          ModelCapability = "vision"
+	ModelCapabilityWebFetch        ModelCapability = "web_fetch"
+	ModelCapabilityWebSearch       ModelCapability = "web_search"
 )
 
 // Defines values for NodeStatusV0.
