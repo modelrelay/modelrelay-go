@@ -1079,9 +1079,6 @@ type TierModel struct {
 	Description string             `json:"description"`
 	Id          openapi_types.UUID `json:"id"`
 
-	// InputPricePerMillionCents Input token price in cents per million (e.g., 300 = $3.00/1M tokens)
-	InputPricePerMillionCents uint64 `json:"input_price_per_million_cents"`
-
 	// IsDefault Whether this is the default model for the tier
 	IsDefault bool `json:"is_default"`
 
@@ -1094,20 +1091,21 @@ type TierModel struct {
 	// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
 	ModelId ModelId `json:"model_id"`
 
-	// OutputPricePerMillionCents Output token price in cents per million (e.g., 1500 = $15.00/1M tokens)
-	OutputPricePerMillionCents uint64             `json:"output_price_per_million_cents"`
-	TierId                     openapi_types.UUID `json:"tier_id"`
-	UpdatedAt                  time.Time          `json:"updated_at"`
+	// ModelInputCostCents Provider input cost in cents per million tokens. Customer price is derived as cost * (1 + platformFeePercent/100).
+	ModelInputCostCents int64 `json:"model_input_cost_cents"`
+
+	// ModelOutputCostCents Provider output cost in cents per million tokens. Customer price is derived as cost * (1 + platformFeePercent/100).
+	ModelOutputCostCents int64              `json:"model_output_cost_cents"`
+	TierId               openapi_types.UUID `json:"tier_id"`
+	UpdatedAt            time.Time          `json:"updated_at"`
 }
 
-// TierModelCreate defines model for TierModelCreate.
+// TierModelCreate Model to add to a tier. Pricing is derived from the model_pricing table.
 type TierModelCreate struct {
-	InputPricePerMillionCents uint64 `json:"input_price_per_million_cents"`
-	IsDefault                 *bool  `json:"is_default,omitempty"`
+	IsDefault *bool `json:"is_default,omitempty"`
 
 	// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
-	ModelId                    ModelId `json:"model_id"`
-	OutputPricePerMillionCents uint64  `json:"output_price_per_million_cents"`
+	ModelId ModelId `json:"model_id"`
 }
 
 // TierUpdate defines model for TierUpdate.

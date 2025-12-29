@@ -120,4 +120,6 @@ package sdk
 // 1.11.0: Add workflow package with clean type names (workflow.SpecV0, workflow.Kind) - fixes #912.
 // 1.24.0: Add image pinning support (Get, Pin, Unpin) for hosted image storage (#877).
 // 1.25.0: Add sessions client for multi-turn conversation management (Create, Get, List, Delete, AddMessage).
-const Version = "1.30.0"
+// 1.31.0: Breaking - Remove per-tier token pricing; pricing now derived from model_pricing (provider cost + 4.5% fee).
+// TierModel fields renamed: InputPricePerMillionCents → ModelInputCostCents, OutputPricePerMillionCents → ModelOutputCostCents.
+const Version = "1.31.0"
