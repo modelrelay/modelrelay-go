@@ -85,15 +85,16 @@ func TestOIDCExchangeTokenProviderExchangesAndCaches(t *testing.T) {
 				t.Fatalf("unexpected id_token %v", reqPayload["id_token"])
 			}
 			w.Header().Set("Content-Type", "application/json")
+			customerIDVal := uuid.New()
 			_ = json.NewEncoder(w).Encode(CustomerToken{
 				Token:              "customer-token-1",
 				ExpiresAt:          expiresAt,
 				ExpiresIn:          600,
 				TokenType:          TokenTypeBearer,
 				ProjectID:          uuid.New(),
-				CustomerID:         uuid.New(),
+				CustomerID:         &customerIDVal,
 				CustomerExternalID: NewCustomerExternalID("ext_1"),
-				TierCode:           NewTierCode("free"),
+				TierCode:           TierCodePtr("free"),
 			})
 		case routes.Responses:
 			if got := r.Header.Get("Authorization"); got != "Bearer customer-token-1" {
@@ -172,9 +173,9 @@ func TestCustomerTokenProviderMintsAndCaches(t *testing.T) {
 				ExpiresIn:          600,
 				TokenType:          TokenTypeBearer,
 				ProjectID:          projectID,
-				CustomerID:         customerID,
+				CustomerID:         &customerID,
 				CustomerExternalID: NewCustomerExternalID("ext_2"),
-				TierCode:           NewTierCode("pro"),
+				TierCode:           TierCodePtr("pro"),
 			})
 		case routes.Responses:
 			if got := r.Header.Get("Authorization"); got != "Bearer customer-token-2" {

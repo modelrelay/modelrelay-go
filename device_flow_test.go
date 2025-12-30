@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/modelrelay/modelrelay/sdk/go/generated"
 	"github.com/modelrelay/modelrelay/sdk/go/routes"
+	"github.com/oapi-codegen/runtime/types"
 )
 
 func TestDeviceFlowStartAndToken(t *testing.T) {
@@ -29,14 +30,16 @@ func TestDeviceFlowStartAndToken(t *testing.T) {
 			})
 		case routes.AuthDeviceToken:
 			w.Header().Set("Content-Type", "application/json")
+			tierCode := generated.TierCode("pro")
+			customerID := types.UUID(uuid.New())
 			_ = json.NewEncoder(w).Encode(generated.CustomerTokenResponse{
 				Token:              "customer-token",
 				ExpiresAt:          issuedAt.Add(10 * time.Minute),
 				ExpiresIn:          600,
 				ProjectId:          uuid.New(),
-				CustomerId:         uuid.New(),
+				CustomerId:         &customerID,
 				CustomerExternalId: "ext_1",
-				TierCode:           "pro",
+				TierCode:           &tierCode,
 			})
 		default:
 			t.Fatalf("unexpected path %s", r.URL.Path)

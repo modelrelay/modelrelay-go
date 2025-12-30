@@ -16,6 +16,12 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Defines values for BillingMode.
+const (
+	Byob    BillingMode = "byob"
+	Managed BillingMode = "managed"
+)
+
 // Defines values for BillingProvider.
 const (
 	AppStore BillingProvider = "app_store"
@@ -271,6 +277,9 @@ type AuthTokens struct {
 	RefreshToken *string    `json:"refresh_token,omitempty"`
 }
 
+// BillingMode Billing mode for a project. 'managed' uses ModelRelay billing with tiers and subscriptions. 'byob' (Bring Your Own Billing) allows external billing.
+type BillingMode string
+
 // BillingProvider Billing provider backing the subscription or tier.
 type BillingProvider string
 
@@ -414,8 +423,8 @@ type CustomerTokenResponse struct {
 	// CustomerExternalId External customer identifier
 	CustomerExternalId string `json:"customer_external_id"`
 
-	// CustomerId Internal customer UUID
-	CustomerId openapi_types.UUID `json:"customer_id"`
+	// CustomerId Internal customer UUID. Only present for managed billing projects; BYOB projects have end-users but not customers.
+	CustomerId *openapi_types.UUID `json:"customer_id,omitempty"`
 
 	// ExpiresAt Token expiration timestamp
 	ExpiresAt time.Time `json:"expires_at"`
@@ -427,7 +436,7 @@ type CustomerTokenResponse struct {
 	ProjectId openapi_types.UUID `json:"project_id"`
 
 	// TierCode Tier code identifier (e.g., free, pro, enterprise).
-	TierCode TierCode `json:"tier_code"`
+	TierCode *TierCode `json:"tier_code,omitempty"`
 
 	// Token The customer bearer token
 	Token string `json:"token"`
@@ -697,6 +706,8 @@ type PriceInterval string
 
 // Project defines model for Project.
 type Project struct {
+	// BillingMode Billing mode for a project. 'managed' uses ModelRelay billing with tiers and subscriptions. 'byob' (Bring Your Own Billing) allows external billing.
+	BillingMode                 *BillingMode                     `json:"billing_mode,omitempty"`
 	CreatedAt                   *time.Time                       `json:"created_at,omitempty"`
 	CustomerAutoProvisionTierId *openapi_types.UUID              `json:"customer_auto_provision_tier_id,omitempty"`
 	CustomerOauthProviders      *[]ProjectCustomerOauthProviders `json:"customer_oauth_providers,omitempty"`
@@ -1426,6 +1437,8 @@ type CreateProjectJSONBody struct {
 
 // UpdateProjectJSONBody defines parameters for UpdateProject.
 type UpdateProjectJSONBody struct {
+	// BillingMode Billing mode for a project. 'managed' uses ModelRelay billing with tiers and subscriptions. 'byob' (Bring Your Own Billing) allows external billing.
+	BillingMode                 *BillingMode                                   `json:"billing_mode,omitempty"`
 	CustomerAutoProvisionTierId *openapi_types.UUID                            `json:"customer_auto_provision_tier_id,omitempty"`
 	CustomerOauthProviders      *[]UpdateProjectJSONBodyCustomerOauthProviders `json:"customer_oauth_providers,omitempty"`
 	Description                 *string                                        `json:"description,omitempty"`

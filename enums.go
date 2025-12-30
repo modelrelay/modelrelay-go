@@ -236,6 +236,12 @@ func NewTierCode(val string) TierCode {
 	return TierCode(strings.TrimSpace(val))
 }
 
+// TierCodePtr returns a pointer to a TierCode. Useful for optional tier_code fields.
+func TierCodePtr(val string) *TierCode {
+	c := NewTierCode(val)
+	return &c
+}
+
 // IsEmpty reports whether the tier code was left blank.
 func (c TierCode) IsEmpty() bool {
 	return strings.TrimSpace(string(c)) == ""

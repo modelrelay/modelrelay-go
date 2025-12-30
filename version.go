@@ -123,4 +123,6 @@ package sdk
 // 1.25.0: Add sessions client for multi-turn conversation management (Create, Get, List, Delete, AddMessage).
 // 1.31.0: Breaking - Remove per-tier token pricing; pricing now derived from model_pricing (provider cost + 4.5% fee).
 // TierModel fields renamed: InputPricePerMillionCents → ModelInputCostCents, OutputPricePerMillionCents → ModelOutputCostCents.
-const Version = "1.32.0"
+// 1.33.0: Make TierCode optional (*TierCode) in CustomerToken for BYOB projects without subscriptions.
+// 1.34.0: Make CustomerID optional (*uuid.UUID) in CustomerToken for BYOB projects without customers.
+const Version = "1.34.0"

@@ -49,9 +49,9 @@ func TestAuthClientOIDCExchange(t *testing.T) {
 			ExpiresIn:          600,
 			TokenType:          TokenTypeBearer,
 			ProjectID:          projectID,
-			CustomerID:         customerID,
+			CustomerID:         &customerID,
 			CustomerExternalID: NewCustomerExternalID("ext_1"),
-			TierCode:           NewTierCode("free"),
+			TierCode:           TierCodePtr("free"),
 		})
 	}))
 	defer srv.Close()
@@ -62,7 +62,7 @@ func TestAuthClientOIDCExchange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("oidc exchange: %v", err)
 	}
-	if resp.Token != "customer-token" || resp.CustomerID != customerID {
+	if resp.Token != "customer-token" || resp.CustomerID == nil || *resp.CustomerID != customerID {
 		t.Fatalf("unexpected token response: %+v", resp)
 	}
 }

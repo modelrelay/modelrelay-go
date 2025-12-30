@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 )
 
+func uuidPtr(v uuid.UUID) *uuid.UUID { return &v }
+
 func TestCustomerToken(t *testing.T) {
 	issued := CustomerToken{
 		Token:              "test_token",
@@ -18,9 +20,9 @@ func TestCustomerToken(t *testing.T) {
 		ExpiresIn:          3600,
 		TokenType:          TokenTypeBearer,
 		ProjectID:          uuid.New(),
-		CustomerID:         uuid.New(),
+		CustomerID:         uuidPtr(uuid.New()),
 		CustomerExternalID: NewCustomerExternalID("customer_123"),
-		TierCode:           NewTierCode("free"),
+		TierCode:           TierCodePtr("free"),
 	}
 
 	mux := http.NewServeMux()
@@ -55,8 +57,93 @@ func TestCustomerToken(t *testing.T) {
 	}
 }
 
+// TestCustomerTokenDecodeWithoutTierCode verifies that CustomerToken can be decoded
+// when tier_code is missing from the JSON (BYOB projects without subscriptions).
+func TestCustomerTokenDecodeWithoutTierCode(t *testing.T) {
+	// JSON without tier_code (BYOB case)
+	jsonWithoutTierCode := `{
+		"token": "mr_eut_byob_token",
+		"expires_at": "2025-01-01T00:00:00Z",
+		"expires_in": 3600,
+		"token_type": "Bearer",
+		"project_id": "00000000-0000-0000-0000-000000000001",
+		"customer_id": "00000000-0000-0000-0000-000000000002",
+		"customer_external_id": "byob_customer_123"
+	}`
+
+	var token CustomerToken
+	if err := json.Unmarshal([]byte(jsonWithoutTierCode), &token); err != nil {
+		t.Fatalf("failed to decode CustomerToken without tier_code: %v", err)
+	}
+
+	if token.Token != "mr_eut_byob_token" {
+		t.Fatalf("expected token 'mr_eut_byob_token', got %q", token.Token)
+	}
+	if token.TierCode != nil {
+		t.Fatalf("expected nil TierCode for BYOB, got %v", *token.TierCode)
+	}
+}
+
+// TestCustomerTokenDecodeWithoutCustomerID verifies that CustomerToken can be decoded
+// when customer_id is missing from the JSON (BYOB projects without customers).
+func TestCustomerTokenDecodeWithoutCustomerID(t *testing.T) {
+	// JSON without customer_id (BYOB case where customers are not created)
+	jsonWithoutCustomerID := `{
+		"token": "mr_eut_byob_nocustomer",
+		"expires_at": "2025-01-01T00:00:00Z",
+		"expires_in": 3600,
+		"token_type": "Bearer",
+		"project_id": "00000000-0000-0000-0000-000000000001",
+		"customer_external_id": "byob_external_123"
+	}`
+
+	var token CustomerToken
+	if err := json.Unmarshal([]byte(jsonWithoutCustomerID), &token); err != nil {
+		t.Fatalf("failed to decode CustomerToken without customer_id: %v", err)
+	}
+
+	if token.Token != "mr_eut_byob_nocustomer" {
+		t.Fatalf("expected token 'mr_eut_byob_nocustomer', got %q", token.Token)
+	}
+	if token.CustomerID != nil {
+		t.Fatalf("expected nil CustomerID for BYOB, got %v", *token.CustomerID)
+	}
+	if token.TierCode != nil {
+		t.Fatalf("expected nil TierCode for BYOB, got %v", *token.TierCode)
+	}
+}
+
+// TestCustomerTokenDecodeWithTierCode verifies that CustomerToken correctly decodes tier_code when present.
+func TestCustomerTokenDecodeWithTierCode(t *testing.T) {
+	// JSON with tier_code (standard subscribed customer)
+	jsonWithTierCode := `{
+		"token": "mr_eut_subscribed_token",
+		"expires_at": "2025-01-01T00:00:00Z",
+		"expires_in": 3600,
+		"token_type": "Bearer",
+		"project_id": "00000000-0000-0000-0000-000000000001",
+		"customer_id": "00000000-0000-0000-0000-000000000002",
+		"customer_external_id": "subscribed_customer_123",
+		"tier_code": "pro"
+	}`
+
+	var token CustomerToken
+	if err := json.Unmarshal([]byte(jsonWithTierCode), &token); err != nil {
+		t.Fatalf("failed to decode CustomerToken with tier_code: %v", err)
+	}
+
+	if token.Token != "mr_eut_subscribed_token" {
+		t.Fatalf("expected token 'mr_eut_subscribed_token', got %q", token.Token)
+	}
+	if token.TierCode == nil {
+		t.Fatalf("expected TierCode to be set, got nil")
+	}
+	if token.TierCode.String() != "pro" {
+		t.Fatalf("expected TierCode 'pro', got %q", token.TierCode.String())
+	}
+}
+
 func TestCustomerTokenRequestValidation(t *testing.T) {
-	uuidPtr := func(v uuid.UUID) *uuid.UUID { return &v }
 
 	tests := []struct {
 		name      string
