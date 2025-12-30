@@ -139,6 +139,12 @@ const (
 	Unpaid            SubscriptionStatusKind = "unpaid"
 )
 
+// Defines values for TierBillingMode.
+const (
+	TierBillingModePaygo        TierBillingMode = "paygo"
+	TierBillingModeSubscription TierBillingMode = "subscription"
+)
+
 // Defines values for ToolType.
 const (
 	ToolTypeCodeExecution   ToolType = "code_execution"
@@ -324,6 +330,15 @@ type Customer struct {
 	UpdatedAt *time.Time          `json:"updated_at,omitempty"`
 }
 
+// CustomerBalanceResponse defines model for CustomerBalanceResponse.
+type CustomerBalanceResponse struct {
+	BalanceCents   int64              `json:"balance_cents"`
+	Currency       string             `json:"currency"`
+	CustomerId     openapi_types.UUID `json:"customer_id"`
+	ReservedCents  int64              `json:"reserved_cents"`
+	SubscriptionId openapi_types.UUID `json:"subscription_id"`
+}
+
 // CustomerCreate defines model for CustomerCreate.
 type CustomerCreate struct {
 	// Email Customer email address
@@ -334,6 +349,35 @@ type CustomerCreate struct {
 
 	// Metadata Arbitrary customer metadata (max 10KB). Keys are limited to 40 characters. Values can be any JSON type. Nesting depth limited to 5 levels.
 	Metadata *CustomerMetadata `json:"metadata,omitempty"`
+}
+
+// CustomerLedgerEntry defines model for CustomerLedgerEntry.
+type CustomerLedgerEntry struct {
+	AmountCents       int64              `json:"amount_cents"`
+	BalanceAfterCents *int64             `json:"balance_after_cents,omitempty"`
+	CreditAmountCents *int64             `json:"credit_amount_cents,omitempty"`
+	Description       string             `json:"description"`
+	Direction         string             `json:"direction"`
+	GrossAmountCents  *int64             `json:"gross_amount_cents,omitempty"`
+	Id                openapi_types.UUID `json:"id"`
+	InputTokens       *int64             `json:"input_tokens,omitempty"`
+
+	// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	ModelId                 *ModelId            `json:"model_id,omitempty"`
+	OccurredAt              time.Time           `json:"occurred_at"`
+	OutputTokens            *int64              `json:"output_tokens,omitempty"`
+	OwnerRevenueCents       *int64              `json:"owner_revenue_cents,omitempty"`
+	PlatformFeeCents        *int64              `json:"platform_fee_cents,omitempty"`
+	Reason                  string              `json:"reason"`
+	RequestId               *openapi_types.UUID `json:"request_id,omitempty"`
+	StripeCheckoutSessionId *string             `json:"stripe_checkout_session_id,omitempty"`
+	StripeInvoiceId         *string             `json:"stripe_invoice_id,omitempty"`
+	StripePaymentIntentId   *string             `json:"stripe_payment_intent_id,omitempty"`
+}
+
+// CustomerLedgerResponse defines model for CustomerLedgerResponse.
+type CustomerLedgerResponse struct {
+	Entries []CustomerLedgerEntry `json:"entries"`
 }
 
 // CustomerMe defines model for CustomerMe.
@@ -440,6 +484,24 @@ type CustomerTokenResponse struct {
 
 	// Token The customer bearer token
 	Token string `json:"token"`
+}
+
+// CustomerTopupRequest defines model for CustomerTopupRequest.
+type CustomerTopupRequest struct {
+	CancelUrl         string `json:"cancel_url"`
+	CreditAmountCents int64  `json:"credit_amount_cents"`
+	SuccessUrl        string `json:"success_url"`
+}
+
+// CustomerTopupResponse defines model for CustomerTopupResponse.
+type CustomerTopupResponse struct {
+	CheckoutUrl       string `json:"checkout_url"`
+	CreditAmountCents int64  `json:"credit_amount_cents"`
+	GrossAmountCents  int64  `json:"gross_amount_cents"`
+	OwnerRevenueCents int64  `json:"owner_revenue_cents"`
+	PlatformFeeCents  int64  `json:"platform_fee_cents"`
+	SessionId         string `json:"session_id"`
+	Status            string `json:"status"`
 }
 
 // CustomerUsagePoint defines model for CustomerUsagePoint.
@@ -713,6 +775,7 @@ type Project struct {
 	CustomerOauthProviders      *[]ProjectCustomerOauthProviders `json:"customer_oauth_providers,omitempty"`
 	Description                 *string                          `json:"description,omitempty"`
 	Id                          *openapi_types.UUID              `json:"id,omitempty"`
+	MarkupPercentage            *float32                         `json:"markup_percentage,omitempty"`
 	Name                        *string                          `json:"name,omitempty"`
 	OidcAudiences               *[]string                        `json:"oidc_audiences,omitempty"`
 	OidcEnabled                 *bool                            `json:"oidc_enabled,omitempty"`
@@ -1015,6 +1078,9 @@ type SubscriptionStatusKind string
 
 // Tier defines model for Tier.
 type Tier struct {
+	// BillingMode Billing mode for a tier. 'subscription' uses monthly spend limits; 'paygo' uses prepaid balances.
+	BillingMode *TierBillingMode `json:"billing_mode,omitempty"`
+
 	// BillingPriceRef Billing provider price reference for this tier
 	BillingPriceRef *string `json:"billing_price_ref,omitempty"`
 
@@ -1048,11 +1114,17 @@ type Tier struct {
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
 
+// TierBillingMode Billing mode for a tier. 'subscription' uses monthly spend limits; 'paygo' uses prepaid balances.
+type TierBillingMode string
+
 // TierCode Tier code identifier (e.g., free, pro, enterprise).
 type TierCode = string
 
 // TierCreate defines model for TierCreate.
 type TierCreate struct {
+	// BillingMode Billing mode for a tier. 'subscription' uses monthly spend limits; 'paygo' uses prepaid balances.
+	BillingMode *TierBillingMode `json:"billing_mode,omitempty"`
+
 	// BillingProvider Billing provider backing the subscription or tier.
 	BillingProvider *BillingProvider `json:"billing_provider,omitempty"`
 
@@ -1413,6 +1485,18 @@ type ClaimCustomerJSONBody struct {
 // ClaimCustomerJSONBodyProvider defines parameters for ClaimCustomer.
 type ClaimCustomerJSONBodyProvider string
 
+// GetCustomerMeBalanceHistoryParams defines parameters for GetCustomerMeBalanceHistory.
+type GetCustomerMeBalanceHistoryParams struct {
+	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// GetCustomerBalanceHistoryParams defines parameters for GetCustomerBalanceHistory.
+type GetCustomerBalanceHistoryParams struct {
+	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // SubscribeCustomerJSONBody defines parameters for SubscribeCustomer.
 type SubscribeCustomerJSONBody struct {
 	CancelUrl  string             `json:"cancel_url"`
@@ -1431,8 +1515,9 @@ type ListModelsParams struct {
 
 // CreateProjectJSONBody defines parameters for CreateProject.
 type CreateProjectJSONBody struct {
-	Description *string `json:"description,omitempty"`
-	Name        *string `json:"name,omitempty"`
+	Description      *string  `json:"description,omitempty"`
+	MarkupPercentage *float32 `json:"markup_percentage,omitempty"`
+	Name             *string  `json:"name,omitempty"`
 }
 
 // UpdateProjectJSONBody defines parameters for UpdateProject.
@@ -1442,6 +1527,7 @@ type UpdateProjectJSONBody struct {
 	CustomerAutoProvisionTierId *openapi_types.UUID                            `json:"customer_auto_provision_tier_id,omitempty"`
 	CustomerOauthProviders      *[]UpdateProjectJSONBodyCustomerOauthProviders `json:"customer_oauth_providers,omitempty"`
 	Description                 *string                                        `json:"description,omitempty"`
+	MarkupPercentage            *float32                                       `json:"markup_percentage,omitempty"`
 	Name                        *string                                        `json:"name,omitempty"`
 	OidcAudiences               *[]string                                      `json:"oidc_audiences,omitempty"`
 	OidcEnabled                 *bool                                          `json:"oidc_enabled,omitempty"`
@@ -1517,8 +1603,14 @@ type UpsertCustomerJSONRequestBody = CustomerCreate
 // ClaimCustomerJSONRequestBody defines body for ClaimCustomer for application/json ContentType.
 type ClaimCustomerJSONRequestBody ClaimCustomerJSONBody
 
+// CreateCustomerMeTopupJSONRequestBody defines body for CreateCustomerMeTopup for application/json ContentType.
+type CreateCustomerMeTopupJSONRequestBody = CustomerTopupRequest
+
 // SubscribeCustomerJSONRequestBody defines body for SubscribeCustomer for application/json ContentType.
 type SubscribeCustomerJSONRequestBody SubscribeCustomerJSONBody
+
+// CreateCustomerTopupJSONRequestBody defines body for CreateCustomerTopup for application/json ContentType.
+type CreateCustomerTopupJSONRequestBody = CustomerTopupRequest
 
 // GenerateImageJSONRequestBody defines body for GenerateImage for application/json ContentType.
 type GenerateImageJSONRequestBody = ImageRequest
