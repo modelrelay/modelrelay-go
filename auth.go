@@ -50,14 +50,6 @@ func (a apiKeyAuth) Apply(req *http.Request) error {
 	return nil
 }
 
-// isSecretKey returns true if the API key is a secret key.
-func (a apiKeyAuth) isSecretKey() bool {
-	if a.key == nil {
-		return false
-	}
-	return a.key.Kind() == APIKeyKindSecret
-}
-
 // TokenProvider supplies short-lived bearer tokens for ModelRelay data-plane calls.
 // Providers are responsible for caching and refreshing tokens when needed.
 type TokenProvider interface {

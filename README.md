@@ -270,26 +270,6 @@ req, callOpts, _ := client.Responses.New().
 resp, _ := client.Responses.Create(ctx, req, callOpts...)
 ```
 
-## Customer Management (Backend)
-
-```go
-// Create/update customer
-customer, _ := client.Customers.Upsert(ctx, sdk.CustomerUpsertRequest{
-    ExternalID: sdk.NewCustomerExternalID("your-user-id"),
-    Email:      "user@example.com",
-})
-
-// Create checkout session for subscription billing
-session, _ := client.Customers.Subscribe(ctx, customer.Customer.ID, sdk.CustomerSubscribeRequest{
-    TierID:     uuid.MustParse("00000000-0000-0000-0000-000000000000"), // Replace with your tier UUID
-    SuccessURL: "https://myapp.com/success",
-    CancelURL:  "https://myapp.com/cancel",
-})
-
-// Check subscription status
-status, _ := client.Customers.GetSubscription(ctx, customer.Customer.ID)
-```
-
 ## Plugins (Workflows)
 
 Plugins are GitHub-hosted markdown agents that the Go SDK loads from GitHub, converts to `workflow.v0` via `/responses`, then executes via `/runs` with automatic client-side tool handoff.

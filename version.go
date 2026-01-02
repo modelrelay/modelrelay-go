@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 1.36.0: Remove simple CRUD clients (Customers, Tiers, Models, Usage) - use raw API for these endpoints.
 // 1.35.1: Add project markup_percentage and compute PAYGO topup fee split server-side.
 // 1.35.0: Add PAYGO customer balance/topup endpoints and tier billing_mode fields.
 // 1.32.0: Breaking - replace web tool mode with intent (search_web/fetch_url/auto).
@@ -127,4 +128,4 @@ package sdk
 // TierModel fields renamed: InputPricePerMillionCents → ModelInputCostCents, OutputPricePerMillionCents → ModelOutputCostCents.
 // 1.33.0: Make TierCode optional (*TierCode) in CustomerToken for BYOB projects without subscriptions.
 // 1.34.0: Make CustomerID optional (*uuid.UUID) in CustomerToken for BYOB projects without customers.
-const Version = "1.35.1"
+const Version = "1.36.0"

@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	testProjectID  = uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	testSessionID  = uuid.MustParse("55555555-5555-5555-5555-555555555555")
 	testMessageID  = uuid.MustParse("66666666-6666-6666-6666-666666666666")
 	testEndUserID  = uuid.MustParse("77777777-7777-7777-7777-777777777777")
