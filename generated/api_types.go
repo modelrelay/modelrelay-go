@@ -289,6 +289,12 @@ type BillingMode string
 // BillingProvider Billing provider backing the subscription or tier.
 type BillingProvider string
 
+// ChangeTierRequest defines model for ChangeTierRequest.
+type ChangeTierRequest struct {
+	// TierCode The tier code to switch to
+	TierCode string `json:"tier_code"`
+}
+
 // CheckoutSessionResponse defines model for CheckoutSessionResponse.
 type CheckoutSessionResponse struct {
 	// SessionId Stripe checkout session ID
@@ -1602,6 +1608,9 @@ type UpsertCustomerJSONRequestBody = CustomerCreate
 
 // ClaimCustomerJSONRequestBody defines body for ClaimCustomer for application/json ContentType.
 type ClaimCustomerJSONRequestBody ClaimCustomerJSONBody
+
+// ChangeCustomerMeTierJSONRequestBody defines body for ChangeCustomerMeTier for application/json ContentType.
+type ChangeCustomerMeTierJSONRequestBody = ChangeTierRequest
 
 // CreateCustomerMeTopupJSONRequestBody defines body for CreateCustomerMeTopup for application/json ContentType.
 type CreateCustomerMeTopupJSONRequestBody = CustomerTopupRequest
