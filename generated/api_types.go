@@ -393,6 +393,18 @@ type CustomerMe struct {
 	Tier         *Tier         `json:"tier,omitempty"`
 }
 
+// CustomerMeCheckoutRequest defines model for CustomerMeCheckoutRequest.
+type CustomerMeCheckoutRequest struct {
+	// CancelUrl URL to redirect to if checkout is cancelled
+	CancelUrl string `json:"cancel_url"`
+
+	// SuccessUrl URL to redirect to after successful checkout
+	SuccessUrl string `json:"success_url"`
+
+	// TierCode The tier code to subscribe to
+	TierCode string `json:"tier_code"`
+}
+
 // CustomerMeResponse defines model for CustomerMeResponse.
 type CustomerMeResponse struct {
 	Customer CustomerMe `json:"customer"`
@@ -1611,6 +1623,9 @@ type ClaimCustomerJSONRequestBody ClaimCustomerJSONBody
 
 // ChangeCustomerMeTierJSONRequestBody defines body for ChangeCustomerMeTier for application/json ContentType.
 type ChangeCustomerMeTierJSONRequestBody = ChangeTierRequest
+
+// CreateCustomerMeCheckoutJSONRequestBody defines body for CreateCustomerMeCheckout for application/json ContentType.
+type CreateCustomerMeCheckoutJSONRequestBody = CustomerMeCheckoutRequest
 
 // CreateCustomerMeTopupJSONRequestBody defines body for CreateCustomerMeTopup for application/json ContentType.
 type CreateCustomerMeTopupJSONRequestBody = CustomerTopupRequest
