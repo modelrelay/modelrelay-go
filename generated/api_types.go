@@ -459,10 +459,19 @@ type CustomerMeUsage struct {
 	// Low Whether remaining credits are low (only for paid tiers)
 	Low *bool `json:"low,omitempty"`
 
+	// OverageEnabled True when PAYGO wallet can cover subscription overages
+	OverageEnabled *bool `json:"overage_enabled,omitempty"`
+
 	// PercentageUsed Percentage of granted credits used (only for paid tiers)
 	PercentageUsed *float32 `json:"percentage_used,omitempty"`
 	Requests       int64    `json:"requests"`
 	Tokens         int64    `json:"tokens"`
+
+	// WalletBalanceCents PAYGO wallet balance in cents (available when PAYGO wallet is enabled)
+	WalletBalanceCents *int64 `json:"wallet_balance_cents,omitempty"`
+
+	// WalletReservedCents PAYGO wallet reserved amount in cents
+	WalletReservedCents *int64 `json:"wallet_reserved_cents,omitempty"`
 
 	// WindowEnd End of the current billing window
 	WindowEnd time.Time `json:"window_end"`

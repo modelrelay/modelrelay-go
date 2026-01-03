@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 1.39.0: Add PAYGO wallet balance/reserved + overage indicator to customer usage summary.
 // 1.38.0: Flatten billing response types (return inner types directly, not wrappers).
 // 1.37.0: Add BillingClient for customer self-service operations (me, subscription, usage, balance, topup, checkout).
 // 1.36.0: Remove simple CRUD clients (Customers, Tiers, Models, Usage) - use raw API for these endpoints.
@@ -131,4 +132,5 @@ package sdk
 // 1.33.0: Make TierCode optional (*TierCode) in CustomerToken for BYOB projects without subscriptions.
 // 1.34.0: Make CustomerID optional (*uuid.UUID) in CustomerToken for BYOB projects without customers.
 // 1.39.0: Restore TiersClient (list, get, checkout) for tier querying operations.
-const Version = "1.39.0"
+// 1.40.0: Add PAYGO wallet balance/reserved + overage indicator to customer usage summary.
+const Version = "1.40.0"
