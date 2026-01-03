@@ -20,6 +20,13 @@ const (
 	// AuthDeviceToken polls for device authorization completion.
 	AuthDeviceToken = "/auth/device/token" // #nosec G101 -- route path, not a credential
 
+	// AuthCustomerOAuthStart initiates an OAuth flow for customer authentication.
+	// Note: /auth/oauth/* is used for admin login; customer OAuth uses /auth/customer/oauth/*
+	AuthCustomerOAuthStart = "/auth/customer/oauth/start"
+
+	// AuthCustomerOAuthCallback handles the OAuth callback for customer authentication.
+	AuthCustomerOAuthCallback = "/auth/customer/oauth/callback"
+
 	// Pricing returns public model pricing information.
 	Pricing = "/pricing"
 
