@@ -131,6 +131,7 @@ package sdk
 // TierModel fields renamed: InputPricePerMillionCents → ModelInputCostCents, OutputPricePerMillionCents → ModelOutputCostCents.
 // 1.33.0: Make TierCode optional (*TierCode) in CustomerToken for BYOB projects without subscriptions.
 // 1.34.0: Make CustomerID optional (*uuid.UUID) in CustomerToken for BYOB projects without customers.
-// 1.39.0: Restore TiersClient (list, get, checkout) for tier querying operations.
+// 1.41.0: Add admin billing invariants route constant.
 // 1.40.0: Add PAYGO wallet balance/reserved + overage indicator to customer usage summary.
-const Version = "1.40.0"
+// 1.39.0: Restore TiersClient (list, get, checkout) for tier querying operations.
+const Version = "1.41.0"

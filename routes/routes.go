@@ -32,6 +32,9 @@ const (
 	// AdminModels is the admin endpoint for model pricing management.
 	AdminModels = "/admin/models"
 
+	// AdminBillingInvariants runs billing invariant checks (admin-only).
+	AdminBillingInvariants = "/admin/billing/invariants"
+
 	// MetricsModels returns model usage metrics.
 	MetricsModels = "/metrics/models"
 
