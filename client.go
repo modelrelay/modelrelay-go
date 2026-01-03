@@ -110,6 +110,7 @@ type Client struct {
 	Images    *ImagesClient
 	Auth      *AuthClient
 	Sessions  *SessionsClient
+	Tiers     *TiersClient
 	Billing   *BillingClient
 
 	pluginsOnce sync.Once
@@ -254,6 +255,7 @@ func newClientFromOptions(apiKey APIKeyAuth, accessToken string, opts clientOpti
 	client.Images = &ImagesClient{client: client}
 	client.Auth = &AuthClient{client: client}
 	client.Sessions = &SessionsClient{client: client}
+	client.Tiers = &TiersClient{client: client}
 	client.Billing = &BillingClient{client: client}
 	return client, nil
 }
@@ -391,6 +393,18 @@ func (c *Client) prepare(req *http.Request) error {
 		}
 	}
 	return nil
+}
+
+// isSecretKey returns true if the client is configured with a secret key (mr_sk_*).
+func (c *Client) isSecretKey() bool {
+	for _, s := range c.auth {
+		if a, ok := s.(apiKeyAuth); ok {
+			if _, isSecret := a.key.(SecretKey); isSecret {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (c *Client) send(req *http.Request, timeout *time.Duration, retry *RetryConfig) (*http.Response, *RetryMetadata, error) {
