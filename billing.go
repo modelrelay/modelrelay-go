@@ -11,20 +11,11 @@ import (
 // CustomerMe is the customer profile returned by GET /customers/me.
 type CustomerMe = generated.CustomerMe
 
-// CustomerMeResponse wraps the customer profile.
-type CustomerMeResponse = generated.CustomerMeResponse
-
 // CustomerMeUsage is the usage metrics for the current billing window.
 type CustomerMeUsage = generated.CustomerMeUsage
 
-// CustomerMeUsageResponse wraps the usage metrics.
-type CustomerMeUsageResponse = generated.CustomerMeUsageResponse
-
 // CustomerMeSubscription is the subscription details.
 type CustomerMeSubscription = generated.CustomerMeSubscription
-
-// CustomerMeSubscriptionResponse wraps the subscription details.
-type CustomerMeSubscriptionResponse = generated.CustomerMeSubscriptionResponse
 
 // CustomerBalanceResponse is the credit balance for PAYGO subscriptions.
 type CustomerBalanceResponse = generated.CustomerBalanceResponse
@@ -85,17 +76,17 @@ func (c *BillingClient) ensureInitialized() error {
 //
 //	me, err := client.Billing.Me(ctx)
 //	fmt.Println("Customer ID:", me.Customer.Id)
-//	fmt.Println("Email:", me.Customer.Email)
-func (c *BillingClient) Me(ctx context.Context) (CustomerMeResponse, error) {
+//	fmt.Println("Tier:", me.Tier.Code)
+func (c *BillingClient) Me(ctx context.Context) (CustomerMe, error) {
 	if err := c.ensureInitialized(); err != nil {
-		return CustomerMeResponse{}, err
+		return CustomerMe{}, err
 	}
 
-	var payload CustomerMeResponse
+	var payload generated.CustomerMeResponse
 	if err := c.client.sendAndDecode(ctx, http.MethodGet, "/customers/me", nil, &payload); err != nil {
-		return CustomerMeResponse{}, err
+		return CustomerMe{}, err
 	}
-	return payload, nil
+	return payload.Customer, nil
 }
 
 // Subscription returns the authenticated customer's subscription details.
@@ -105,18 +96,18 @@ func (c *BillingClient) Me(ctx context.Context) (CustomerMeResponse, error) {
 // Example:
 //
 //	sub, err := client.Billing.Subscription(ctx)
-//	fmt.Println("Tier:", sub.Subscription.TierCode)
-//	fmt.Println("Status:", sub.Subscription.SubscriptionStatus)
-func (c *BillingClient) Subscription(ctx context.Context) (CustomerMeSubscriptionResponse, error) {
+//	fmt.Println("Tier:", sub.TierCode)
+//	fmt.Println("Status:", sub.SubscriptionStatus)
+func (c *BillingClient) Subscription(ctx context.Context) (CustomerMeSubscription, error) {
 	if err := c.ensureInitialized(); err != nil {
-		return CustomerMeSubscriptionResponse{}, err
+		return CustomerMeSubscription{}, err
 	}
 
-	var payload CustomerMeSubscriptionResponse
+	var payload generated.CustomerMeSubscriptionResponse
 	if err := c.client.sendAndDecode(ctx, http.MethodGet, "/customers/me/subscription", nil, &payload); err != nil {
-		return CustomerMeSubscriptionResponse{}, err
+		return CustomerMeSubscription{}, err
 	}
-	return payload, nil
+	return payload.Subscription, nil
 }
 
 // Usage returns the authenticated customer's usage metrics.
@@ -126,18 +117,18 @@ func (c *BillingClient) Subscription(ctx context.Context) (CustomerMeSubscriptio
 // Example:
 //
 //	usage, err := client.Billing.Usage(ctx)
-//	fmt.Println("Total tokens:", usage.Usage.TotalTokens)
-//	fmt.Println("Total requests:", usage.Usage.TotalRequests)
-func (c *BillingClient) Usage(ctx context.Context) (CustomerMeUsageResponse, error) {
+//	fmt.Println("Total tokens:", usage.TotalTokens)
+//	fmt.Println("Total requests:", usage.TotalRequests)
+func (c *BillingClient) Usage(ctx context.Context) (CustomerMeUsage, error) {
 	if err := c.ensureInitialized(); err != nil {
-		return CustomerMeUsageResponse{}, err
+		return CustomerMeUsage{}, err
 	}
 
-	var payload CustomerMeUsageResponse
+	var payload generated.CustomerMeUsageResponse
 	if err := c.client.sendAndDecode(ctx, http.MethodGet, "/customers/me/usage", nil, &payload); err != nil {
-		return CustomerMeUsageResponse{}, err
+		return CustomerMeUsage{}, err
 	}
-	return payload, nil
+	return payload.Usage, nil
 }
 
 // Balance returns the authenticated customer's credit balance.
@@ -215,18 +206,18 @@ func (c *BillingClient) Topup(ctx context.Context, req CustomerTopupRequest) (Cu
 // Example:
 //
 //	sub, err := client.Billing.ChangeTier(ctx, "pro")
-//	fmt.Println("New tier:", sub.Subscription.TierCode)
-func (c *BillingClient) ChangeTier(ctx context.Context, tierCode string) (CustomerMeSubscriptionResponse, error) {
+//	fmt.Println("New tier:", sub.TierCode)
+func (c *BillingClient) ChangeTier(ctx context.Context, tierCode string) (CustomerMeSubscription, error) {
 	if err := c.ensureInitialized(); err != nil {
-		return CustomerMeSubscriptionResponse{}, err
+		return CustomerMeSubscription{}, err
 	}
 
 	req := ChangeTierRequest{TierCode: tierCode}
-	var payload CustomerMeSubscriptionResponse
+	var payload generated.CustomerMeSubscriptionResponse
 	if err := c.client.sendAndDecode(ctx, http.MethodPost, "/customers/me/change-tier", req, &payload); err != nil {
-		return CustomerMeSubscriptionResponse{}, err
+		return CustomerMeSubscription{}, err
 	}
-	return payload, nil
+	return payload.Subscription, nil
 }
 
 // Checkout creates a subscription checkout session.
