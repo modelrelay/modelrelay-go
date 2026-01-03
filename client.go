@@ -110,6 +110,7 @@ type Client struct {
 	Images    *ImagesClient
 	Auth      *AuthClient
 	Sessions  *SessionsClient
+	Billing   *BillingClient
 
 	pluginsOnce sync.Once
 	plugins     *PluginsClient
@@ -253,6 +254,7 @@ func newClientFromOptions(apiKey APIKeyAuth, accessToken string, opts clientOpti
 	client.Images = &ImagesClient{client: client}
 	client.Auth = &AuthClient{client: client}
 	client.Sessions = &SessionsClient{client: client}
+	client.Billing = &BillingClient{client: client}
 	return client, nil
 }
 
