@@ -338,11 +338,10 @@ type Customer struct {
 
 // CustomerBalanceResponse defines model for CustomerBalanceResponse.
 type CustomerBalanceResponse struct {
-	BalanceCents   int64              `json:"balance_cents"`
-	Currency       string             `json:"currency"`
-	CustomerId     openapi_types.UUID `json:"customer_id"`
-	ReservedCents  int64              `json:"reserved_cents"`
-	SubscriptionId openapi_types.UUID `json:"subscription_id"`
+	BalanceCents  int64              `json:"balance_cents"`
+	Currency      string             `json:"currency"`
+	CustomerId    openapi_types.UUID `json:"customer_id"`
+	ReservedCents int64              `json:"reserved_cents"`
 }
 
 // CustomerCreate defines model for CustomerCreate.
