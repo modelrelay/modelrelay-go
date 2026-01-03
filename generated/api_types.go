@@ -248,6 +248,12 @@ const (
 	UsageThresholdExceeded     WebhookConfigUpdateEvents = "usage.threshold_exceeded"
 )
 
+// Defines values for WebhookTestResultStatus.
+const (
+	Delivered WebhookTestResultStatus = "delivered"
+	Failed    WebhookTestResultStatus = "failed"
+)
+
 // Defines values for ClaimCustomerJSONBodyProvider.
 const (
 	ClaimCustomerJSONBodyProviderGithub ClaimCustomerJSONBodyProvider = "github"
@@ -1432,6 +1438,18 @@ type WebhookConfigUpdate struct {
 // WebhookConfigUpdateEvents defines model for WebhookConfigUpdate.Events.
 type WebhookConfigUpdateEvents string
 
+// WebhookTestResult defines model for WebhookTestResult.
+type WebhookTestResult struct {
+	Error          *string                  `json:"error,omitempty"`
+	LatencyMs      *int32                   `json:"latency_ms,omitempty"`
+	ResponseBody   *string                  `json:"response_body,omitempty"`
+	ResponseStatus *int32                   `json:"response_status,omitempty"`
+	Status         *WebhookTestResultStatus `json:"status,omitempty"`
+}
+
+// WebhookTestResultStatus defines model for WebhookTestResult.Status.
+type WebhookTestResultStatus string
+
 // WorkflowSpecV0 A `workflow.v0` spec. The canonical JSON Schema is available at `/schemas/workflow_v0.schema.json`.
 type WorkflowSpecV0 map[string]interface{}
 
@@ -1576,6 +1594,11 @@ type ListProjectWebhookEventsParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// TestProjectWebhookJSONBody defines parameters for TestProjectWebhook.
+type TestProjectWebhookJSONBody struct {
+	EventType *string `json:"event_type,omitempty"`
+}
+
 // StreamRunEventsParams defines parameters for StreamRunEvents.
 type StreamRunEventsParams struct {
 	// AfterSeq Returns events where `seq > after_seq`.
@@ -1674,6 +1697,9 @@ type CreateProjectWebhookJSONRequestBody = WebhookConfigInput
 
 // UpdateProjectWebhookJSONRequestBody defines body for UpdateProjectWebhook for application/json ContentType.
 type UpdateProjectWebhookJSONRequestBody = WebhookConfigUpdate
+
+// TestProjectWebhookJSONRequestBody defines body for TestProjectWebhook for application/json ContentType.
+type TestProjectWebhookJSONRequestBody TestProjectWebhookJSONBody
 
 // CreateResponseJSONRequestBody defines body for CreateResponse for application/json ContentType.
 type CreateResponseJSONRequestBody = ResponsesRequest
