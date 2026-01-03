@@ -1484,8 +1484,10 @@ type RefreshTokenJSONBody struct {
 
 // RegisterOwnerJSONBody defines parameters for RegisterOwner.
 type RegisterOwnerJSONBody struct {
-	Email    *openapi_types.Email `json:"email,omitempty"`
-	Password *string              `json:"password,omitempty"`
+	// BillingProvider Billing provider backing the subscription or tier.
+	BillingProvider *BillingProvider     `json:"billing_provider,omitempty"`
+	Email           *openapi_types.Email `json:"email,omitempty"`
+	Password        *string              `json:"password,omitempty"`
 }
 
 // ClaimCustomerJSONBody defines parameters for ClaimCustomer.
