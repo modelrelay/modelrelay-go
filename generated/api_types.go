@@ -536,8 +536,10 @@ type CustomerUsagePoint struct {
 
 // CustomerWithSubscription defines model for CustomerWithSubscription.
 type CustomerWithSubscription struct {
-	Customer     Customer      `json:"customer"`
-	Subscription *Subscription `json:"subscription,omitempty"`
+	// BillingCustomerId Billing provider customer ID (e.g., Stripe customer ID)
+	BillingCustomerId *string       `json:"billing_customer_id,omitempty"`
+	Customer          Customer      `json:"customer"`
+	Subscription      *Subscription `json:"subscription,omitempty"`
 }
 
 // DeviceStartResponse defines model for DeviceStartResponse.
@@ -1063,9 +1065,6 @@ type SessionWithMessagesResponse struct {
 
 // Subscription defines model for Subscription.
 type Subscription struct {
-	// BillingCustomerId Billing customer ID from the provider
-	BillingCustomerId *string `json:"billing_customer_id,omitempty"`
-
 	// BillingProvider Billing provider backing the subscription or tier.
 	BillingProvider *BillingProvider `json:"billing_provider,omitempty"`
 
