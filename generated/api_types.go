@@ -1591,7 +1591,10 @@ type ListProjectToolHookEventsParams struct {
 
 // ListProjectWebhookEventsParams defines parameters for ListProjectWebhookEvents.
 type ListProjectWebhookEventsParams struct {
-	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+	Limit     *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset    *int    `form:"offset,omitempty" json:"offset,omitempty"`
+	EventType *string `form:"event_type,omitempty" json:"event_type,omitempty"`
+	Status    *string `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // TestProjectWebhookJSONBody defines parameters for TestProjectWebhook.
