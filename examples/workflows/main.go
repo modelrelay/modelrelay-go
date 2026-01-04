@@ -261,7 +261,7 @@ func run() error {
 	}
 	modelOK := os.Getenv("MODELRELAY_MODEL_OK")
 	if modelOK == "" {
-		modelOK = "claude-sonnet-4-20250514"
+		modelOK = "claude-sonnet-4-5"
 	}
 	modelBad := os.Getenv("MODELRELAY_MODEL_BAD")
 	if modelBad == "" {

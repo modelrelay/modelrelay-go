@@ -23,7 +23,7 @@ provider, _ := sdk.NewCustomerTokenProvider(sdk.CustomerTokenProviderConfig{
 
 client, _ := sdk.NewClientWithTokenProvider(provider)
 
-text, _ := client.Responses.Text(ctx, sdk.NewModelID("claude-sonnet-4-20250514"), "You are helpful.", "Hello!")
+text, _ := client.Responses.Text(ctx, sdk.NewModelID("claude-sonnet-4-5"), "You are helpful.", "Hello!")
 fmt.Println(text)
 ```
 
@@ -34,7 +34,7 @@ ctx := context.Background()
 client, _ := sdk.NewClientFromAPIKey(os.Getenv("MODELRELAY_API_KEY"))
 
 req, callOpts, _ := client.Responses.New().
-    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    Model(sdk.NewModelID("claude-sonnet-4-5")).
     System("You are helpful.").
     User("Hello!").
     Build()
@@ -53,7 +53,7 @@ client, _ := sdk.NewClientFromAPIKey(os.Getenv("MODELRELAY_API_KEY"))
 
 text, _ := client.Responses.Text(
     ctx,
-    sdk.NewModelID("claude-sonnet-4-20250514"),
+    sdk.NewModelID("claude-sonnet-4-5"),
     "You are helpful.",
     "Hello!",
 )
@@ -71,7 +71,7 @@ To stream only text deltas:
 ```go
 stream, _ := client.Responses.StreamTextDeltas(
     ctx,
-    sdk.NewModelID("claude-sonnet-4-20250514"),
+    sdk.NewModelID("claude-sonnet-4-5"),
     "You are helpful.",
     "Hello!",
 )
@@ -93,7 +93,7 @@ ctx := context.Background()
 client, _ := sdk.NewClientFromAPIKey(os.Getenv("MODELRELAY_API_KEY"))
 
 req, callOpts, _ := client.Responses.New().
-    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    Model(sdk.NewModelID("claude-sonnet-4-5")).
     System("You are helpful.").
     User("Hello!").
     Build()
@@ -119,13 +119,13 @@ Sequential LLM calls where each step's output feeds the next step's input:
 
 ```go
 summarizeReq, _, _ := (sdk.ResponseBuilder{}).
-    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    Model(sdk.NewModelID("claude-sonnet-4-5")).
     System("Summarize the input concisely.").
     User("The quick brown fox...").
     Build()
 
 translateReq, _, _ := (sdk.ResponseBuilder{}).
-    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    Model(sdk.NewModelID("claude-sonnet-4-5")).
     System("Translate the input to French.").
     User(""). // Bound from previous step
     Build()
@@ -144,9 +144,9 @@ Concurrent LLM calls with optional aggregation:
 
 ```go
 gpt4Req, _, _ := (sdk.ResponseBuilder{}).Model(sdk.NewModelID("gpt-4.1")).User("Analyze this...").Build()
-claudeReq, _, _ := (sdk.ResponseBuilder{}).Model(sdk.NewModelID("claude-sonnet-4-20250514")).User("Analyze this...").Build()
+claudeReq, _, _ := (sdk.ResponseBuilder{}).Model(sdk.NewModelID("claude-sonnet-4-5")).User("Analyze this...").Build()
 synthesizeReq, _, _ := (sdk.ResponseBuilder{}).
-    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    Model(sdk.NewModelID("claude-sonnet-4-5")).
     System("Synthesize the analyses into a unified view.").
     User(""). // Bound from join output
     Build()
@@ -166,7 +166,7 @@ Process items in parallel, then combine results:
 
 ```go
 combineReq, _, _ := (sdk.ResponseBuilder{}).
-    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    Model(sdk.NewModelID("claude-sonnet-4-5")).
     System("Combine summaries into a cohesive overview.").
     User(""). // Bound from join output
     Build()
@@ -190,7 +190,7 @@ type Person struct {
 
 ctx := context.Background()
 req, callOpts, _ := client.Responses.New().
-    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    Model(sdk.NewModelID("claude-sonnet-4-5")).
     User("Extract: John Doe is 30").
     Build()
 result, _ := sdk.Structured[Person](ctx, client.Responses, req, sdk.StructuredOptions{MaxRetries: 2}, callOpts...)
@@ -211,7 +211,7 @@ type Article struct {
 
 ctx := context.Background()
 req, callOpts, _ := client.Responses.New().
-    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+    Model(sdk.NewModelID("claude-sonnet-4-5")).
     User("Write an article about Go").
     Build()
 stream, _ := sdk.StreamStructured[Article](ctx, client.Responses, req, "", callOpts...)

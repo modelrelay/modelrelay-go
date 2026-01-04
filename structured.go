@@ -242,7 +242,7 @@ type StructuredResult[T any] struct {
 //	}
 //
 //	result, err := sdk.Structured[Person](ctx, client.Responses, client.Responses.New().
-//	    Model(sdk.NewModelID("claude-sonnet-4-20250514")).
+//	    Model(sdk.NewModelID("claude-sonnet-4-5")).
 //	    User("Extract: John, 30").
 //	    Option(sdk.WithRequestID("demo-1")).
 //	    Build(), sdk.StructuredOptions{MaxRetries: 2})
@@ -430,7 +430,7 @@ func (c *ResponsesClient) createStructuredWithRetry(
 //	stream, err := sdk.StreamStructured[Person](
 //	    ctx,
 //	    client.Responses,
-//	    client.Responses.New().Model(sdk.NewModelID("claude-sonnet-4-20250514")).User("Extract: John, 30").Build(),
+//	    client.Responses.New().Model(sdk.NewModelID("claude-sonnet-4-5")).User("Extract: John, 30").Build(),
 //	    "person",
 //	)
 func StreamStructured[T any](

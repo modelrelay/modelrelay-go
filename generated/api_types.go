@@ -352,7 +352,7 @@ type CustomerLedgerEntry struct {
 	Id                openapi_types.UUID `json:"id"`
 	InputTokens       *int64             `json:"input_tokens,omitempty"`
 
-	// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	// ModelId LLM model identifier (e.g., claude-sonnet-4-5, gpt-4o).
 	ModelId                 *ModelId            `json:"model_id,omitempty"`
 	OccurredAt              time.Time           `json:"occurred_at"`
 	OutputTokens            *int64              `json:"output_tokens,omitempty"`
@@ -649,7 +649,7 @@ type Model struct {
 	InputCostPerMillionCents uint64            `json:"input_cost_per_million_cents"`
 	MaxOutputTokens          int32             `json:"max_output_tokens"`
 
-	// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	// ModelId LLM model identifier (e.g., claude-sonnet-4-5, gpt-4o).
 	ModelId                   ModelId `json:"model_id"`
 	OutputCostPerMillionCents uint64  `json:"output_cost_per_million_cents"`
 
@@ -663,7 +663,7 @@ type Model struct {
 // ModelCapability Workflow-critical model capability identifier.
 type ModelCapability string
 
-// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+// ModelId LLM model identifier (e.g., claude-sonnet-4-5, gpt-4o).
 type ModelId = string
 
 // ModelsResponse defines model for ModelsResponse.
@@ -803,7 +803,7 @@ type ResponsesRequest struct {
 	Input           []InputItem `json:"input"`
 	MaxOutputTokens *uint32     `json:"max_output_tokens,omitempty"`
 
-	// Model LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	// Model LLM model identifier (e.g., claude-sonnet-4-5, gpt-4o).
 	Model        *ModelId      `json:"model,omitempty"`
 	OutputFormat *OutputFormat `json:"output_format,omitempty"`
 
@@ -823,7 +823,7 @@ type ResponsesResponse struct {
 	// Id Response identifier from the provider
 	Id string `json:"id"`
 
-	// Model LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	// Model LLM model identifier (e.g., claude-sonnet-4-5, gpt-4o).
 	Model  ModelId      `json:"model"`
 	Output []OutputItem `json:"output"`
 
@@ -841,7 +841,7 @@ type ResponsesResponse struct {
 type RunCostLineItemV0 struct {
 	InputTokens uint64 `json:"input_tokens"`
 
-	// Model LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	// Model LLM model identifier (e.g., claude-sonnet-4-5, gpt-4o).
 	Model        ModelId `json:"model"`
 	OutputTokens uint64  `json:"output_tokens"`
 
@@ -1143,7 +1143,7 @@ type TierModel struct {
 	// ModelDisplayName Human-friendly model name resolved from pricing (e.g., 'GPT-4o Mini')
 	ModelDisplayName string `json:"model_display_name"`
 
-	// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	// ModelId LLM model identifier (e.g., claude-sonnet-4-5, gpt-4o).
 	ModelId ModelId `json:"model_id"`
 
 	// ModelInputCostCents Provider input cost in cents per million tokens. Customer price is derived as cost * (1 + platformFeePercent/100).
@@ -1159,7 +1159,7 @@ type TierModel struct {
 type TierModelCreate struct {
 	IsDefault *bool `json:"is_default,omitempty"`
 
-	// ModelId LLM model identifier (e.g., claude-sonnet-4-20250514, gpt-4o).
+	// ModelId LLM model identifier (e.g., claude-sonnet-4-5, gpt-4o).
 	ModelId ModelId `json:"model_id"`
 }
 
