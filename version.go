@@ -133,4 +133,4 @@ package sdk
 // 1.41.0: Add admin billing invariants route constant.
 // 1.40.0: Add PAYGO wallet balance/reserved + overage indicator to customer usage summary.
 // 1.39.0: Restore TiersClient (list, get, checkout) for tier querying operations.
-const Version = "1.6.0"
+const Version = "1.44.0"
