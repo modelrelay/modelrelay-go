@@ -53,9 +53,10 @@ type CustomerToken struct {
 	ExpiresIn          int                `json:"expires_in"`
 	TokenType          TokenType          `json:"token_type"`
 	ProjectID          uuid.UUID          `json:"project_id"`
-	// CustomerID is the internal customer UUID.
-	// Optional for BYOB (external billing) projects where customers are not created.
+	// CustomerID is the internal customer UUID (identity).
 	CustomerID         *uuid.UUID         `json:"customer_id,omitempty"`
+	// BillingProfileID is set for managed billing projects (billing profile identity).
+	BillingProfileID   *uuid.UUID         `json:"billing_profile_id,omitempty"`
 	CustomerExternalID CustomerExternalID `json:"customer_external_id"`
 	// TierCode is the tier code for the customer (e.g., "free", "pro", "enterprise").
 	// Optional for BYOB (external billing) projects where customers may not have subscriptions.

@@ -67,12 +67,12 @@ func (c *SessionsClient) ensureInitialized() error {
 
 // Create creates a new session.
 //
-// Sessions are project-scoped and can optionally be associated with an end user.
+// Sessions are project-scoped and can optionally be associated with an customer.
 //
 // Example:
 //
 //	session, err := client.Sessions.Create(ctx, sdk.SessionCreateRequest{
-//	    EndUserId: &endUserID,
+//	    CustomerId: &customerID,
 //	    Metadata: map[string]any{"project": "my-app"},
 //	})
 func (c *SessionsClient) Create(ctx context.Context, req SessionCreateRequest) (Session, error) {
@@ -95,8 +95,8 @@ type ListOptions struct {
 	Offset int
 	// Cursor is the pagination cursor from a previous response's NextCursor field.
 	Cursor string
-	// EndUserID filters sessions by end user ID.
-	EndUserID *uuid.UUID
+	// CustomerID filters sessions by customer ID.
+	CustomerID *uuid.UUID
 }
 
 // List returns a paginated list of sessions.
@@ -130,8 +130,8 @@ func (c *SessionsClient) List(ctx context.Context, opts ListOptions) (SessionLis
 	if opts.Cursor != "" {
 		params.Set("cursor", opts.Cursor)
 	}
-	if opts.EndUserID != nil {
-		params.Set("end_user_id", opts.EndUserID.String())
+	if opts.CustomerID != nil {
+		params.Set("customer_id", opts.CustomerID.String())
 	}
 	if len(params) > 0 {
 		path += "?" + params.Encode()

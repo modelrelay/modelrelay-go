@@ -318,8 +318,13 @@ type Customer struct {
 
 // CustomerBalanceResponse defines model for CustomerBalanceResponse.
 type CustomerBalanceResponse struct {
-	BalanceCents  int64              `json:"balance_cents"`
-	Currency      string             `json:"currency"`
+	BalanceCents int64 `json:"balance_cents"`
+
+	// BillingProfileId Billing profile UUID for wallet/balance.
+	BillingProfileId openapi_types.UUID `json:"billing_profile_id"`
+	Currency         string             `json:"currency"`
+
+	// CustomerId Internal customer UUID (identity).
 	CustomerId    openapi_types.UUID `json:"customer_id"`
 	ReservedCents int64              `json:"reserved_cents"`
 }
@@ -470,11 +475,14 @@ type CustomerMetadata map[string]interface{}
 
 // CustomerTokenResponse defines model for CustomerTokenResponse.
 type CustomerTokenResponse struct {
+	// BillingProfileId Billing profile UUID for managed billing customers.
+	BillingProfileId *openapi_types.UUID `json:"billing_profile_id,omitempty"`
+
 	// CustomerExternalId External customer identifier
 	CustomerExternalId string `json:"customer_external_id"`
 
-	// CustomerId Internal customer UUID. Only present for managed billing projects; BYOB projects have end-users but not customers.
-	CustomerId *openapi_types.UUID `json:"customer_id,omitempty"`
+	// CustomerId Internal customer UUID (identity).
+	CustomerId openapi_types.UUID `json:"customer_id"`
 
 	// ExpiresAt Token expiration timestamp
 	ExpiresAt time.Time `json:"expires_at"`
@@ -902,8 +910,8 @@ type RunsGetResponse struct {
 
 // SessionCreateRequest Request body for creating a session.
 type SessionCreateRequest struct {
-	// EndUserId Optional end user ID to associate with the session
-	EndUserId *openapi_types.UUID `json:"end_user_id,omitempty"`
+	// CustomerId Optional customer ID to associate with the session
+	CustomerId *openapi_types.UUID `json:"customer_id,omitempty"`
 
 	// Metadata Optional metadata for the session
 	Metadata *map[string]interface{} `json:"metadata,omitempty"`
@@ -956,8 +964,8 @@ type SessionResponse struct {
 	// CreatedAt Session creation timestamp
 	CreatedAt time.Time `json:"created_at"`
 
-	// EndUserId End user associated with the session (if any)
-	EndUserId *openapi_types.UUID `json:"end_user_id,omitempty"`
+	// CustomerId Customer associated with the session (if any)
+	CustomerId *openapi_types.UUID `json:"customer_id,omitempty"`
 
 	// Id Session unique identifier
 	Id openapi_types.UUID `json:"id"`
@@ -986,8 +994,8 @@ type SessionWithMessagesResponse struct {
 	// CreatedAt Session creation timestamp
 	CreatedAt time.Time `json:"created_at"`
 
-	// EndUserId End user associated with the session (if any)
-	EndUserId *openapi_types.UUID `json:"end_user_id,omitempty"`
+	// CustomerId Customer associated with the session (if any)
+	CustomerId *openapi_types.UUID `json:"customer_id,omitempty"`
 
 	// Id Session unique identifier
 	Id openapi_types.UUID `json:"id"`
@@ -1514,8 +1522,8 @@ type ListSessionsParams struct {
 	// Offset Number of sessions to skip
 	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
 
-	// EndUserId Filter sessions by end user ID
-	EndUserId *openapi_types.UUID `form:"end_user_id,omitempty" json:"end_user_id,omitempty"`
+	// CustomerId Filter sessions by customer ID
+	CustomerId *openapi_types.UUID `form:"customer_id,omitempty" json:"customer_id,omitempty"`
 }
 
 // MintCustomerTokenJSONRequestBody defines body for MintCustomerToken for application/json ContentType.

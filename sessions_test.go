@@ -17,7 +17,7 @@ var (
 	testProjectID  = uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	testSessionID  = uuid.MustParse("55555555-5555-5555-5555-555555555555")
 	testMessageID  = uuid.MustParse("66666666-6666-6666-6666-666666666666")
-	testEndUserID  = uuid.MustParse("77777777-7777-7777-7777-777777777777")
+	testCustomerID = uuid.MustParse("77777777-7777-7777-7777-777777777777")
 	testSessionTS  = time.Date(2025, 1, 15, 12, 0, 0, 0, time.UTC)
 )
 
@@ -25,7 +25,7 @@ func testSession() generated.SessionResponse {
 	return generated.SessionResponse{
 		Id:           testSessionID,
 		ProjectId:    testProjectID,
-		EndUserId:    &testEndUserID,
+		CustomerId:   &testCustomerID,
 		MessageCount: 5,
 		CreatedAt:    testSessionTS,
 		UpdatedAt:    testSessionTS,
@@ -62,8 +62,8 @@ func TestSessionsCreate(t *testing.T) {
 
 	metadata := map[string]interface{}{"project": "test"}
 	resp, err := client.Sessions.Create(context.Background(), SessionCreateRequest{
-		EndUserId: &testEndUserID,
-		Metadata:  &metadata,
+		CustomerId: &testCustomerID,
+		Metadata:   &metadata,
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
