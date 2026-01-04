@@ -256,7 +256,7 @@ resp, _ := client.Responses.Create(ctx, req, callOpts...)
 
 ## Plugins (Workflows)
 
-Plugins are GitHub-hosted markdown agents that the Go SDK loads from GitHub, converts to `workflow.v0` via `/responses`, then executes via `/runs` with automatic client-side tool handoff.
+Plugins are GitHub-hosted markdown agents that the Go SDK loads from GitHub, converts to `workflow.v1` via `/responses`, then executes via `/runs` with automatic client-side tool handoff.
 
 Plugin manifests can be `PLUGIN.md` or `SKILL.md`, and plugin URLs can be GitHub `tree/blob/raw` URLs or `github.com/owner/repo@ref/path` canonical URLs.
 

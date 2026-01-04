@@ -70,8 +70,8 @@ package sdk
 // Enables CLI tools and frontends to link Stripe subscriptions to user identities.
 // 0.41.0: Streaming robustness + explicit stream timeout options (TTFT/Idle/Total) and typed stream errors.
 // 0.42.0: Breaking - Use typed API key auth values (publishable vs secret) (#505).
-// 0.43.0: Add workflow run helpers (/runs) with NDJSON event streaming (workflow.v0).
-// 0.45.0: Add workflow.v0 builder DSL helpers (compile to workflow.v0 DAG) (#567).
+// 0.43.0: Add workflow run helpers (/runs) with NDJSON event streaming (workflow.v1).
+// 0.45.0: Add workflow.v1 builder DSL helpers (compile to workflow.v1 DAG) (#567).
 // 0.45.1: Canonicalize workflow specs and add builder helpers.
 // 0.45.3: Add cost_summary to runs get response (/runs/{run_id}).
 // 0.46.0: Breaking - Remove monorepo module imports; add server-authoritative workflow compilation.

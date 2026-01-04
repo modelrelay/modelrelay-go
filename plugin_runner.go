@@ -37,7 +37,7 @@ type PluginRunResult struct {
 	Events      []RunEventV0                   `json:"events,omitempty"`
 }
 
-func (r *PluginRunner) Run(ctx context.Context, spec *WorkflowSpecV0, cfg PluginRunConfig) (*PluginRunResult, error) {
+func (r *PluginRunner) Run(ctx context.Context, spec *WorkflowSpecV1, cfg PluginRunConfig) (*PluginRunResult, error) {
 	if r == nil || r.client == nil {
 		return nil, errors.New("plugin runner: client required")
 	}

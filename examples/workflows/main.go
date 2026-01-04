@@ -117,14 +117,14 @@ func bootstrapSecretKey(ctx context.Context, apiBaseURL string) (string, error) 
 	return created.APIKey.SecretKey, nil
 }
 
-func multiAgentSpec(modelA, modelB, modelC, modelAgg string, runTimeoutMS int64) (sdk.WorkflowSpecV0, error) {
+func multiAgentSpec(modelA, modelB, modelC, modelAgg string, runTimeoutMS int64) (sdk.WorkflowSpecV1, error) {
 	maxPar := int64(3)
 	nodeTimeout := int64(20_000)
 	if runTimeoutMS == 0 {
 		runTimeoutMS = 30_000
 	}
 
-	exec := sdk.WorkflowExecutionV0{
+	exec := sdk.WorkflowExecutionV1{
 		MaxParallelism: &maxPar,
 		NodeTimeoutMS:  &nodeTimeout,
 		RunTimeoutMS:   &runTimeoutMS,
@@ -137,7 +137,7 @@ func multiAgentSpec(modelA, modelB, modelC, modelAgg string, runTimeoutMS int64)
 		User("Write 3 ideas for a landing page.").
 		Build()
 	if err != nil {
-		return sdk.WorkflowSpecV0{}, err
+		return sdk.WorkflowSpecV1{}, err
 	}
 	reqB, _, err := (sdk.ResponseBuilder{}).
 		Model(sdk.NewModelID(modelB)).
@@ -146,7 +146,7 @@ func multiAgentSpec(modelA, modelB, modelC, modelAgg string, runTimeoutMS int64)
 		User("Write 3 objections a user might have.").
 		Build()
 	if err != nil {
-		return sdk.WorkflowSpecV0{}, err
+		return sdk.WorkflowSpecV1{}, err
 	}
 	reqC, _, err := (sdk.ResponseBuilder{}).
 		Model(sdk.NewModelID(modelC)).
@@ -155,7 +155,7 @@ func multiAgentSpec(modelA, modelB, modelC, modelAgg string, runTimeoutMS int64)
 		User("Write 3 alternative headlines.").
 		Build()
 	if err != nil {
-		return sdk.WorkflowSpecV0{}, err
+		return sdk.WorkflowSpecV1{}, err
 	}
 	reqAgg, _, err := (sdk.ResponseBuilder{}).
 		Model(sdk.NewModelID(modelAgg)).
@@ -164,35 +164,35 @@ func multiAgentSpec(modelA, modelB, modelC, modelAgg string, runTimeoutMS int64)
 		User(""). // overwritten by bindings
 		Build()
 	if err != nil {
-		return sdk.WorkflowSpecV0{}, err
+		return sdk.WorkflowSpecV1{}, err
 	}
 
-	b := sdk.WorkflowV0().
-		Name("multi_agent_v0_example").
+	b := sdk.WorkflowV1().
+		Name("multi_agent_v1_example").
 		Execution(exec)
 
 	b, err = b.LLMResponsesNode("agent_a", reqA, sdk.BoolPtr(false))
 	if err != nil {
-		return sdk.WorkflowSpecV0{}, err
+		return sdk.WorkflowSpecV1{}, err
 	}
 	b, err = b.LLMResponsesNode("agent_b", reqB, nil)
 	if err != nil {
-		return sdk.WorkflowSpecV0{}, err
+		return sdk.WorkflowSpecV1{}, err
 	}
 	b, err = b.LLMResponsesNode("agent_c", reqC, nil)
 	if err != nil {
-		return sdk.WorkflowSpecV0{}, err
+		return sdk.WorkflowSpecV1{}, err
 	}
 	b = b.JoinAllNode("join")
-	b, err = b.LLMResponsesNodeWithBindings("aggregate", reqAgg, nil, []sdk.LLMResponsesBindingV0{
+	b, err = b.LLMResponsesNodeWithBindings("aggregate", reqAgg, nil, []sdk.LLMResponsesBindingV1{
 		{
 			From:     "join",
 			To:       sdk.JSONPointer("/input/1/content/0/text"),
-			Encoding: sdk.LLMResponsesBindingEncodingJSONString,
+			Encoding: sdk.LLMResponsesBindingEncodingJSONStringV1,
 		},
 	})
 	if err != nil {
-		return sdk.WorkflowSpecV0{}, err
+		return sdk.WorkflowSpecV1{}, err
 	}
 
 	b = b.
@@ -205,9 +205,9 @@ func multiAgentSpec(modelA, modelB, modelC, modelAgg string, runTimeoutMS int64)
 	return b.Build()
 }
 
-func runOnce(ctx context.Context, client *sdk.Client, label string, spec sdk.WorkflowSpecV0) error {
+func runOnce(ctx context.Context, client *sdk.Client, label string, spec sdk.WorkflowSpecV1) error {
 	raw, _ := json.MarshalIndent(spec, "", "  ")
-	log.Printf("[%s] compiled workflow.v0: %s", label, string(raw))
+	log.Printf("[%s] compiled workflow.v1: %s", label, string(raw))
 
 	created, err := client.Runs.Create(ctx, spec)
 	if err != nil {

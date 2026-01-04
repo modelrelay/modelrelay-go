@@ -11,10 +11,9 @@ import (
 // External users should prefer importing the workflow package directly:
 //
 //	import "github.com/modelrelay/modelrelay/sdk/go/workflow"
-//	spec := workflow.SpecV0{...}
+//	spec := workflow.SpecV1{...}
 type (
 	WorkflowKind                  = workflow.Kind
-	WorkflowNodeType              = workflow.NodeType
 	WorkflowNodeTypeV1            = workflow.NodeTypeV1
 	NodeID                        = workflow.NodeID
 	OutputName                    = workflow.OutputName
@@ -22,11 +21,6 @@ type (
 	JSONPath                      = workflow.JSONPath
 	PlaceholderName               = workflow.PlaceholderName
 	InputName                     = workflow.InputName
-	WorkflowExecutionV0           = workflow.ExecutionV0
-	WorkflowNodeV0                = workflow.NodeV0
-	WorkflowEdgeV0                = workflow.EdgeV0
-	WorkflowOutputRefV0           = workflow.OutputRefV0
-	WorkflowSpecV0                = workflow.SpecV0
 	WorkflowExecutionV1           = workflow.ExecutionV1
 	WorkflowNodeV1                = workflow.NodeV1
 	WorkflowEdgeV1                = workflow.EdgeV1
@@ -37,11 +31,6 @@ type (
 	ConditionSourceV1             = workflow.ConditionSourceV1
 	ConditionOpV1                 = workflow.ConditionOpV1
 	ConditionV1                   = workflow.ConditionV1
-	ToolExecutionModeV0           = workflow.ToolExecutionModeV0
-	ToolExecutionV0               = workflow.ToolExecutionV0
-	LLMResponsesToolLimitsV0      = workflow.LLMResponsesToolLimitsV0
-	LLMResponsesBindingEncodingV0 = workflow.LLMResponsesBindingEncodingV0
-	LLMResponsesBindingV0         = workflow.LLMResponsesBindingV0
 	ToolExecutionModeV1           = workflow.ToolExecutionModeV1
 	ToolExecutionV1               = workflow.ToolExecutionV1
 	LLMResponsesToolLimitsV1      = workflow.LLMResponsesToolLimitsV1
@@ -78,11 +67,7 @@ type (
 
 // Re-export workflow constants.
 const (
-	WorkflowKindV0                          = workflow.KindV0
 	WorkflowKindV1                          = workflow.KindV1
-	WorkflowNodeTypeLLMResponses            = workflow.NodeTypeLLMResponses
-	WorkflowNodeTypeJoinAll                 = workflow.NodeTypeJoinAll
-	WorkflowNodeTypeTransformJSON           = workflow.NodeTypeTransformJSON
 	WorkflowNodeTypeV1LLMResponses          = workflow.NodeTypeV1LLMResponses
 	WorkflowNodeTypeV1RouteSwitch           = workflow.NodeTypeV1RouteSwitch
 	WorkflowNodeTypeV1JoinAll               = workflow.NodeTypeV1JoinAll
@@ -95,15 +80,13 @@ const (
 	ConditionOpEquals                       = workflow.ConditionOpEquals
 	ConditionOpMatches                      = workflow.ConditionOpMatches
 	ConditionOpExists                       = workflow.ConditionOpExists
-	ToolExecutionModeServer                 = workflow.ToolExecutionModeServer
-	ToolExecutionModeClient                 = workflow.ToolExecutionModeClient
 	ToolExecutionModeServerV1               = workflow.ToolExecutionModeServerV1
 	ToolExecutionModeClientV1               = workflow.ToolExecutionModeClientV1
-	LLMResponsesBindingEncodingJSON         = workflow.LLMResponsesBindingEncodingJSON
-	LLMResponsesBindingEncodingJSONString   = workflow.LLMResponsesBindingEncodingJSONString
 	LLMResponsesBindingEncodingJSONV1       = workflow.LLMResponsesBindingEncodingJSONV1
 	LLMResponsesBindingEncodingJSONStringV1 = workflow.LLMResponsesBindingEncodingJSONStringV1
 	LLMTextOutputPointer                    = workflow.LLMTextOutputPointer
+	LLMUserMessageTextPointer               = workflow.LLMUserMessageTextPointer
+	LLMUserMessageTextPointerIndex1         = workflow.LLMUserMessageTextPointerIndex1
 	RunEventEnvelopeVersionV0               = workflow.EventEnvelopeVersionV0
 	ArtifactKeyNodeOutputV0                 = workflow.ArtifactKeyNodeOutputV0
 	ArtifactKeyRunOutputsV0                 = workflow.ArtifactKeyRunOutputsV0

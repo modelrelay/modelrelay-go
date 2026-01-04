@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func applyWorkflowModelOverride(spec *WorkflowSpecV0, model ModelID) error {
+func applyWorkflowModelOverride(spec *WorkflowSpecV1, model ModelID) error {
 	if spec == nil {
 		return errors.New("workflow spec required")
 	}
@@ -14,10 +14,10 @@ func applyWorkflowModelOverride(spec *WorkflowSpecV0, model ModelID) error {
 		return nil
 	}
 	for i := range spec.Nodes {
-		if spec.Nodes[i].Type != WorkflowNodeTypeLLMResponses {
+		if spec.Nodes[i].Type != WorkflowNodeTypeV1LLMResponses {
 			continue
 		}
-		var input llmResponsesNodeInputV0
+		var input llmResponsesNodeInputV1
 		if err := json.Unmarshal(spec.Nodes[i].Input, &input); err != nil {
 			return fmt.Errorf("node %q: invalid input JSON: %w", spec.Nodes[i].ID, err)
 		}

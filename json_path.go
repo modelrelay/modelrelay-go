@@ -4,6 +4,12 @@ import (
 	"fmt"
 )
 
+// Pre-built string constants for common operations.
+const (
+	LLMTextOutput      JSONPointer = LLMTextOutputPointer
+	LLMUserMessageText JSONPointer = LLMUserMessageTextPointerIndex1
+)
+
 // JSONPath provides type-safe JSON pointer construction.
 // Use these builders instead of raw strings to get compile-time safety
 // and IDE autocomplete for common LLM request/response paths.

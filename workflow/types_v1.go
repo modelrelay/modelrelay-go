@@ -5,10 +5,6 @@ import (
 	"strings"
 )
 
-const (
-	KindV1 Kind = "workflow.v1"
-)
-
 type NodeTypeV1 string
 
 const (

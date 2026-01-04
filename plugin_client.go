@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// PluginsClient loads plugins from GitHub, converts them to workflow.v0, and executes via /runs.
+// PluginsClient loads plugins from GitHub, converts them to workflow.v1, and executes via /runs.
 type PluginsClient struct {
 	client    *Client
 	loader    *PluginLoader

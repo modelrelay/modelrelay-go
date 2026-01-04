@@ -168,7 +168,7 @@ type NodeLLMCallV0 struct {
 // NodeResultV0 contains the result of a node execution.
 type NodeResultV0 struct {
 	ID        NodeID       `json:"id"`
-	Type      NodeType     `json:"type"`
+	Type      NodeTypeV1   `json:"type"`
 	Status    NodeStatusV0 `json:"status"`
 	StartedAt time.Time    `json:"started_at,omitempty"`
 	EndedAt   time.Time    `json:"ended_at,omitempty"`

@@ -308,29 +308,6 @@ type RunsClient struct {
 	client *Client
 }
 
-// SchemaV0 fetches the canonical workflow.v0 JSON Schema from the API.
-func (c *RunsClient) SchemaV0(ctx context.Context) (json.RawMessage, error) {
-	req, err := c.client.newJSONRequest(ctx, http.MethodGet, routes.WorkflowV0Schema, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Accept", "application/schema+json")
-	resp, _, err := c.client.send(req, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	//nolint:errcheck // best-effort cleanup on return
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode >= 400 {
-		return nil, decodeAPIError(resp, nil)
-	}
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return json.RawMessage(b), nil
-}
-
 // RunEventSchemaV0 fetches the canonical run event envelope v0 JSON Schema from the API.
 func (c *RunsClient) RunEventSchemaV0(ctx context.Context) (json.RawMessage, error) {
 	req, err := c.client.newJSONRequest(ctx, http.MethodGet, routes.RunEventV0Schema, nil)
@@ -352,11 +329,6 @@ func (c *RunsClient) RunEventSchemaV0(ctx context.Context) (json.RawMessage, err
 		return nil, err
 	}
 	return json.RawMessage(b), nil
-}
-
-type runsCreateRequest struct {
-	Spec      WorkflowSpecV0 `json:"spec"`
-	SessionID *uuid.UUID     `json:"session_id,omitempty"`
 }
 
 type runsCreateRequestV1 struct {
@@ -523,10 +495,10 @@ func (c *RunsClient) ListEvents(ctx context.Context, runID RunID, opts ...RunEve
 }
 
 // Create starts a workflow run and returns its run id.
-func (c *RunsClient) Create(ctx context.Context, spec WorkflowSpecV0, opts ...RunCreateOption) (*RunsCreateResponse, error) {
+func (c *RunsClient) Create(ctx context.Context, spec WorkflowSpecV1, opts ...RunCreateOption) (*RunsCreateResponse, error) {
 	options := buildRunCreateOptions(opts)
 
-	payload := runsCreateRequest{Spec: spec}
+	payload := runsCreateRequestV1{Spec: spec}
 	if options.sessionID != nil {
 		if *options.sessionID == uuid.Nil {
 			return nil, ConfigError{Reason: "session id is required"}

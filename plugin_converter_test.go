@@ -28,14 +28,14 @@ func TestPluginConverter_ToWorkflow_AssignsToolModes(t *testing.T) {
 			return
 		}
 
-		spec := WorkflowSpecV0{
-			Kind: WorkflowKindV0,
+		spec := WorkflowSpecV1{
+			Kind: WorkflowKindV1,
 			Name: "converted",
-			Nodes: []WorkflowNodeV0{
+			Nodes: []WorkflowNodeV1{
 				{
 					ID:   "fs_tools",
-					Type: WorkflowNodeTypeLLMResponses,
-					Input: mustJSON(llmResponsesNodeInputV0{
+					Type: WorkflowNodeTypeV1LLMResponses,
+					Input: mustJSON(llmResponsesNodeInputV1{
 						Request: responseRequestPayload{
 							Model: "x",
 							Input: []llm.InputItem{llm.NewSystemText("x"), llm.NewUserText("x")},
@@ -47,8 +47,8 @@ func TestPluginConverter_ToWorkflow_AssignsToolModes(t *testing.T) {
 				},
 				{
 					ID:   "bash_tools",
-					Type: WorkflowNodeTypeLLMResponses,
-					Input: mustJSON(llmResponsesNodeInputV0{
+					Type: WorkflowNodeTypeV1LLMResponses,
+					Input: mustJSON(llmResponsesNodeInputV1{
 						Request: responseRequestPayload{
 							Model: "x",
 							Input: []llm.InputItem{llm.NewSystemText("x"), llm.NewUserText("x")},
@@ -59,8 +59,8 @@ func TestPluginConverter_ToWorkflow_AssignsToolModes(t *testing.T) {
 					}),
 				},
 			},
-			Edges:   []WorkflowEdgeV0{{From: "fs_tools", To: "bash_tools"}},
-			Outputs: []WorkflowOutputRefV0{{Name: "result", From: "bash_tools"}},
+			Edges:   []WorkflowEdgeV1{{From: "fs_tools", To: "bash_tools"}},
+			Outputs: []WorkflowOutputRefV1{{Name: "result", From: "bash_tools"}},
 		}
 
 		rawSpec, _ := json.Marshal(spec)
@@ -99,21 +99,21 @@ func TestPluginConverter_ToWorkflow_AssignsToolModes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ToWorkflow() error: %v", err)
 	}
-	if out == nil || out.Kind != WorkflowKindV0 {
+	if out == nil || out.Kind != WorkflowKindV1 {
 		t.Fatalf("unexpected spec: %#v", out)
 	}
 
 	if strings.TrimSpace(gotReq.Model) != "claude-3-5-haiku-latest" {
 		t.Fatalf("unexpected converter model: %q", gotReq.Model)
 	}
-	if gotReq.OutputFormat == nil || gotReq.OutputFormat.Type != llm.OutputFormatTypeJSONSchema || gotReq.OutputFormat.JSONSchema == nil || gotReq.OutputFormat.JSONSchema.Name != "workflow_v0" {
+	if gotReq.OutputFormat == nil || gotReq.OutputFormat.Type != llm.OutputFormatTypeJSONSchema || gotReq.OutputFormat.JSONSchema == nil || gotReq.OutputFormat.JSONSchema.Name != "workflow_v1" {
 		t.Fatalf("expected json_schema output format, got: %#v", gotReq.OutputFormat)
 	}
 	if len(gotReq.Input) < 2 || gotReq.Input[0].Role != llm.RoleSystem || gotReq.Input[1].Role != llm.RoleUser {
 		t.Fatalf("unexpected request input: %#v", gotReq.Input)
 	}
 	sys := gotReq.Input[0].Content[0].Text
-	if !strings.Contains(sys, "workflow.v0") {
+	if !strings.Contains(sys, "workflow.v1") {
 		t.Fatalf("expected system prompt, got: %q", gotReq.Input[0].Content[0].Text)
 	}
 	if !strings.Contains(sys, "tools.v0") || !strings.Contains(sys, "docs/reference/tools-v0.md") {
@@ -128,18 +128,18 @@ func TestPluginConverter_ToWorkflow_AssignsToolModes(t *testing.T) {
 		t.Fatalf("expected system prompt to forbid ad-hoc tool names, got: %q", sys)
 	}
 
-	var n0 llmResponsesNodeInputV0
+	var n0 llmResponsesNodeInputV1
 	if err := json.Unmarshal(out.Nodes[0].Input, &n0); err != nil {
 		t.Fatalf("unmarshal node input: %v", err)
 	}
-	if n0.ToolExecution == nil || n0.ToolExecution.Mode != ToolExecutionModeClient {
+	if n0.ToolExecution == nil || n0.ToolExecution.Mode != ToolExecutionModeClientV1 {
 		t.Fatalf("expected client mode, got: %#v", n0.ToolExecution)
 	}
-	var n1 llmResponsesNodeInputV0
+	var n1 llmResponsesNodeInputV1
 	if err := json.Unmarshal(out.Nodes[1].Input, &n1); err != nil {
 		t.Fatalf("unmarshal node input: %v", err)
 	}
-	if n1.ToolExecution == nil || n1.ToolExecution.Mode != ToolExecutionModeClient {
+	if n1.ToolExecution == nil || n1.ToolExecution.Mode != ToolExecutionModeClientV1 {
 		t.Fatalf("expected client mode, got: %#v", n1.ToolExecution)
 	}
 }
@@ -153,13 +153,13 @@ func TestPluginConverter_ToWorkflow_AllowsMixingFSAndBashTools(t *testing.T) {
 			return
 		}
 
-		spec := WorkflowSpecV0{
-			Kind: WorkflowKindV0,
-			Nodes: []WorkflowNodeV0{
+		spec := WorkflowSpecV1{
+			Kind: WorkflowKindV1,
+			Nodes: []WorkflowNodeV1{
 				{
 					ID:   "mixed",
-					Type: WorkflowNodeTypeLLMResponses,
-					Input: mustJSON(llmResponsesNodeInputV0{
+					Type: WorkflowNodeTypeV1LLMResponses,
+					Input: mustJSON(llmResponsesNodeInputV1{
 						Request: responseRequestPayload{
 							Model: "x",
 							Input: []llm.InputItem{llm.NewSystemText("x"), llm.NewUserText("x")},
@@ -171,7 +171,7 @@ func TestPluginConverter_ToWorkflow_AllowsMixingFSAndBashTools(t *testing.T) {
 					}),
 				},
 			},
-			Outputs: []WorkflowOutputRefV0{{Name: "result", From: "mixed"}},
+			Outputs: []WorkflowOutputRefV1{{Name: "result", From: "mixed"}},
 		}
 		rawSpec, _ := json.Marshal(spec)
 		w.Header().Set("Content-Type", "application/json")
@@ -209,11 +209,11 @@ func TestPluginConverter_ToWorkflow_AllowsMixingFSAndBashTools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ToWorkflow() error: %v", err)
 	}
-	var n0 llmResponsesNodeInputV0
+	var n0 llmResponsesNodeInputV1
 	if err := json.Unmarshal(out.Nodes[0].Input, &n0); err != nil {
 		t.Fatalf("unmarshal node input: %v", err)
 	}
-	if n0.ToolExecution == nil || n0.ToolExecution.Mode != ToolExecutionModeClient {
+	if n0.ToolExecution == nil || n0.ToolExecution.Mode != ToolExecutionModeClientV1 {
 		t.Fatalf("expected client mode, got: %#v", n0.ToolExecution)
 	}
 }
@@ -227,13 +227,13 @@ func TestPluginConverter_ToWorkflow_RejectsUnknownToolName(t *testing.T) {
 			return
 		}
 
-		spec := WorkflowSpecV0{
-			Kind: WorkflowKindV0,
-			Nodes: []WorkflowNodeV0{
+		spec := WorkflowSpecV1{
+			Kind: WorkflowKindV1,
+			Nodes: []WorkflowNodeV1{
 				{
 					ID:   "bad_tool",
-					Type: WorkflowNodeTypeLLMResponses,
-					Input: mustJSON(llmResponsesNodeInputV0{
+					Type: WorkflowNodeTypeV1LLMResponses,
+					Input: mustJSON(llmResponsesNodeInputV1{
 						Request: responseRequestPayload{
 							Model: "x",
 							Input: []llm.InputItem{llm.NewSystemText("x"), llm.NewUserText("x")},
@@ -244,7 +244,7 @@ func TestPluginConverter_ToWorkflow_RejectsUnknownToolName(t *testing.T) {
 					}),
 				},
 			},
-			Outputs: []WorkflowOutputRefV0{{Name: "result", From: "bad_tool"}},
+			Outputs: []WorkflowOutputRefV1{{Name: "result", From: "bad_tool"}},
 		}
 		rawSpec, _ := json.Marshal(spec)
 		w.Header().Set("Content-Type", "application/json")
@@ -296,13 +296,13 @@ func TestPluginConverter_ToWorkflow_RejectsNonFunctionTools(t *testing.T) {
 			return
 		}
 
-		spec := WorkflowSpecV0{
-			Kind: WorkflowKindV0,
-			Nodes: []WorkflowNodeV0{
+		spec := WorkflowSpecV1{
+			Kind: WorkflowKindV1,
+			Nodes: []WorkflowNodeV1{
 				{
 					ID:   "bad_type",
-					Type: WorkflowNodeTypeLLMResponses,
-					Input: mustJSON(llmResponsesNodeInputV0{
+					Type: WorkflowNodeTypeV1LLMResponses,
+					Input: mustJSON(llmResponsesNodeInputV1{
 						Request: responseRequestPayload{
 							Model: "x",
 							Input: []llm.InputItem{llm.NewSystemText("x"), llm.NewUserText("x")},
@@ -313,7 +313,7 @@ func TestPluginConverter_ToWorkflow_RejectsNonFunctionTools(t *testing.T) {
 					}),
 				},
 			},
-			Outputs: []WorkflowOutputRefV0{{Name: "result", From: "bad_type"}},
+			Outputs: []WorkflowOutputRefV1{{Name: "result", From: "bad_type"}},
 		}
 		rawSpec, _ := json.Marshal(spec)
 		w.Header().Set("Content-Type", "application/json")
