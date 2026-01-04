@@ -92,3 +92,77 @@ func (a *AuthClient) CustomerToken(ctx context.Context, req CustomerTokenRequest
 	}
 	return payload, nil
 }
+
+// GetOrCreateCustomerTokenRequest is used to get or create a customer and mint a token.
+// This upserts the customer (creating if needed) then mints a bearer token.
+type GetOrCreateCustomerTokenRequest struct {
+	// ExternalID is your external customer identifier (required).
+	ExternalID CustomerExternalID `json:"external_id"`
+	// Email is the customer's email address (required for customer creation).
+	Email string `json:"email"`
+	// Metadata is optional customer metadata.
+	Metadata CustomerMetadata `json:"metadata,omitempty"`
+	// TTLSeconds is the optional token TTL in seconds (default: 7 days, max: 30 days).
+	TTLSeconds int64 `json:"ttl_seconds,omitempty"`
+}
+
+// Validate checks that required fields are present.
+func (r GetOrCreateCustomerTokenRequest) Validate() error {
+	if r.ExternalID.IsEmpty() {
+		return fmt.Errorf("external_id is required")
+	}
+	if r.Email == "" {
+		return fmt.Errorf("email is required")
+	}
+	if r.TTLSeconds < 0 {
+		return fmt.Errorf("ttl_seconds must be non-negative")
+	}
+	return nil
+}
+
+// GetOrCreateCustomerToken upserts a customer and mints a bearer token.
+//
+// This is a convenience method that:
+//  1. Upserts the customer (creates if not exists)
+//  2. Mints a customer-scoped bearer token
+//
+// Use this when you want to ensure the customer exists before minting a token,
+// without needing to handle 404 errors from CustomerToken().
+//
+// Requires a secret key.
+func (a *AuthClient) GetOrCreateCustomerToken(ctx context.Context, req GetOrCreateCustomerTokenRequest) (CustomerToken, error) {
+	if a == nil || a.client == nil {
+		return CustomerToken{}, fmt.Errorf("sdk: auth client not initialized")
+	}
+	if err := req.Validate(); err != nil {
+		return CustomerToken{}, fmt.Errorf("sdk: %w", err)
+	}
+
+	// Step 1: Upsert the customer (PUT /customers)
+	upsertPayload := struct {
+		ExternalID CustomerExternalID `json:"external_id"`
+		Email      string             `json:"email"`
+		Metadata   CustomerMetadata   `json:"metadata,omitempty"`
+	}{
+		ExternalID: req.ExternalID,
+		Email:      req.Email,
+		Metadata:   req.Metadata,
+	}
+
+	httpReq, err := a.client.newJSONRequest(ctx, http.MethodPut, routes.Customers, upsertPayload)
+	if err != nil {
+		return CustomerToken{}, err
+	}
+	resp, _, err := a.client.send(httpReq, nil, nil)
+	if err != nil {
+		return CustomerToken{}, err
+	}
+	//nolint:errcheck // best-effort cleanup
+	_ = resp.Body.Close()
+
+	// Step 2: Mint the customer token
+	return a.CustomerToken(ctx, CustomerTokenRequest{
+		CustomerExternalID: req.ExternalID,
+		TTLSeconds:         req.TTLSeconds,
+	})
+}
