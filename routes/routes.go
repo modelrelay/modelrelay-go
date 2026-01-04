@@ -8,9 +8,6 @@ const (
 	// AuthMe returns the current authenticated user's profile.
 	AuthMe = "/auth/me"
 
-	// AuthOIDCExchange exchanges a verified OIDC id_token for a short-lived customer-scoped bearer token.
-	AuthOIDCExchange = "/auth/oidc/exchange"
-
 	// AuthCustomerToken mints a customer-scoped bearer token (requires secret key).
 	AuthCustomerToken = "/auth/customer-token" // #nosec G101 -- route path, not a credential
 
@@ -31,9 +28,6 @@ const (
 
 	// MetricsModels returns model usage metrics.
 	MetricsModels = "/metrics/models"
-
-	// CustomersClaim claims a customer by email, setting their external_id.
-	CustomersClaim = "/customers/claim"
 
 	// Customers lists or creates customers in a project.
 	Customers = "/customers"

@@ -104,12 +104,6 @@ const (
 	Year  PriceInterval = "year"
 )
 
-// Defines values for ProjectCustomerOauthProviders.
-const (
-	ProjectCustomerOauthProvidersGithub ProjectCustomerOauthProviders = "github"
-	ProjectCustomerOauthProvidersGoogle ProjectCustomerOauthProviders = "google"
-)
-
 // Defines values for ProviderId.
 const (
 	Anthropic      ProviderId = "anthropic"
@@ -253,26 +247,6 @@ const (
 	Delivered WebhookTestResultStatus = "delivered"
 	Failed    WebhookTestResultStatus = "failed"
 )
-
-// Defines values for ClaimCustomerJSONBodyProvider.
-const (
-	ClaimCustomerJSONBodyProviderGithub ClaimCustomerJSONBodyProvider = "github"
-	ClaimCustomerJSONBodyProviderGoogle ClaimCustomerJSONBodyProvider = "google"
-	ClaimCustomerJSONBodyProviderOidc   ClaimCustomerJSONBodyProvider = "oidc"
-)
-
-// Defines values for UpdateProjectJSONBodyCustomerOauthProviders.
-const (
-	Github UpdateProjectJSONBodyCustomerOauthProviders = "github"
-	Google UpdateProjectJSONBodyCustomerOauthProviders = "google"
-)
-
-// APIError defines model for APIError.
-type APIError struct {
-	Code    string `json:"code"`
-	Error   string `json:"error"`
-	Message string `json:"message"`
-}
 
 // AuthResponse defines model for AuthResponse.
 type AuthResponse struct {
@@ -770,25 +744,15 @@ type PriceInterval string
 // Project defines model for Project.
 type Project struct {
 	// BillingMode Billing mode for a project. 'managed' uses ModelRelay billing with tiers and subscriptions. 'byob' (Bring Your Own Billing) allows external billing.
-	BillingMode                 *BillingMode                     `json:"billing_mode,omitempty"`
-	CreatedAt                   *time.Time                       `json:"created_at,omitempty"`
-	CustomerAutoProvisionTierId *openapi_types.UUID              `json:"customer_auto_provision_tier_id,omitempty"`
-	CustomerOauthProviders      *[]ProjectCustomerOauthProviders `json:"customer_oauth_providers,omitempty"`
-	Description                 *string                          `json:"description,omitempty"`
-	Id                          *openapi_types.UUID              `json:"id,omitempty"`
-	MarkupPercentage            *float32                         `json:"markup_percentage,omitempty"`
-	Name                        *string                          `json:"name,omitempty"`
-	OidcAudiences               *[]string                        `json:"oidc_audiences,omitempty"`
-	OidcEnabled                 *bool                            `json:"oidc_enabled,omitempty"`
-	OidcIssuer                  *string                          `json:"oidc_issuer,omitempty"`
-	OidcJwksUrl                 *string                          `json:"oidc_jwks_url,omitempty"`
-	OidcSubjectClaim            *string                          `json:"oidc_subject_claim,omitempty"`
-	OwnerId                     *openapi_types.UUID              `json:"owner_id,omitempty"`
-	UpdatedAt                   *time.Time                       `json:"updated_at,omitempty"`
+	BillingMode      *BillingMode        `json:"billing_mode,omitempty"`
+	CreatedAt        *time.Time          `json:"created_at,omitempty"`
+	Description      *string             `json:"description,omitempty"`
+	Id               *openapi_types.UUID `json:"id,omitempty"`
+	MarkupPercentage *float32            `json:"markup_percentage,omitempty"`
+	Name             *string             `json:"name,omitempty"`
+	OwnerId          *openapi_types.UUID `json:"owner_id,omitempty"`
+	UpdatedAt        *time.Time          `json:"updated_at,omitempty"`
 }
-
-// ProjectCustomerOauthProviders defines model for Project.CustomerOauthProviders.
-type ProjectCustomerOauthProviders string
 
 // ProviderId LLM provider identifier.
 type ProviderId string
@@ -1455,15 +1419,6 @@ type LogoutJSONBody struct {
 	RefreshToken *string `json:"refresh_token,omitempty"`
 }
 
-// ExchangeOidcTokenJSONBody defines parameters for ExchangeOidcToken.
-type ExchangeOidcTokenJSONBody struct {
-	// IdToken OIDC id_token JWT to verify and exchange
-	IdToken string `json:"id_token"`
-
-	// ProjectId Optional; must match the API key's project_id if provided
-	ProjectId *openapi_types.UUID `json:"project_id,omitempty"`
-}
-
 // RefreshTokenJSONBody defines parameters for RefreshToken.
 type RefreshTokenJSONBody struct {
 	RefreshToken *string `json:"refresh_token,omitempty"`
@@ -1476,20 +1431,6 @@ type RegisterOwnerJSONBody struct {
 	Email           *openapi_types.Email `json:"email,omitempty"`
 	Password        *string              `json:"password,omitempty"`
 }
-
-// ClaimCustomerJSONBody defines parameters for ClaimCustomer.
-type ClaimCustomerJSONBody struct {
-	Email openapi_types.Email `json:"email"`
-
-	// Provider Identity provider (must match project's enabled providers)
-	Provider ClaimCustomerJSONBodyProvider `json:"provider"`
-
-	// Subject OAuth/OIDC subject claim from the identity provider
-	Subject string `json:"subject"`
-}
-
-// ClaimCustomerJSONBodyProvider defines parameters for ClaimCustomer.
-type ClaimCustomerJSONBodyProvider string
 
 // GetCustomerMeBalanceHistoryParams defines parameters for GetCustomerMeBalanceHistory.
 type GetCustomerMeBalanceHistoryParams struct {
@@ -1529,21 +1470,11 @@ type CreateProjectJSONBody struct {
 // UpdateProjectJSONBody defines parameters for UpdateProject.
 type UpdateProjectJSONBody struct {
 	// BillingMode Billing mode for a project. 'managed' uses ModelRelay billing with tiers and subscriptions. 'byob' (Bring Your Own Billing) allows external billing.
-	BillingMode                 *BillingMode                                   `json:"billing_mode,omitempty"`
-	CustomerAutoProvisionTierId *openapi_types.UUID                            `json:"customer_auto_provision_tier_id,omitempty"`
-	CustomerOauthProviders      *[]UpdateProjectJSONBodyCustomerOauthProviders `json:"customer_oauth_providers,omitempty"`
-	Description                 *string                                        `json:"description,omitempty"`
-	MarkupPercentage            *float32                                       `json:"markup_percentage,omitempty"`
-	Name                        *string                                        `json:"name,omitempty"`
-	OidcAudiences               *[]string                                      `json:"oidc_audiences,omitempty"`
-	OidcEnabled                 *bool                                          `json:"oidc_enabled,omitempty"`
-	OidcIssuer                  *string                                        `json:"oidc_issuer,omitempty"`
-	OidcJwksUrl                 *string                                        `json:"oidc_jwks_url,omitempty"`
-	OidcSubjectClaim            *string                                        `json:"oidc_subject_claim,omitempty"`
+	BillingMode      *BillingMode `json:"billing_mode,omitempty"`
+	Description      *string      `json:"description,omitempty"`
+	MarkupPercentage *float32     `json:"markup_percentage,omitempty"`
+	Name             *string      `json:"name,omitempty"`
 }
-
-// UpdateProjectJSONBodyCustomerOauthProviders defines parameters for UpdateProject.
-type UpdateProjectJSONBodyCustomerOauthProviders string
 
 // ListProjectToolHookEventsParams defines parameters for ListProjectToolHookEvents.
 type ListProjectToolHookEventsParams struct {
@@ -1596,9 +1527,6 @@ type LoginJSONRequestBody LoginJSONBody
 // LogoutJSONRequestBody defines body for Logout for application/json ContentType.
 type LogoutJSONRequestBody LogoutJSONBody
 
-// ExchangeOidcTokenJSONRequestBody defines body for ExchangeOidcToken for application/json ContentType.
-type ExchangeOidcTokenJSONRequestBody ExchangeOidcTokenJSONBody
-
 // RefreshTokenJSONRequestBody defines body for RefreshToken for application/json ContentType.
 type RefreshTokenJSONRequestBody RefreshTokenJSONBody
 
@@ -1610,9 +1538,6 @@ type CreateProjectCustomerJSONRequestBody = CustomerCreate
 
 // UpsertCustomerJSONRequestBody defines body for UpsertCustomer for application/json ContentType.
 type UpsertCustomerJSONRequestBody = CustomerCreate
-
-// ClaimCustomerJSONRequestBody defines body for ClaimCustomer for application/json ContentType.
-type ClaimCustomerJSONRequestBody ClaimCustomerJSONBody
 
 // ChangeCustomerMeTierJSONRequestBody defines body for ChangeCustomerMeTier for application/json ContentType.
 type ChangeCustomerMeTierJSONRequestBody = ChangeTierRequest

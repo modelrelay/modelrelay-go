@@ -27,22 +27,6 @@ text, _ := client.Responses.Text(ctx, sdk.NewModelID("claude-sonnet-4-20250514")
 fmt.Println(text)
 ```
 
-### OIDC id_token → customer bearer token (exchange)
-
-```go
-ctx := context.Background()
-key, _ := sdk.ParseAPIKeyAuth(os.Getenv("MODELRELAY_API_KEY"))
-
-provider, _ := sdk.NewOIDCExchangeTokenProvider(sdk.OIDCExchangeTokenProviderConfig{
-    APIKey: key,
-    IDTokenSource: func(ctx context.Context) (string, error) {
-        return os.Getenv("OIDC_ID_TOKEN"), nil
-    },
-})
-
-client, _ := sdk.NewClientWithTokenProvider(provider)
-```
-
 ## Responses (Blocking)
 
 ```go

@@ -185,12 +185,6 @@ const (
 	ErrCodePaymentRequired  APIErrorCode = "PAYMENT_REQUIRED"
 	ErrCodeMethodNotAllowed APIErrorCode = "METHOD_NOT_ALLOWED"
 
-	// OIDC exchange error codes
-	ErrCodeEmailRequired              APIErrorCode = "EMAIL_REQUIRED"
-	ErrCodeIdentityRequired           APIErrorCode = "IDENTITY_REQUIRED"
-	ErrCodeAutoProvisionDisabled      APIErrorCode = "AUTO_PROVISION_DISABLED"
-	ErrCodeAutoProvisionMisconfigured APIErrorCode = "AUTO_PROVISION_MISCONFIGURED"
-
 	// Workflow / model capability validation
 	ErrCodeModelCapabilityUnsupported APIErrorCode = "MODEL_CAPABILITY_UNSUPPORTED"
 )

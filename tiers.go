@@ -134,8 +134,8 @@ func (c *TiersClient) Get(ctx context.Context, tierID uuid.UUID) (Tier, error) {
 // Checkout creates a Stripe checkout session for a tier (Stripe-first flow).
 // This enables users to subscribe before authenticating. Stripe collects the
 // customer's email during checkout. After checkout completes, a customer record
-// is created with the email from Stripe. The customer can later be linked to
-// an identity via CustomersClient.Claim.
+// is created with the email from Stripe. Your backend can map it to your app user
+// and mint customer tokens as needed.
 //
 // Requires a secret key (mr_sk_*).
 func (c *TiersClient) Checkout(ctx context.Context, tierID uuid.UUID, req TierCheckoutRequest) (TierCheckoutSession, error) {
