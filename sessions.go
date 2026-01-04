@@ -170,7 +170,7 @@ func (c *SessionsClient) Get(ctx context.Context, sessionID uuid.UUID) (SessionW
 
 // Delete deletes a session by ID.
 //
-// Requires a secret key (not publishable key).
+// Requires a secret key.
 //
 // Example:
 //

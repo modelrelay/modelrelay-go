@@ -1,7 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
-// 2.0.0: Breaking - rename EndUser identity to Customer; update customer_id fields and endpoints.
+// 2.0.0: Breaking - rename EndUser identity to Customer; remove publishable keys (mr_pk_*).
 // 1.39.0: Add PAYGO wallet balance/reserved + overage indicator to customer usage summary.
 // 1.38.0: Flatten billing response types (return inner types directly, not wrappers).
 // 1.37.0: Add BillingClient for customer self-service operations (me, subscription, usage, balance, topup, checkout).

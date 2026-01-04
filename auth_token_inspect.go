@@ -8,7 +8,7 @@ func isAPIKeyToken(token string) bool {
 		return false
 	}
 	lower := strings.ToLower(t)
-	return strings.HasPrefix(lower, "mr_sk_") || strings.HasPrefix(lower, "mr_pk_")
+	return strings.HasPrefix(lower, "mr_sk_")
 }
 
 func isJWTLikeToken(token string) bool {

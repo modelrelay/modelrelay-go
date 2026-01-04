@@ -143,16 +143,7 @@ func NewClientFromSecretKey(raw string, opts ...Option) (*Client, error) {
 	return NewClientWithKey(key, opts...)
 }
 
-// NewClientFromPublishableKey parses and validates a publishable key (mr_pk_*) and creates a client.
-func NewClientFromPublishableKey(raw string, opts ...Option) (*Client, error) {
-	key, err := ParsePublishableKey(raw)
-	if err != nil {
-		return nil, err
-	}
-	return NewClientWithKey(key, opts...)
-}
-
-// NewClientFromAPIKey parses and validates an API key (mr_pk_* or mr_sk_*) and creates a client.
+// NewClientFromAPIKey parses and validates an API key (mr_sk_*) and creates a client.
 func NewClientFromAPIKey(raw string, opts ...Option) (*Client, error) {
 	key, err := ParseAPIKeyAuth(raw)
 	if err != nil {

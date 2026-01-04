@@ -26,9 +26,6 @@ func TestAuthTokenInspectHelpers(t *testing.T) {
 	if !isAPIKeyToken("mr_sk_test") {
 		t.Fatalf("expected secret key to be api key")
 	}
-	if !isAPIKeyToken("mr_pk_test") {
-		t.Fatalf("expected publishable key to be api key")
-	}
 	if isAPIKeyToken("header.payload.signature") {
 		t.Fatalf("expected jwt-like token to not be api key")
 	}

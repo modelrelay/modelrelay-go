@@ -294,8 +294,7 @@ func (e *CustomerExternalID) UnmarshalJSON(data []byte) error {
 type APIKeyKind string
 
 const (
-	APIKeyKindSecret      APIKeyKind = "secret"
-	APIKeyKindPublishable APIKeyKind = "publishable"
+	APIKeyKindSecret APIKeyKind = "secret"
 )
 
 // ParseAPIKeyKind normalizes known kinds while preserving unknown values.
@@ -306,8 +305,6 @@ func ParseAPIKeyKind(val string) APIKeyKind {
 		return ""
 	case "secret":
 		return APIKeyKindSecret
-	case "publishable":
-		return APIKeyKindPublishable
 	default:
 		return APIKeyKind(val)
 	}

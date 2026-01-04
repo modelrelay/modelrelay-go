@@ -91,7 +91,7 @@ type TierCheckoutSession struct {
 }
 
 // TiersClient provides methods to query tiers in a project.
-// Works with both publishable keys (mr_pk_*) and secret keys (mr_sk_*).
+// Requires a secret key (mr_sk_*) or a bearer token.
 type TiersClient struct {
 	client *Client
 }

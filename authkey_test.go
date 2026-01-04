@@ -3,15 +3,7 @@ package sdk
 import "testing"
 
 func TestParseAPIKeys(t *testing.T) {
-	key, err := ParseAPIKeyAuth(" mr_pk_test ")
-	if err != nil {
-		t.Fatalf("parse api key: %v", err)
-	}
-	if key.Kind() != APIKeyKindPublishable {
-		t.Fatalf("expected publishable key kind")
-	}
-
-	key, err = ParseAPIKeyAuth("mr_sk_test")
+	key, err := ParseAPIKeyAuth("mr_sk_test")
 	if err != nil {
 		t.Fatalf("parse api key: %v", err)
 	}
@@ -19,17 +11,12 @@ func TestParseAPIKeys(t *testing.T) {
 		t.Fatalf("expected secret key kind")
 	}
 
+	if _, err := ParseAPIKeyAuth(" mr_pk_test "); err == nil {
+		t.Fatalf("expected invalid api key error for publishable prefix")
+	}
+
 	if _, err := ParseAPIKeyAuth("bad"); err == nil {
 		t.Fatalf("expected invalid api key error")
-	}
-}
-
-func TestParsePublishableKey(t *testing.T) {
-	if _, err := ParsePublishableKey("mr_sk_test"); err == nil {
-		t.Fatalf("expected publishable key error")
-	}
-	if _, err := ParsePublishableKey("mr_pk_test"); err != nil {
-		t.Fatalf("expected publishable key to parse: %v", err)
 	}
 }
 
