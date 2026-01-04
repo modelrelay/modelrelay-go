@@ -86,8 +86,6 @@ package sdk
 // 0.55.0: Breaking - Tool-results submission now requires step/request_id + tool name; server persists tool-loop checkpoints.
 // 0.56.0: Add per-node tool_limits for workflow tool loops (max_llm_calls/max_tool_calls_per_step/wait_ttl_ms).
 // 0.57.0: Add generated types from OpenAPI spec (sdk/go/generated package).
-// 0.58.0: Add device flow methods (DeviceStart, DeviceToken) for RFC 8628 device authorization.
-// 0.59.0: Refactor device flow to use generated types (generated.DeviceStartResponse, etc).
 // 0.60.0: Use unsigned integers (uint32/uint64) for semantically non-negative fields (token counts, costs, seq, limits).
 // 0.61.0: Breaking - Multi-model tiers with per-model pricing (#676).
 // 0.62.0: Add end-user self-discovery endpoint wrapper (GET /end-users/me) (#680).
@@ -131,8 +129,8 @@ package sdk
 // TierModel fields renamed: InputPricePerMillionCents → ModelInputCostCents, OutputPricePerMillionCents → ModelOutputCostCents.
 // 1.33.0: Make TierCode optional (*TierCode) in CustomerToken for BYOB projects without subscriptions.
 // 1.34.0: Make CustomerID optional (*uuid.UUID) in CustomerToken for BYOB projects without customers.
-// 1.42.0: Add OAuthStart method for customer OAuth redirect flow.
+// 2.0.0: Breaking - remove subscription_id from customer balance response (wallet decoupled from subscription).
 // 1.41.0: Add admin billing invariants route constant.
 // 1.40.0: Add PAYGO wallet balance/reserved + overage indicator to customer usage summary.
 // 1.39.0: Restore TiersClient (list, get, checkout) for tier querying operations.
-const Version = "1.42.0"
+const Version = "1.6.0"

@@ -43,7 +43,7 @@ type CheckoutSessionResponse = generated.CheckoutSessionResponse
 
 // BillingClient provides methods for customer self-service billing operations.
 //
-// These endpoints require a customer bearer token (from device flow or OIDC exchange).
+// These endpoints require a customer bearer token (from OIDC exchange).
 // API keys are not accepted.
 //
 // Example:

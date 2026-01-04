@@ -14,19 +14,6 @@ const (
 	// AuthCustomerToken mints a customer-scoped bearer token (requires secret key).
 	AuthCustomerToken = "/auth/customer-token" // #nosec G101 -- route path, not a credential
 
-	// AuthDeviceStart initiates a device authorization flow (RFC 8628).
-	AuthDeviceStart = "/auth/device/start"
-
-	// AuthDeviceToken polls for device authorization completion.
-	AuthDeviceToken = "/auth/device/token" // #nosec G101 -- route path, not a credential
-
-	// AuthCustomerOAuthStart initiates an OAuth flow for customer authentication.
-	// Note: /auth/oauth/* is used for admin login; customer OAuth uses /auth/customer/oauth/*
-	AuthCustomerOAuthStart = "/auth/customer/oauth/start"
-
-	// AuthCustomerOAuthCallback handles the OAuth callback for customer authentication.
-	AuthCustomerOAuthCallback = "/auth/customer/oauth/callback"
-
 	// Pricing returns public model pricing information.
 	Pricing = "/pricing"
 

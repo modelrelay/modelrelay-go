@@ -556,39 +556,6 @@ type CustomerWithSubscription struct {
 	Subscription      *Subscription `json:"subscription,omitempty"`
 }
 
-// DeviceStartResponse defines model for DeviceStartResponse.
-type DeviceStartResponse struct {
-	// DeviceCode Device code used for polling /auth/device/token
-	DeviceCode string `json:"device_code"`
-
-	// ExpiresIn Seconds until the device code expires
-	ExpiresIn uint32 `json:"expires_in"`
-
-	// Interval Minimum polling interval in seconds
-	Interval uint32 `json:"interval"`
-
-	// UserCode Human-enterable code shown to the user
-	UserCode string `json:"user_code"`
-
-	// VerificationUri URL where the user enters the code and completes authorization
-	VerificationUri string `json:"verification_uri"`
-
-	// VerificationUriComplete Convenience URL that pre-fills the user_code (optional)
-	VerificationUriComplete *string `json:"verification_uri_complete,omitempty"`
-}
-
-// DeviceTokenError defines model for DeviceTokenError.
-type DeviceTokenError struct {
-	// Error OAuth device flow error code
-	Error string `json:"error"`
-
-	// ErrorDescription Optional human-readable error message
-	ErrorDescription *string `json:"error_description,omitempty"`
-
-	// Interval Updated recommended polling interval in seconds (when error is slow_down)
-	Interval *uint32 `json:"interval,omitempty"`
-}
-
 // ImageData A single generated image.
 type ImageData struct {
 	// B64Json Base64-encoded image data (when response_format is 'b64_json')
@@ -1477,12 +1444,6 @@ type MintCustomerTokenJSONBody struct {
 	TtlSeconds *uint32 `json:"ttl_seconds,omitempty"`
 }
 
-// PollDeviceTokenJSONBody defines parameters for PollDeviceToken.
-type PollDeviceTokenJSONBody struct {
-	// DeviceCode Opaque device code returned by /auth/device/start
-	DeviceCode string `json:"device_code"`
-}
-
 // LoginJSONBody defines parameters for Login.
 type LoginJSONBody struct {
 	Email    *openapi_types.Email `json:"email,omitempty"`
@@ -1628,9 +1589,6 @@ type ListSessionsParams struct {
 
 // MintCustomerTokenJSONRequestBody defines body for MintCustomerToken for application/json ContentType.
 type MintCustomerTokenJSONRequestBody MintCustomerTokenJSONBody
-
-// PollDeviceTokenJSONRequestBody defines body for PollDeviceToken for application/json ContentType.
-type PollDeviceTokenJSONRequestBody PollDeviceTokenJSONBody
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody LoginJSONBody
