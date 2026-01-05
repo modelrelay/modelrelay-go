@@ -86,7 +86,7 @@ const (
 type EventTypeV0 string
 
 const (
-	EventEnvelopeVersionV0 = "v0"
+	EventEnvelopeVersionV0 = "v1"
 
 	// ArtifactKeyNodeOutputV0 is the artifact key for a node's final output payload.
 	ArtifactKeyNodeOutputV0 = "node_output.v0"

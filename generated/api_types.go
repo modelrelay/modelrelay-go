@@ -64,14 +64,14 @@ const (
 	ModelCapabilityWebSearch       ModelCapability = "web_search"
 )
 
-// Defines values for NodeStatus.
+// Defines values for NodeStatusV0.
 const (
-	NodeStatusCanceled  NodeStatus = "canceled"
-	NodeStatusFailed    NodeStatus = "failed"
-	NodeStatusPending   NodeStatus = "pending"
-	NodeStatusRunning   NodeStatus = "running"
-	NodeStatusSucceeded NodeStatus = "succeeded"
-	NodeStatusWaiting   NodeStatus = "waiting"
+	NodeStatusV0Canceled  NodeStatusV0 = "canceled"
+	NodeStatusV0Failed    NodeStatusV0 = "failed"
+	NodeStatusV0Pending   NodeStatusV0 = "pending"
+	NodeStatusV0Running   NodeStatusV0 = "running"
+	NodeStatusV0Succeeded NodeStatusV0 = "succeeded"
+	NodeStatusV0Waiting   NodeStatusV0 = "waiting"
 )
 
 // Defines values for NodeTypeV0.
@@ -110,13 +110,13 @@ const (
 	Xai            ProviderId = "xai"
 )
 
-// Defines values for RunStatus.
+// Defines values for RunStatusV0.
 const (
-	RunStatusCanceled  RunStatus = "canceled"
-	RunStatusFailed    RunStatus = "failed"
-	RunStatusRunning   RunStatus = "running"
-	RunStatusSucceeded RunStatus = "succeeded"
-	RunStatusWaiting   RunStatus = "waiting"
+	RunStatusV0Canceled  RunStatusV0 = "canceled"
+	RunStatusV0Failed    RunStatusV0 = "failed"
+	RunStatusV0Running   RunStatusV0 = "running"
+	RunStatusV0Succeeded RunStatusV0 = "succeeded"
+	RunStatusV0Waiting   RunStatusV0 = "waiting"
 )
 
 // Defines values for SubscriptionStatusKind.
@@ -669,8 +669,8 @@ type ModelsResponse struct {
 	Models []Model `json:"models"`
 }
 
-// NodeError defines model for NodeError.
-type NodeError struct {
+// NodeErrorV0 defines model for NodeErrorV0.
+type NodeErrorV0 struct {
 	Code *string `json:"code,omitempty"`
 
 	// Detail Raw error details from the provider
@@ -681,23 +681,23 @@ type NodeError struct {
 // NodeId Workflow node identifier. Must start with a lowercase letter and contain only lowercase letters, numbers, and underscores.
 type NodeId = string
 
-// NodeResult defines model for NodeResult.
-type NodeResult struct {
+// NodeResultV0 defines model for NodeResultV0.
+type NodeResultV0 struct {
 	EndedAt *time.Time   `json:"ended_at,omitempty"`
-	Error   *NodeError `json:"error,omitempty"`
+	Error   *NodeErrorV0 `json:"error,omitempty"`
 
 	// Id Workflow node identifier. Must start with a lowercase letter and contain only lowercase letters, numbers, and underscores.
 	Id        NodeId                  `json:"id"`
 	Output    *map[string]interface{} `json:"output,omitempty"`
 	StartedAt *time.Time              `json:"started_at,omitempty"`
-	Status    NodeStatus            `json:"status"`
+	Status    NodeStatusV0            `json:"status"`
 
 	// Type Type of workflow node.
 	Type NodeTypeV0 `json:"type"`
 }
 
-// NodeStatus defines model for NodeStatus.
-type NodeStatus string
+// NodeStatusV0 defines model for NodeStatusV0.
+type NodeStatusV0 string
 
 // NodeTypeV0 Type of workflow node.
 type NodeTypeV0 string
@@ -835,8 +835,8 @@ type ResponsesResponse struct {
 	Usage Usage `json:"usage"`
 }
 
-// RunCostLineItem defines model for RunCostLineItem.
-type RunCostLineItem struct {
+// RunCostLineItemV0 defines model for RunCostLineItemV0.
+type RunCostLineItemV0 struct {
 	InputTokens uint64 `json:"input_tokens"`
 
 	// Model LLM model identifier (e.g., claude-sonnet-4-5, gpt-4o).
@@ -849,17 +849,17 @@ type RunCostLineItem struct {
 	UsdCents   uint64     `json:"usd_cents"`
 }
 
-// RunCostSummary defines model for RunCostSummary.
-type RunCostSummary struct {
-	LineItems     *[]RunCostLineItem `json:"line_items,omitempty"`
+// RunCostSummaryV0 defines model for RunCostSummaryV0.
+type RunCostSummaryV0 struct {
+	LineItems     *[]RunCostLineItemV0 `json:"line_items,omitempty"`
 	TotalUsdCents uint64               `json:"total_usd_cents"`
 }
 
 // RunId Unique identifier for a workflow run.
 type RunId = openapi_types.UUID
 
-// RunStatus defines model for RunStatus.
-type RunStatus string
+// RunStatusV0 defines model for RunStatusV0.
+type RunStatusV0 string
 
 // RunsCreateOptionsV0 defines model for RunsCreateOptionsV0.
 type RunsCreateOptionsV0 struct {
@@ -886,13 +886,13 @@ type RunsCreateResponse struct {
 
 	// RunId Unique identifier for a workflow run.
 	RunId  RunId       `json:"run_id"`
-	Status RunStatus `json:"status"`
+	Status RunStatusV0 `json:"status"`
 }
 
 // RunsGetResponse defines model for RunsGetResponse.
 type RunsGetResponse struct {
-	CostSummary RunCostSummary        `json:"cost_summary"`
-	Nodes       *[]NodeResult         `json:"nodes,omitempty"`
+	CostSummary RunCostSummaryV0        `json:"cost_summary"`
+	Nodes       *[]NodeResultV0         `json:"nodes,omitempty"`
 	Outputs     *map[string]interface{} `json:"outputs,omitempty"`
 
 	// PlanHash SHA-256 hash of the compiled workflow plan (64 hex characters).
@@ -900,7 +900,7 @@ type RunsGetResponse struct {
 
 	// RunId Unique identifier for a workflow run.
 	RunId  RunId       `json:"run_id"`
-	Status RunStatus `json:"status"`
+	Status RunStatusV0 `json:"status"`
 }
 
 // SessionCreateRequest Request body for creating a session.

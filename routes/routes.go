@@ -84,7 +84,7 @@ const (
 	WorkflowsCompile = "/workflows/compile"
 
 	// RunEventSchema returns the run event envelope v0 JSON Schema (draft-07).
-	RunEventSchema = "/schemas/run_event_v0.schema.json"
+	RunEventSchema = "/schemas/run_event.schema.json"
 
 	// LLMUsage returns the current usage window for the authenticated user/project.
 	LLMUsage = "/llm/usage"
