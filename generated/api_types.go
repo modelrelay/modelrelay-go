@@ -431,12 +431,9 @@ type CustomerMeUsage struct {
 	CreditsGrantedCents *int64 `json:"credits_granted_cents,omitempty"`
 
 	// CreditsRemainingCents Credits remaining in this billing window (only for paid tiers)
-	CreditsRemainingCents *int64 `json:"credits_remaining_cents,omitempty"`
-
-	// CreditsUsedCents Credits used so far in this billing window (only for paid tiers)
-	CreditsUsedCents *int64               `json:"credits_used_cents,omitempty"`
-	Daily            []CustomerUsagePoint `json:"daily"`
-	Images           int64                `json:"images"`
+	CreditsRemainingCents *int64               `json:"credits_remaining_cents,omitempty"`
+	Daily                 []CustomerUsagePoint `json:"daily"`
+	Images                int64                `json:"images"`
 
 	// Low Whether remaining credits are low (only for paid tiers)
 	Low *bool `json:"low,omitempty"`
@@ -447,7 +444,13 @@ type CustomerMeUsage struct {
 	// PercentageUsed Percentage of granted credits used (only for paid tiers)
 	PercentageUsed *float32 `json:"percentage_used,omitempty"`
 	Requests       int64    `json:"requests"`
-	Tokens         int64    `json:"tokens"`
+
+	// SpendLimitCents Spending limit for this billing window (nil if no limit configured)
+	SpendLimitCents *int64 `json:"spend_limit_cents,omitempty"`
+	Tokens          int64  `json:"tokens"`
+
+	// TotalCostCents Total cost incurred in this billing window (always populated)
+	TotalCostCents int64 `json:"total_cost_cents"`
 
 	// WalletBalanceCents PAYGO wallet balance in cents (available when PAYGO wallet is enabled)
 	WalletBalanceCents *int64 `json:"wallet_balance_cents,omitempty"`
@@ -518,9 +521,6 @@ type CustomerTopupResponse struct {
 
 // CustomerUsagePoint defines model for CustomerUsagePoint.
 type CustomerUsagePoint struct {
-	// CreditsUsedCents Credits used in this day bucket (only for paid tiers)
-	CreditsUsedCents *int64 `json:"credits_used_cents,omitempty"`
-
 	// Day UTC day bucket
 	Day      time.Time `json:"day"`
 	Images   *int64    `json:"images,omitempty"`
