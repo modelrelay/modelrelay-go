@@ -4,10 +4,8 @@
 package generated
 
 import (
-	"encoding/json"
 	"time"
 
-	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -875,13 +873,10 @@ type RunsCreateRequest struct {
 	Options *RunsCreateOptionsV0    `json:"options,omitempty"`
 
 	// SessionId Optional session ID to link this run to a session.
-	SessionId *openapi_types.UUID    `json:"session_id,omitempty"`
-	Spec      RunsCreateRequest_Spec `json:"spec"`
-}
+	SessionId *openapi_types.UUID `json:"session_id,omitempty"`
 
-// RunsCreateRequest_Spec defines model for RunsCreateRequest.Spec.
-type RunsCreateRequest_Spec struct {
-	union json.RawMessage
+	// Spec A `workflow.v1` spec. The canonical JSON Schema is available at `/schemas/workflow_v1.schema.json`.
+	Spec WorkflowSpecV1 `json:"spec"`
 }
 
 // RunsCreateResponse defines model for RunsCreateResponse.
@@ -1389,9 +1384,6 @@ type WebhookTestResult struct {
 // WebhookTestResultStatus defines model for WebhookTestResult.Status.
 type WebhookTestResultStatus string
 
-// WorkflowSpecV0 A `workflow.v0` spec. The canonical JSON Schema is available at `/schemas/workflow_v0.schema.json`.
-type WorkflowSpecV0 map[string]interface{}
-
 // WorkflowSpecV1 A `workflow.v1` spec. The canonical JSON Schema is available at `/schemas/workflow_v1.schema.json`.
 type WorkflowSpecV1 map[string]interface{}
 
@@ -1612,65 +1604,3 @@ type UpdateSessionJSONRequestBody = SessionUpdateRequest
 
 // AddSessionMessageJSONRequestBody defines body for AddSessionMessage for application/json ContentType.
 type AddSessionMessageJSONRequestBody = SessionMessageCreateRequest
-
-// AsWorkflowSpecV0 returns the union data inside the RunsCreateRequest_Spec as a WorkflowSpecV0
-func (t RunsCreateRequest_Spec) AsWorkflowSpecV0() (WorkflowSpecV0, error) {
-	var body WorkflowSpecV0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromWorkflowSpecV0 overwrites any union data inside the RunsCreateRequest_Spec as the provided WorkflowSpecV0
-func (t *RunsCreateRequest_Spec) FromWorkflowSpecV0(v WorkflowSpecV0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeWorkflowSpecV0 performs a merge with any union data inside the RunsCreateRequest_Spec, using the provided WorkflowSpecV0
-func (t *RunsCreateRequest_Spec) MergeWorkflowSpecV0(v WorkflowSpecV0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsWorkflowSpecV1 returns the union data inside the RunsCreateRequest_Spec as a WorkflowSpecV1
-func (t RunsCreateRequest_Spec) AsWorkflowSpecV1() (WorkflowSpecV1, error) {
-	var body WorkflowSpecV1
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromWorkflowSpecV1 overwrites any union data inside the RunsCreateRequest_Spec as the provided WorkflowSpecV1
-func (t *RunsCreateRequest_Spec) FromWorkflowSpecV1(v WorkflowSpecV1) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeWorkflowSpecV1 performs a merge with any union data inside the RunsCreateRequest_Spec, using the provided WorkflowSpecV1
-func (t *RunsCreateRequest_Spec) MergeWorkflowSpecV1(v WorkflowSpecV1) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t RunsCreateRequest_Spec) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *RunsCreateRequest_Spec) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
