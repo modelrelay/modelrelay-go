@@ -15,122 +15,122 @@ import (
 	"github.com/modelrelay/modelrelay/sdk/go/routes"
 )
 
-// RunEventV0 is the strongly-typed (discriminated) run event union.
-type RunEventV0 interface {
-	isRunEventV0()
+// RunEvent is the strongly-typed (discriminated) run event union.
+type RunEvent interface {
+	isRunEvent()
 }
 
-type RunEventV0Base struct {
+type RunEventBase struct {
 	EnvelopeVersion string
 	RunID           RunID
 	Seq             int64
 	TS              time.Time
 }
 
-func (b RunEventV0Base) seqNum() int64 { return b.Seq }
+func (b RunEventBase) seqNum() int64 { return b.Seq }
 
 type RunEventRunCompiledV0 struct {
-	RunEventV0Base
+	RunEventBase
 	PlanHash PlanHash
 }
 
 type RunEventRunStartedV0 struct {
-	RunEventV0Base
+	RunEventBase
 	PlanHash PlanHash
 }
 
 type RunEventRunCompletedV0 struct {
-	RunEventV0Base
+	RunEventBase
 	PlanHash           PlanHash
 	OutputsArtifactKey string
-	OutputsInfo        PayloadInfoV0
+	OutputsInfo        PayloadInfo
 }
 
 type RunEventRunFailedV0 struct {
-	RunEventV0Base
+	RunEventBase
 	PlanHash PlanHash
-	Error    NodeErrorV0
+	Error    NodeError
 }
 
 type RunEventRunCanceledV0 struct {
-	RunEventV0Base
+	RunEventBase
 	PlanHash PlanHash
-	Error    NodeErrorV0
+	Error    NodeError
 }
 
 type RunEventNodeStartedV0 struct {
-	RunEventV0Base
+	RunEventBase
 	NodeID NodeID
 }
 
 type RunEventNodeSucceededV0 struct {
-	RunEventV0Base
+	RunEventBase
 	NodeID NodeID
 }
 
 type RunEventNodeFailedV0 struct {
-	RunEventV0Base
+	RunEventBase
 	NodeID NodeID
-	Error  NodeErrorV0
+	Error  NodeError
 }
 
 type RunEventNodeLLMCallV0 struct {
-	RunEventV0Base
+	RunEventBase
 	NodeID  NodeID
-	LLMCall NodeLLMCallV0
+	LLMCall NodeLLMCall
 }
 
 type RunEventNodeToolCallV0 struct {
-	RunEventV0Base
+	RunEventBase
 	NodeID   NodeID
-	ToolCall NodeToolCallV0
+	ToolCall NodeToolCall
 }
 
 type RunEventNodeToolResultV0 struct {
-	RunEventV0Base
+	RunEventBase
 	NodeID     NodeID
-	ToolResult NodeToolResultV0
+	ToolResult NodeToolResult
 }
 
 type RunEventNodeWaitingV0 struct {
-	RunEventV0Base
+	RunEventBase
 	NodeID  NodeID
-	Waiting NodeWaitingV0
+	Waiting NodeWaiting
 }
 
 type RunEventNodeOutputDeltaV0 struct {
-	RunEventV0Base
+	RunEventBase
 	NodeID NodeID
-	Delta  NodeOutputDeltaV0
+	Delta  NodeOutputDelta
 }
 
 type RunEventNodeOutputV0 struct {
-	RunEventV0Base
+	RunEventBase
 	NodeID      NodeID
 	ArtifactKey string
-	OutputInfo  PayloadInfoV0
+	OutputInfo  PayloadInfo
 }
 
-func (RunEventRunCompiledV0) isRunEventV0()     {}
-func (RunEventRunStartedV0) isRunEventV0()      {}
-func (RunEventRunCompletedV0) isRunEventV0()    {}
-func (RunEventRunFailedV0) isRunEventV0()       {}
-func (RunEventRunCanceledV0) isRunEventV0()     {}
-func (RunEventNodeStartedV0) isRunEventV0()     {}
-func (RunEventNodeSucceededV0) isRunEventV0()   {}
-func (RunEventNodeFailedV0) isRunEventV0()      {}
-func (RunEventNodeLLMCallV0) isRunEventV0()     {}
-func (RunEventNodeToolCallV0) isRunEventV0()    {}
-func (RunEventNodeToolResultV0) isRunEventV0()  {}
-func (RunEventNodeWaitingV0) isRunEventV0()     {}
-func (RunEventNodeOutputDeltaV0) isRunEventV0() {}
-func (RunEventNodeOutputV0) isRunEventV0()      {}
+func (RunEventRunCompiledV0) isRunEvent()     {}
+func (RunEventRunStartedV0) isRunEvent()      {}
+func (RunEventRunCompletedV0) isRunEvent()    {}
+func (RunEventRunFailedV0) isRunEvent()       {}
+func (RunEventRunCanceledV0) isRunEvent()     {}
+func (RunEventNodeStartedV0) isRunEvent()     {}
+func (RunEventNodeSucceededV0) isRunEvent()   {}
+func (RunEventNodeFailedV0) isRunEvent()      {}
+func (RunEventNodeLLMCallV0) isRunEvent()     {}
+func (RunEventNodeToolCallV0) isRunEvent()    {}
+func (RunEventNodeToolResultV0) isRunEvent()  {}
+func (RunEventNodeWaitingV0) isRunEvent()     {}
+func (RunEventNodeOutputDeltaV0) isRunEvent() {}
+func (RunEventNodeOutputV0) isRunEvent()      {}
 
-func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
+func decodeRunEvent(env RunEventEnvelope) (RunEvent, error) {
 	if strings.TrimSpace(env.EnvelopeVersion) == "" {
 		return nil, ProtocolError{Message: "run event is missing envelope_version"}
 	}
-	if env.EnvelopeVersion != RunEventEnvelopeVersionV0 {
+	if env.EnvelopeVersion != RunEventEnvelopeVersion {
 		return nil, ProtocolError{Message: "unsupported run event envelope_version: " + env.EnvelopeVersion}
 	}
 	if !env.RunID.Valid() {
@@ -143,7 +143,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 		return nil, ProtocolError{Message: "run event has missing ts"}
 	}
 
-	base := RunEventV0Base{
+	base := RunEventBase{
 		EnvelopeVersion: env.EnvelopeVersion,
 		RunID:           env.RunID,
 		Seq:             env.Seq,
@@ -165,12 +165,12 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
 				return nil, ProtocolError{Message: "run_compiled must not include error/delta/output_info/artifact fields"}
 			}
-			return RunEventRunCompiledV0{RunEventV0Base: base, PlanHash: planHash}, nil
+			return RunEventRunCompiledV0{RunEventBase: base, PlanHash: planHash}, nil
 		case RunEventRunStarted:
 			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
 				return nil, ProtocolError{Message: "run_started must not include error/delta/output_info/artifact fields"}
 			}
-			return RunEventRunStartedV0{RunEventV0Base: base, PlanHash: planHash}, nil
+			return RunEventRunStartedV0{RunEventBase: base, PlanHash: planHash}, nil
 		case RunEventRunCompleted:
 			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "run_completed must not include error/delta/output_info/node artifact fields"}
@@ -181,7 +181,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			if env.OutputsInfo.Included {
 				return nil, ProtocolError{Message: "run_completed outputs_info.included must be false"}
 			}
-			return RunEventRunCompletedV0{RunEventV0Base: base, PlanHash: planHash, OutputsArtifactKey: env.OutputsArtifactKey, OutputsInfo: *env.OutputsInfo}, nil
+			return RunEventRunCompletedV0{RunEventBase: base, PlanHash: planHash, OutputsArtifactKey: env.OutputsArtifactKey, OutputsInfo: *env.OutputsInfo}, nil
 		case RunEventRunFailed:
 			if env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
 				return nil, ProtocolError{Message: "run_failed must not include delta/output_info/artifact fields"}
@@ -189,7 +189,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			if env.Error == nil || strings.TrimSpace(env.Error.Message) == "" {
 				return nil, ProtocolError{Message: "run_failed must include error"}
 			}
-			return RunEventRunFailedV0{RunEventV0Base: base, PlanHash: planHash, Error: *env.Error}, nil
+			return RunEventRunFailedV0{RunEventBase: base, PlanHash: planHash, Error: *env.Error}, nil
 		case RunEventRunCanceled:
 			if env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" || env.OutputsInfo != nil || env.OutputsArtifactKey != "" {
 				return nil, ProtocolError{Message: "run_canceled must not include delta/output_info/artifact fields"}
@@ -197,7 +197,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			if env.Error == nil || strings.TrimSpace(env.Error.Message) == "" {
 				return nil, ProtocolError{Message: "run_canceled must include error"}
 			}
-			return RunEventRunCanceledV0{RunEventV0Base: base, PlanHash: planHash, Error: *env.Error}, nil
+			return RunEventRunCanceledV0{RunEventBase: base, PlanHash: planHash, Error: *env.Error}, nil
 		default:
 			return nil, ProtocolError{Message: "unknown run event type"}
 		}
@@ -221,7 +221,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			if env.LLMCall == nil || strings.TrimSpace(env.LLMCall.RequestID) == "" {
 				return nil, ProtocolError{Message: "node_llm_call must include llm_call.request_id"}
 			}
-			return RunEventNodeLLMCallV0{RunEventV0Base: base, NodeID: env.NodeID, LLMCall: *env.LLMCall}, nil
+			return RunEventNodeLLMCallV0{RunEventBase: base, NodeID: env.NodeID, LLMCall: *env.LLMCall}, nil
 		case RunEventNodeToolCall:
 			if env.Error != nil || env.LLMCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "node_tool_call must not include error/llm_call/delta/output_info/artifact_key"}
@@ -229,7 +229,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			if env.ToolCall == nil || strings.TrimSpace(env.ToolCall.RequestID) == "" || env.ToolCall.ToolCall.ID == "" {
 				return nil, ProtocolError{Message: "node_tool_call must include tool_call"}
 			}
-			return RunEventNodeToolCallV0{RunEventV0Base: base, NodeID: env.NodeID, ToolCall: *env.ToolCall}, nil
+			return RunEventNodeToolCallV0{RunEventBase: base, NodeID: env.NodeID, ToolCall: *env.ToolCall}, nil
 		case RunEventNodeToolResult:
 			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.Waiting != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "node_tool_result must not include error/llm_call/delta/output_info/artifact_key"}
@@ -237,7 +237,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			if env.ToolResult == nil || strings.TrimSpace(env.ToolResult.RequestID) == "" || env.ToolResult.ToolCallID == "" {
 				return nil, ProtocolError{Message: "node_tool_result must include tool_result"}
 			}
-			return RunEventNodeToolResultV0{RunEventV0Base: base, NodeID: env.NodeID, ToolResult: *env.ToolResult}, nil
+			return RunEventNodeToolResultV0{RunEventBase: base, NodeID: env.NodeID, ToolResult: *env.ToolResult}, nil
 		case RunEventNodeWaiting:
 			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "node_waiting must not include error/llm_call/tool_call/tool_result/delta/output_info/artifact_key"}
@@ -245,17 +245,17 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			if env.Waiting == nil || strings.TrimSpace(env.Waiting.RequestID) == "" || env.Waiting.Step < 0 || len(env.Waiting.PendingToolCalls) == 0 || strings.TrimSpace(env.Waiting.Reason) == "" {
 				return nil, ProtocolError{Message: "node_waiting must include waiting payload"}
 			}
-			return RunEventNodeWaitingV0{RunEventV0Base: base, NodeID: env.NodeID, Waiting: *env.Waiting}, nil
+			return RunEventNodeWaitingV0{RunEventBase: base, NodeID: env.NodeID, Waiting: *env.Waiting}, nil
 		case RunEventNodeStarted:
 			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "node_started must not include error/delta/output_info/artifact_key"}
 			}
-			return RunEventNodeStartedV0{RunEventV0Base: base, NodeID: env.NodeID}, nil
+			return RunEventNodeStartedV0{RunEventBase: base, NodeID: env.NodeID}, nil
 		case RunEventNodeSucceeded:
 			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "node_succeeded must not include error/delta/output_info/artifact_key"}
 			}
-			return RunEventNodeSucceededV0{RunEventV0Base: base, NodeID: env.NodeID}, nil
+			return RunEventNodeSucceededV0{RunEventBase: base, NodeID: env.NodeID}, nil
 		case RunEventNodeFailed:
 			if env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "node_failed must not include delta/output_info/artifact_key"}
@@ -263,7 +263,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 			if env.Error == nil || strings.TrimSpace(env.Error.Message) == "" {
 				return nil, ProtocolError{Message: "node_failed must include error"}
 			}
-			return RunEventNodeFailedV0{RunEventV0Base: base, NodeID: env.NodeID, Error: *env.Error}, nil
+			return RunEventNodeFailedV0{RunEventBase: base, NodeID: env.NodeID, Error: *env.Error}, nil
 		case RunEventNodeOutputDelta:
 			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.OutputInfo != nil || env.ArtifactKey != "" {
 				return nil, ProtocolError{Message: "node_output_delta must not include error/output_info/artifact_key"}
@@ -272,9 +272,9 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 				return nil, ProtocolError{Message: "node_output_delta must include delta.kind"}
 			}
 			return RunEventNodeOutputDeltaV0{
-				RunEventV0Base: base,
-				NodeID:         env.NodeID,
-				Delta:          *env.Delta,
+				RunEventBase: base,
+				NodeID:       env.NodeID,
+				Delta:        *env.Delta,
 			}, nil
 		case RunEventNodeOutput:
 			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil {
@@ -290,7 +290,7 @@ func decodeRunEventV0(env RunEventV0Envelope) (RunEventV0, error) {
 				return nil, ProtocolError{Message: "node_output output_info.included must be false"}
 			}
 			return RunEventNodeOutputV0{
-				RunEventV0Base: base,
+				RunEventBase: base,
 				NodeID:         env.NodeID,
 				ArtifactKey:    env.ArtifactKey,
 				OutputInfo:     *env.OutputInfo,
@@ -310,7 +310,7 @@ type RunsClient struct {
 
 // RunEventSchemaV0 fetches the canonical run event envelope v0 JSON Schema from the API.
 func (c *RunsClient) RunEventSchemaV0(ctx context.Context) (json.RawMessage, error) {
-	req, err := c.client.newJSONRequest(ctx, http.MethodGet, routes.RunEventV0Schema, nil)
+	req, err := c.client.newJSONRequest(ctx, http.MethodGet, routes.RunEventSchema, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -339,16 +339,16 @@ type runsCreateRequestV1 struct {
 
 type RunsCreateResponse struct {
 	RunID    RunID       `json:"run_id"`
-	Status   RunStatusV0 `json:"status"`
+	Status   RunStatus `json:"status"`
 	PlanHash PlanHash    `json:"plan_hash"`
 }
 
 type RunsGetResponse struct {
 	RunID       RunID                          `json:"run_id"`
-	Status      RunStatusV0                    `json:"status"`
+	Status      RunStatus                    `json:"status"`
 	PlanHash    PlanHash                       `json:"plan_hash"`
-	CostSummary RunCostSummaryV0               `json:"cost_summary"`
-	Nodes       []NodeResultV0                 `json:"nodes,omitempty"`
+	CostSummary RunCostSummary               `json:"cost_summary"`
+	Nodes       []NodeResult                 `json:"nodes,omitempty"`
 	Outputs     map[OutputName]json.RawMessage `json:"outputs,omitempty"`
 }
 
@@ -367,7 +367,7 @@ type RunsToolResultItemV0 struct {
 
 type RunsToolResultsResponse struct {
 	Accepted int         `json:"accepted"`
-	Status   RunStatusV0 `json:"status"`
+	Status   RunStatus `json:"status"`
 }
 
 type RunsPendingToolsResponse struct {
@@ -379,10 +379,10 @@ type RunsPendingToolsNodeV0 struct {
 	NodeID    NodeID                  `json:"node_id"`
 	Step      int64                   `json:"step"`
 	RequestID string                  `json:"request_id"`
-	ToolCalls []RunsPendingToolCallV0 `json:"tool_calls"`
+	ToolCalls []RunsPendingToolCall `json:"tool_calls"`
 }
 
-type RunsPendingToolCallV0 struct {
+type RunsPendingToolCall struct {
 	ToolCallID ToolCallID `json:"tool_call_id"`
 	Name       ToolName   `json:"name"`
 	Arguments  string     `json:"arguments"`
@@ -401,18 +401,18 @@ func (s *RunsEventStream) Close() error {
 }
 
 // Next returns the next run event, or ok=false when the stream is complete.
-func (s *RunsEventStream) Next() (ev RunEventV0, ok bool, err error) {
+func (s *RunsEventStream) Next() (ev RunEvent, ok bool, err error) {
 	if s == nil || s.dec == nil {
 		return nil, false, nil
 	}
-	var wire RunEventV0Envelope
+	var wire RunEventEnvelope
 	if decodeErr := s.dec.Decode(&wire); decodeErr != nil {
 		if errors.Is(decodeErr, io.EOF) {
 			return nil, false, nil
 		}
 		return nil, false, decodeErr
 	}
-	next, err := decodeRunEventV0(wire)
+	next, err := decodeRunEvent(wire)
 	if err != nil {
 		return nil, false, err
 	}
@@ -473,7 +473,7 @@ func (c *RunsClient) StreamEvents(ctx context.Context, runID RunID, opts ...RunE
 }
 
 // ListEvents performs a non-blocking fetch of /runs/{run_id}/events using wait=0.
-func (c *RunsClient) ListEvents(ctx context.Context, runID RunID, opts ...RunEventsOption) ([]RunEventV0, error) {
+func (c *RunsClient) ListEvents(ctx context.Context, runID RunID, opts ...RunEventsOption) ([]RunEvent, error) {
 	events, err := c.StreamEvents(ctx, runID, append(opts, WithRunEventsWait(false))...)
 	if err != nil {
 		return nil, err
@@ -481,7 +481,7 @@ func (c *RunsClient) ListEvents(ctx context.Context, runID RunID, opts ...RunEve
 	//nolint:errcheck // best-effort cleanup on return
 	defer func() { _ = events.Close() }()
 
-	var out []RunEventV0
+	var out []RunEvent
 	for {
 		ev, ok, err := events.Next()
 		if err != nil {

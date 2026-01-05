@@ -83,8 +83,8 @@ const (
 	// WorkflowsCompile compiles a workflow spec (workflow.v1) into a canonical plan and plan_hash.
 	WorkflowsCompile = "/workflows/compile"
 
-	// RunEventV0Schema returns the run event envelope v0 JSON Schema (draft-07).
-	RunEventV0Schema = "/schemas/run_event_v0.schema.json"
+	// RunEventSchema returns the run event envelope v0 JSON Schema (draft-07).
+	RunEventSchema = "/schemas/run_event_v0.schema.json"
 
 	// LLMUsage returns the current usage window for the authenticated user/project.
 	LLMUsage = "/llm/usage"

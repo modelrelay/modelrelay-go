@@ -31,10 +31,10 @@ type PluginRunConfig struct {
 
 type PluginRunResult struct {
 	RunID       RunID                          `json:"run_id"`
-	Status      RunStatusV0                    `json:"status"`
+	Status      RunStatus                    `json:"status"`
 	Outputs     map[OutputName]json.RawMessage `json:"outputs,omitempty"`
-	CostSummary RunCostSummaryV0               `json:"cost_summary"`
-	Events      []RunEventV0                   `json:"events,omitempty"`
+	CostSummary RunCostSummary               `json:"cost_summary"`
+	Events      []RunEvent                   `json:"events,omitempty"`
 }
 
 func (r *PluginRunner) Run(ctx context.Context, spec *WorkflowSpecV1, cfg PluginRunConfig) (*PluginRunResult, error) {
@@ -55,8 +55,8 @@ func (r *PluginRunner) Run(ctx context.Context, spec *WorkflowSpecV1, cfg Plugin
 
 type PluginRunError struct {
 	RunID  RunID
-	Status RunStatusV0
-	Events []RunEventV0
+	Status RunStatus
+	Events []RunEvent
 }
 
 func (e *PluginRunError) Error() string {
@@ -78,7 +78,7 @@ func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfi
 		return nil, errors.New("plugin runner: run id required")
 	}
 
-	var allEvents []RunEventV0
+	var allEvents []RunEvent
 	var lastSeq int64
 	handledToolCallIDs := make(map[ToolCallID]struct{})
 

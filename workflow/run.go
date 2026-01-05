@@ -70,16 +70,16 @@ const (
 	StatusCanceled  StatusV0 = "canceled"
 )
 
-// NodeStatusV0 represents the status of a workflow node.
-type NodeStatusV0 string
+// NodeStatus represents the status of a workflow node.
+type NodeStatus string
 
 const (
-	NodeStatusPending   NodeStatusV0 = "pending"
-	NodeStatusRunning   NodeStatusV0 = "running"
-	NodeStatusWaiting   NodeStatusV0 = "waiting"
-	NodeStatusSucceeded NodeStatusV0 = "succeeded"
-	NodeStatusFailed    NodeStatusV0 = "failed"
-	NodeStatusCanceled  NodeStatusV0 = "canceled"
+	NodeStatusPending   NodeStatus = "pending"
+	NodeStatusRunning   NodeStatus = "running"
+	NodeStatusWaiting   NodeStatus = "waiting"
+	NodeStatusSucceeded NodeStatus = "succeeded"
+	NodeStatusFailed    NodeStatus = "failed"
+	NodeStatusCanceled  NodeStatus = "canceled"
 )
 
 // EventTypeV0 identifies the type of a workflow run event.
@@ -123,29 +123,29 @@ const (
 	StreamEventKindToolUseStop  StreamEventKind = "tool_use_stop"
 )
 
-// PayloadInfoV0 contains metadata about an artifact payload.
-type PayloadInfoV0 struct {
+// PayloadInfo contains metadata about an artifact payload.
+type PayloadInfo struct {
 	Bytes    int64  `json:"bytes"`
 	SHA256   string `json:"sha256"`
 	Included bool   `json:"included"`
 }
 
-// NodeErrorV0 represents an error from a node execution.
-type NodeErrorV0 struct {
+// NodeError represents an error from a node execution.
+type NodeError struct {
 	Code    string `json:"code,omitempty"`
 	Message string `json:"message"`
 	Detail  string `json:"detail,omitempty"` // Raw error details from the provider
 }
 
-// TokenUsageV0 contains token usage statistics.
-type TokenUsageV0 struct {
+// TokenUsage contains token usage statistics.
+type TokenUsage struct {
 	InputTokens  int64 `json:"input_tokens,omitempty"`
 	OutputTokens int64 `json:"output_tokens,omitempty"`
 	TotalTokens  int64 `json:"total_tokens,omitempty"`
 }
 
-// NodeOutputDeltaV0 contains streaming output delta from a node.
-type NodeOutputDeltaV0 struct {
+// NodeOutputDelta contains streaming output delta from a node.
+type NodeOutputDelta struct {
 	Kind StreamEventKind `json:"kind"`
 
 	TextDelta  string `json:"text_delta,omitempty"`
@@ -153,28 +153,28 @@ type NodeOutputDeltaV0 struct {
 	Model      string `json:"model,omitempty"`
 }
 
-// NodeLLMCallV0 contains information about an LLM call within a node.
-type NodeLLMCallV0 struct {
+// NodeLLMCall contains information about an LLM call within a node.
+type NodeLLMCall struct {
 	Step      int64  `json:"step"`
 	RequestID string `json:"request_id"`
 
-	Provider   string       `json:"provider,omitempty"`
-	Model      string       `json:"model,omitempty"`
-	ResponseID string       `json:"response_id,omitempty"`
-	StopReason string       `json:"stop_reason,omitempty"`
-	Usage      TokenUsageV0 `json:"usage,omitempty"`
+	Provider   string     `json:"provider,omitempty"`
+	Model      string     `json:"model,omitempty"`
+	ResponseID string     `json:"response_id,omitempty"`
+	StopReason string     `json:"stop_reason,omitempty"`
+	Usage      TokenUsage `json:"usage,omitempty"`
 }
 
-// NodeResultV0 contains the result of a node execution.
-type NodeResultV0 struct {
-	ID        NodeID       `json:"id"`
-	Type      NodeTypeV1   `json:"type"`
-	Status    NodeStatusV0 `json:"status"`
-	StartedAt time.Time    `json:"started_at,omitempty"`
-	EndedAt   time.Time    `json:"ended_at,omitempty"`
+// NodeResult contains the result of a node execution.
+type NodeResult struct {
+	ID        NodeID     `json:"id"`
+	Type      NodeTypeV1 `json:"type"`
+	Status    NodeStatus `json:"status"`
+	StartedAt time.Time  `json:"started_at,omitempty"`
+	EndedAt   time.Time  `json:"ended_at,omitempty"`
 
 	Output json.RawMessage `json:"output,omitempty"`
-	Error  *NodeErrorV0    `json:"error,omitempty"`
+	Error  *NodeError      `json:"error,omitempty"`
 }
 
 // EventV0Envelope is the stable, append-only wire envelope for workflow run history.
@@ -187,21 +187,21 @@ type EventV0Envelope struct {
 
 	NodeID NodeID `json:"node_id,omitempty"`
 
-	PlanHash *PlanHash    `json:"plan_hash,omitempty"`
-	Error    *NodeErrorV0 `json:"error,omitempty"`
+	PlanHash *PlanHash  `json:"plan_hash,omitempty"`
+	Error    *NodeError `json:"error,omitempty"`
 
-	LLMCall    *NodeLLMCallV0    `json:"llm_call,omitempty"`
-	ToolCall   *NodeToolCallV0   `json:"tool_call,omitempty"`
-	ToolResult *NodeToolResultV0 `json:"tool_result,omitempty"`
-	Waiting    *NodeWaitingV0    `json:"waiting,omitempty"`
+	LLMCall    *NodeLLMCall    `json:"llm_call,omitempty"`
+	ToolCall   *NodeToolCall   `json:"tool_call,omitempty"`
+	ToolResult *NodeToolResult `json:"tool_result,omitempty"`
+	Waiting    *NodeWaiting    `json:"waiting,omitempty"`
 
-	Delta *NodeOutputDeltaV0 `json:"delta,omitempty"`
+	Delta *NodeOutputDelta `json:"delta,omitempty"`
 
-	OutputInfo  *PayloadInfoV0 `json:"output_info,omitempty"`
-	ArtifactKey string         `json:"artifact_key,omitempty"`
+	OutputInfo  *PayloadInfo `json:"output_info,omitempty"`
+	ArtifactKey string       `json:"artifact_key,omitempty"`
 
-	OutputsArtifactKey string         `json:"outputs_artifact_key,omitempty"`
-	OutputsInfo        *PayloadInfoV0 `json:"outputs_info,omitempty"`
+	OutputsArtifactKey string       `json:"outputs_artifact_key,omitempty"`
+	OutputsInfo        *PayloadInfo `json:"outputs_info,omitempty"`
 }
 
 // ToolCallID is a unique identifier for a tool call.
@@ -212,22 +212,22 @@ type ToolCallID = llm.ToolCallID
 // This is an alias to llm.ToolName.
 type ToolName = llm.ToolName
 
-// FunctionToolCallV0 represents a function tool call.
-type FunctionToolCallV0 struct {
+// FunctionToolCall represents a function tool call.
+type FunctionToolCall struct {
 	ID        ToolCallID `json:"id"`
 	Name      ToolName   `json:"name"`
 	Arguments string     `json:"arguments"`
 }
 
-// NodeToolCallV0 contains information about a tool call within a node.
-type NodeToolCallV0 struct {
-	Step      int64              `json:"step"`
-	RequestID string             `json:"request_id"`
-	ToolCall  FunctionToolCallV0 `json:"tool_call"`
+// NodeToolCall contains information about a tool call within a node.
+type NodeToolCall struct {
+	Step      int64            `json:"step"`
+	RequestID string           `json:"request_id"`
+	ToolCall  FunctionToolCall `json:"tool_call"`
 }
 
-// NodeToolResultV0 contains the result of a tool call.
-type NodeToolResultV0 struct {
+// NodeToolResult contains the result of a tool call.
+type NodeToolResult struct {
 	Step       int64      `json:"step"`
 	RequestID  string     `json:"request_id"`
 	ToolCallID ToolCallID `json:"tool_call_id"`
@@ -235,19 +235,19 @@ type NodeToolResultV0 struct {
 	Output     string     `json:"output"`
 }
 
-// PendingToolCallV0 represents a pending tool call awaiting execution.
-type PendingToolCallV0 struct {
+// PendingToolCall represents a pending tool call awaiting execution.
+type PendingToolCall struct {
 	ToolCallID ToolCallID `json:"tool_call_id"`
 	Name       ToolName   `json:"name"`
 	Arguments  string     `json:"arguments"`
 }
 
-// NodeWaitingV0 contains information about a node waiting for tool results.
-type NodeWaitingV0 struct {
-	Step             int64               `json:"step"`
-	RequestID        string              `json:"request_id"`
-	PendingToolCalls []PendingToolCallV0 `json:"pending_tool_calls"`
-	Reason           string              `json:"reason"`
+// NodeWaiting contains information about a node waiting for tool results.
+type NodeWaiting struct {
+	Step             int64             `json:"step"`
+	RequestID        string            `json:"request_id"`
+	PendingToolCalls []PendingToolCall `json:"pending_tool_calls"`
+	Reason           string            `json:"reason"`
 }
 
 // ProviderID identifies an LLM provider.

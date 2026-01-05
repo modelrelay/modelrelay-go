@@ -260,7 +260,7 @@ Plugins are GitHub-hosted markdown agents that the Go SDK loads from GitHub, con
 
 Plugin manifests can be `PLUGIN.md` or `SKILL.md`, and plugin URLs can be GitHub `tree/blob/raw` URLs or `github.com/owner/repo@ref/path` canonical URLs.
 
-Client tool names + argument schemas are standardized by the tools.v0 contract: `docs/reference/tools-v0.md` (design notes: `docs/architecture/client-tools.md`).
+Client tool names + argument schemas are standardized by the tools.v0 contract: `docs/reference/tools.md` (design notes: `docs/architecture/client-tools.md`).
 
 The Go SDK uses strong types for tool plumbing:
 - `sdk.ToolName` for function tool names

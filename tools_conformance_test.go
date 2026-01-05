@@ -47,25 +47,25 @@ type toolsV0Expect struct {
 	LineRegex         *string  `json:"line_regex"`
 }
 
-func conformanceToolsV0DirForTest(t *testing.T) (string, bool) {
+func conformanceToolsDirForTest(t *testing.T) (string, bool) {
 	t.Helper()
 
 	if root := os.Getenv("MODELRELAY_CONFORMANCE_DIR"); root != "" {
-		return filepath.Join(root, "tools-v0"), true
+		return filepath.Join(root, "tools"), true
 	}
 
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	// sdk/go/tools_v0_conformance_test.go -> repo root
+	// sdk/go/tools_conformance_test.go -> repo root
 	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
-	internal := filepath.Join(repoRoot, "platform", "workflow", "testdata", "conformance", "tools-v0")
+	internal := filepath.Join(repoRoot, "platform", "workflow", "testdata", "conformance", "tools")
 	if _, err := os.Stat(filepath.Join(internal, "fixtures.json")); err == nil {
 		return internal, true
 	}
 	if isMonorepo(repoRoot) {
-		t.Fatalf("tools.v0 conformance fixtures missing at %s (set MODELRELAY_CONFORMANCE_DIR)", internal)
+		t.Fatalf("tools conformance fixtures missing at %s (set MODELRELAY_CONFORMANCE_DIR)", internal)
 	}
 	return "", false
 }
@@ -80,9 +80,9 @@ func isMonorepo(repoRoot string) bool {
 	return false
 }
 
-func readToolsV0Fixtures(t *testing.T) toolsV0Fixtures {
+func readToolsFixtures(t *testing.T) toolsV0Fixtures {
 	t.Helper()
-	base, ok := conformanceToolsV0DirForTest(t)
+	base, ok := conformanceToolsDirForTest(t)
 	if !ok {
 		t.Skip("conformance fixtures not available (set MODELRELAY_CONFORMANCE_DIR)")
 	}
@@ -109,9 +109,9 @@ func toolCallFromArgs(name ToolName, args map[string]any) llm.ToolCall {
 	}
 }
 
-func TestToolsV0Conformance_LocalFS(t *testing.T) {
-	fixtures := readToolsV0Fixtures(t)
-	base, _ := conformanceToolsV0DirForTest(t)
+func TestToolsConformance_LocalFS(t *testing.T) {
+	fixtures := readToolsFixtures(t)
+	base, _ := conformanceToolsDirForTest(t)
 	root := filepath.Join(base, fixtures.Workspace.Root)
 
 	registry := NewLocalFSTools(root)

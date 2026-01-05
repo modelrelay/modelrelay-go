@@ -115,7 +115,7 @@ Rules:
 - Use join.all to aggregate parallel branches and then a final synthesizer node.
 - Bind node outputs using bindings when passing data forward.
 - Tool contract:
-  - Target tools.v0 client tools (see docs/reference/tools-v0.md).
+  - Target tools.v0 client tools (see docs/reference/tools.md).
   - Workspace access MUST use these exact function tool names:
     - fs.read_file, fs.list_files, fs.search, bash, write_file
   - Prefer fs.* tools for reading/listing/searching the workspace (use bash only when necessary).
