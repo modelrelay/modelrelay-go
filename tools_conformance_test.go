@@ -51,7 +51,7 @@ func conformanceToolsDirForTest(t *testing.T) (string, bool) {
 	t.Helper()
 
 	if root := os.Getenv("MODELRELAY_CONFORMANCE_DIR"); root != "" {
-		return filepath.Join(root, "tools"), true
+		return filepath.Join(root, "tools-v0"), true
 	}
 
 	_, file, _, ok := runtime.Caller(0)
@@ -60,7 +60,7 @@ func conformanceToolsDirForTest(t *testing.T) (string, bool) {
 	}
 	// sdk/go/tools_conformance_test.go -> repo root
 	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
-	internal := filepath.Join(repoRoot, "platform", "workflow", "testdata", "conformance", "tools")
+	internal := filepath.Join(repoRoot, "platform", "workflow", "testdata", "conformance", "tools-v0")
 	if _, err := os.Stat(filepath.Join(internal, "fixtures.json")); err == nil {
 		return internal, true
 	}
