@@ -1011,6 +1011,29 @@ type SessionWithMessagesResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// SkillSummaryV0 defines model for SkillSummaryV0.
+type SkillSummaryV0 struct {
+	Agents      []string `json:"agents"`
+	Description *string  `json:"description,omitempty"`
+	Name        string   `json:"name"`
+}
+
+// SkillsCompileRequest defines model for SkillsCompileRequest.
+type SkillsCompileRequest struct {
+	Model  *string `json:"model,omitempty"`
+	Source string  `json:"source"`
+}
+
+// SkillsCompileResponse defines model for SkillsCompileResponse.
+type SkillsCompileResponse struct {
+	CompiledAt time.Time      `json:"compiled_at"`
+	Skill      SkillSummaryV0 `json:"skill"`
+	SourceRef  string         `json:"source_ref"`
+
+	// Workflow A `workflow.v1` spec. The canonical JSON Schema is available at `/schemas/workflow_v1.schema.json`.
+	Workflow WorkflowSpecV1 `json:"workflow"`
+}
+
 // Subscription defines model for Subscription.
 type Subscription struct {
 	// BillingProvider Billing provider backing the subscription or tier.
@@ -1604,3 +1627,6 @@ type UpdateSessionJSONRequestBody = SessionUpdateRequest
 
 // AddSessionMessageJSONRequestBody defines body for AddSessionMessage for application/json ContentType.
 type AddSessionMessageJSONRequestBody = SessionMessageCreateRequest
+
+// CompileSkillJSONRequestBody defines body for CompileSkill for application/json ContentType.
+type CompileSkillJSONRequestBody = SkillsCompileRequest
