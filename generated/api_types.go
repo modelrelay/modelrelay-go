@@ -14,6 +14,34 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Defines values for AgentCreateRequestToolFailurePolicy.
+const (
+	AgentCreateRequestToolFailurePolicyContinue AgentCreateRequestToolFailurePolicy = "continue"
+	AgentCreateRequestToolFailurePolicyRetry    AgentCreateRequestToolFailurePolicy = "retry"
+	AgentCreateRequestToolFailurePolicyStop     AgentCreateRequestToolFailurePolicy = "stop"
+)
+
+// Defines values for AgentRunOptionsToolFailurePolicy.
+const (
+	AgentRunOptionsToolFailurePolicyContinue AgentRunOptionsToolFailurePolicy = "continue"
+	AgentRunOptionsToolFailurePolicyRetry    AgentRunOptionsToolFailurePolicy = "retry"
+	AgentRunOptionsToolFailurePolicyStop     AgentRunOptionsToolFailurePolicy = "stop"
+)
+
+// Defines values for AgentUpdateRequestToolFailurePolicy.
+const (
+	AgentUpdateRequestToolFailurePolicyContinue AgentUpdateRequestToolFailurePolicy = "continue"
+	AgentUpdateRequestToolFailurePolicyRetry    AgentUpdateRequestToolFailurePolicy = "retry"
+	AgentUpdateRequestToolFailurePolicyStop     AgentUpdateRequestToolFailurePolicy = "stop"
+)
+
+// Defines values for AgentVersionToolFailurePolicy.
+const (
+	AgentVersionToolFailurePolicyContinue AgentVersionToolFailurePolicy = "continue"
+	AgentVersionToolFailurePolicyRetry    AgentVersionToolFailurePolicy = "retry"
+	AgentVersionToolFailurePolicyStop     AgentVersionToolFailurePolicy = "stop"
+)
+
 // Defines values for BillingMode.
 const (
 	Byob    BillingMode = "byob"
@@ -245,6 +273,144 @@ const (
 	Delivered WebhookTestResultStatus = "delivered"
 	Failed    WebhookTestResultStatus = "failed"
 )
+
+// Agent defines model for Agent.
+type Agent struct {
+	CreatedAt       time.Time          `json:"created_at"`
+	CurrentRevision int                `json:"current_revision"`
+	Description     *string            `json:"description,omitempty"`
+	Id              openapi_types.UUID `json:"id"`
+	Name            string             `json:"name"`
+	ProjectId       openapi_types.UUID `json:"project_id"`
+	Slug            string             `json:"slug"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+}
+
+// AgentCreateRequest defines model for AgentCreateRequest.
+type AgentCreateRequest struct {
+	Description       *string                              `json:"description,omitempty"`
+	Fragments         *map[string]interface{}              `json:"fragments,omitempty"`
+	MaxDurationSec    *int                                 `json:"max_duration_sec,omitempty"`
+	MaxSteps          *int                                 `json:"max_steps,omitempty"`
+	Model             *string                              `json:"model,omitempty"`
+	Name              string                               `json:"name"`
+	Slug              string                               `json:"slug"`
+	StepTimeoutSec    *int                                 `json:"step_timeout_sec,omitempty"`
+	System            *string                              `json:"system,omitempty"`
+	ToolFailurePolicy *AgentCreateRequestToolFailurePolicy `json:"tool_failure_policy,omitempty"`
+	ToolRetryCount    *int                                 `json:"tool_retry_count,omitempty"`
+	Tools             *[]AgentToolRef                      `json:"tools,omitempty"`
+}
+
+// AgentCreateRequestToolFailurePolicy defines model for AgentCreateRequest.ToolFailurePolicy.
+type AgentCreateRequestToolFailurePolicy string
+
+// AgentFragmentRef defines model for AgentFragmentRef.
+type AgentFragmentRef struct {
+	Inputs *map[string]string `json:"inputs,omitempty"`
+	Ref    string             `json:"ref"`
+}
+
+// AgentListResponse defines model for AgentListResponse.
+type AgentListResponse struct {
+	Agents *[]AgentResource `json:"agents,omitempty"`
+}
+
+// AgentResource defines model for AgentResource.
+type AgentResource struct {
+	Agent   Agent        `json:"agent"`
+	Version AgentVersion `json:"version"`
+}
+
+// AgentResponse defines model for AgentResponse.
+type AgentResponse struct {
+	Agent *AgentResource `json:"agent,omitempty"`
+}
+
+// AgentRunOptions defines model for AgentRunOptions.
+type AgentRunOptions struct {
+	CaptureToolIo     *bool                             `json:"capture_tool_io,omitempty"`
+	DryRun            *bool                             `json:"dry_run,omitempty"`
+	MaxDurationSec    *int                              `json:"max_duration_sec,omitempty"`
+	MaxSteps          *int                              `json:"max_steps,omitempty"`
+	Model             *string                           `json:"model,omitempty"`
+	StepTimeoutSec    *int                              `json:"step_timeout_sec,omitempty"`
+	Stream            *bool                             `json:"stream,omitempty"`
+	ToolFailurePolicy *AgentRunOptionsToolFailurePolicy `json:"tool_failure_policy,omitempty"`
+	ToolRetryCount    *int                              `json:"tool_retry_count,omitempty"`
+}
+
+// AgentRunOptionsToolFailurePolicy defines model for AgentRunOptions.ToolFailurePolicy.
+type AgentRunOptionsToolFailurePolicy string
+
+// AgentRunRequest defines model for AgentRunRequest.
+type AgentRunRequest struct {
+	CustomerId *string          `json:"customer_id,omitempty"`
+	Input      []InputItem      `json:"input"`
+	Options    *AgentRunOptions `json:"options,omitempty"`
+}
+
+// AgentRunResponse defines model for AgentRunResponse.
+type AgentRunResponse struct {
+	Output *[]OutputItem `json:"output,omitempty"`
+
+	// RunId Unique identifier for a workflow run.
+	RunId RunId            `json:"run_id"`
+	Steps *[]RunStepDetail `json:"steps,omitempty"`
+	Usage RunSummary       `json:"usage"`
+}
+
+// AgentTestRequest defines model for AgentTestRequest.
+type AgentTestRequest struct {
+	Input     []InputItem             `json:"input"`
+	MockTools *map[string]interface{} `json:"mock_tools,omitempty"`
+	Options   *AgentRunOptions        `json:"options,omitempty"`
+}
+
+// AgentToolRef defines model for AgentToolRef.
+type AgentToolRef struct {
+	Definition *Tool               `json:"definition,omitempty"`
+	Fragment   *AgentFragmentRef   `json:"fragment,omitempty"`
+	HookId     *openapi_types.UUID `json:"hook_id,omitempty"`
+}
+
+// AgentUpdateRequest defines model for AgentUpdateRequest.
+type AgentUpdateRequest struct {
+	Description       *string                              `json:"description,omitempty"`
+	Fragments         *map[string]interface{}              `json:"fragments,omitempty"`
+	MaxDurationSec    *int                                 `json:"max_duration_sec,omitempty"`
+	MaxSteps          *int                                 `json:"max_steps,omitempty"`
+	Model             *string                              `json:"model,omitempty"`
+	Name              *string                              `json:"name,omitempty"`
+	StepTimeoutSec    *int                                 `json:"step_timeout_sec,omitempty"`
+	System            *string                              `json:"system,omitempty"`
+	ToolFailurePolicy *AgentUpdateRequestToolFailurePolicy `json:"tool_failure_policy,omitempty"`
+	ToolRetryCount    *int                                 `json:"tool_retry_count,omitempty"`
+	Tools             *[]AgentToolRef                      `json:"tools,omitempty"`
+}
+
+// AgentUpdateRequestToolFailurePolicy defines model for AgentUpdateRequest.ToolFailurePolicy.
+type AgentUpdateRequestToolFailurePolicy string
+
+// AgentVersion defines model for AgentVersion.
+type AgentVersion struct {
+	AgentId           openapi_types.UUID            `json:"agent_id"`
+	CreatedAt         time.Time                     `json:"created_at"`
+	Fragments         *map[string]interface{}       `json:"fragments,omitempty"`
+	Id                openapi_types.UUID            `json:"id"`
+	MaxDurationSec    int                           `json:"max_duration_sec"`
+	MaxSteps          int                           `json:"max_steps"`
+	Model             *string                       `json:"model,omitempty"`
+	Revision          int                           `json:"revision"`
+	StepTimeoutSec    int                           `json:"step_timeout_sec"`
+	System            string                        `json:"system"`
+	ToolFailurePolicy AgentVersionToolFailurePolicy `json:"tool_failure_policy"`
+	ToolRetryCount    int                           `json:"tool_retry_count"`
+	Tools             []AgentToolRef                `json:"tools"`
+}
+
+// AgentVersionToolFailurePolicy defines model for AgentVersion.ToolFailurePolicy.
+type AgentVersionToolFailurePolicy string
 
 // AuthResponse defines model for AuthResponse.
 type AuthResponse struct {
@@ -861,6 +1027,41 @@ type RunId = openapi_types.UUID
 // RunStatusV0 defines model for RunStatusV0.
 type RunStatusV0 string
 
+// RunStepDetail defines model for RunStepDetail.
+type RunStepDetail struct {
+	LlmCall     *map[string]interface{}   `json:"llm_call,omitempty"`
+	LlmRequest  *map[string]interface{}   `json:"llm_request,omitempty"`
+	LlmResponse *map[string]interface{}   `json:"llm_response,omitempty"`
+	NodeId      string                    `json:"node_id"`
+	RequestId   *openapi_types.UUID       `json:"request_id,omitempty"`
+	Step        int                       `json:"step"`
+	ToolCalls   *[]map[string]interface{} `json:"tool_calls,omitempty"`
+	ToolResults *[]map[string]interface{} `json:"tool_results,omitempty"`
+}
+
+// RunStepsResponse defines model for RunStepsResponse.
+type RunStepsResponse struct {
+	Steps *[]RunStepDetail `json:"steps,omitempty"`
+}
+
+// RunSummary defines model for RunSummary.
+type RunSummary struct {
+	TotalCostCents    int `json:"total_cost_cents"`
+	TotalInputTokens  int `json:"total_input_tokens"`
+	TotalLlmCalls     int `json:"total_llm_calls"`
+	TotalOutputTokens int `json:"total_output_tokens"`
+	TotalSteps        int `json:"total_steps"`
+	TotalToolCalls    int `json:"total_tool_calls"`
+}
+
+// RunToolCallDetail defines model for RunToolCallDetail.
+type RunToolCallDetail struct {
+	NodeId     string                  `json:"node_id"`
+	Step       int                     `json:"step"`
+	ToolCall   map[string]interface{}  `json:"tool_call"`
+	ToolResult *map[string]interface{} `json:"tool_result,omitempty"`
+}
+
 // RunsCreateOptionsV0 defines model for RunsCreateOptionsV0.
 type RunsCreateOptionsV0 struct {
 	IdempotencyKey *string `json:"idempotency_key,omitempty"`
@@ -899,8 +1100,9 @@ type RunsGetResponse struct {
 	PlanHash PlanHash `json:"plan_hash"`
 
 	// RunId Unique identifier for a workflow run.
-	RunId  RunId       `json:"run_id"`
-	Status RunStatusV0 `json:"status"`
+	RunId   RunId       `json:"run_id"`
+	Status  RunStatusV0 `json:"status"`
+	Summary RunSummary  `json:"summary"`
 }
 
 // SessionCreateRequest Request body for creating a session.
@@ -1585,6 +1787,21 @@ type CreateProjectJSONRequestBody CreateProjectJSONBody
 
 // UpdateProjectJSONRequestBody defines body for UpdateProject for application/json ContentType.
 type UpdateProjectJSONRequestBody UpdateProjectJSONBody
+
+// CreateProjectAgentJSONRequestBody defines body for CreateProjectAgent for application/json ContentType.
+type CreateProjectAgentJSONRequestBody = AgentCreateRequest
+
+// UpdateProjectAgentJSONRequestBody defines body for UpdateProjectAgent for application/json ContentType.
+type UpdateProjectAgentJSONRequestBody = AgentUpdateRequest
+
+// ReplayAgentJSONRequestBody defines body for ReplayAgent for application/json ContentType.
+type ReplayAgentJSONRequestBody = AgentTestRequest
+
+// RunAgentJSONRequestBody defines body for RunAgent for application/json ContentType.
+type RunAgentJSONRequestBody = AgentRunRequest
+
+// TestAgentJSONRequestBody defines body for TestAgent for application/json ContentType.
+type TestAgentJSONRequestBody = AgentTestRequest
 
 // CreateCustomerJSONRequestBody defines body for CreateCustomer for application/json ContentType.
 type CreateCustomerJSONRequestBody = CustomerCreate
