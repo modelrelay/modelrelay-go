@@ -137,4 +137,7 @@ package sdk
 // 1.41.0: Add admin billing invariants route constant.
 // 1.40.0: Add PAYGO wallet balance/reserved + overage indicator to customer usage summary.
 // 1.39.0: Restore TiersClient (list, get, checkout) for tier querying operations.
-const Version = "3.0.0"
+// 4.0.0: Breaking - CustomerMeUsage: remove credits_granted_cents/credits_remaining_cents,
+// add spend_limit_cents/spend_remaining_cents. SpendLimitCents is now the single source of truth
+// for usage budget (distinct from subscription price).
+const Version = "4.0.0"

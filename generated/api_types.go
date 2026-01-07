@@ -593,27 +593,25 @@ type CustomerMeSubscriptionResponse struct {
 
 // CustomerMeUsage Customer-visible usage metrics for the current billing window.
 type CustomerMeUsage struct {
-	// CreditsGrantedCents Credits granted for this billing window (only for paid tiers)
-	CreditsGrantedCents *int64 `json:"credits_granted_cents,omitempty"`
+	Daily  []CustomerUsagePoint `json:"daily"`
+	Images int64                `json:"images"`
 
-	// CreditsRemainingCents Credits remaining in this billing window (only for paid tiers)
-	CreditsRemainingCents *int64               `json:"credits_remaining_cents,omitempty"`
-	Daily                 []CustomerUsagePoint `json:"daily"`
-	Images                int64                `json:"images"`
-
-	// Low Whether remaining credits are low (only for paid tiers)
+	// Low True when 80% or more of spend limit is used (nil if unlimited)
 	Low *bool `json:"low,omitempty"`
 
 	// OverageEnabled True when PAYGO wallet can cover subscription overages
 	OverageEnabled *bool `json:"overage_enabled,omitempty"`
 
-	// PercentageUsed Percentage of granted credits used (only for paid tiers)
+	// PercentageUsed Percentage of spend limit used (nil if unlimited)
 	PercentageUsed *float32 `json:"percentage_used,omitempty"`
 	Requests       int64    `json:"requests"`
 
-	// SpendLimitCents Spending limit for this billing window (nil if no limit configured)
+	// SpendLimitCents API usage budget for this billing window (nil if unlimited)
 	SpendLimitCents *int64 `json:"spend_limit_cents,omitempty"`
-	Tokens          int64  `json:"tokens"`
+
+	// SpendRemainingCents Remaining budget (spend_limit_cents minus total_cost_cents, nil if unlimited)
+	SpendRemainingCents *int64 `json:"spend_remaining_cents,omitempty"`
+	Tokens              int64  `json:"tokens"`
 
 	// TotalCostCents Total cost incurred in this billing window (always populated)
 	TotalCostCents int64 `json:"total_cost_cents"`
