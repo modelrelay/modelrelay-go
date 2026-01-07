@@ -31,10 +31,10 @@ type PluginRunConfig struct {
 
 type PluginRunResult struct {
 	RunID       RunID                          `json:"run_id"`
-	Status      RunStatus                    `json:"status"`
+	Status      RunStatus                      `json:"status"`
 	Outputs     map[OutputName]json.RawMessage `json:"outputs,omitempty"`
-	CostSummary RunCostSummary               `json:"cost_summary"`
-	Events      []RunEvent                   `json:"events,omitempty"`
+	CostSummary RunCostSummary                 `json:"cost_summary"`
+	Events      []RunEvent                     `json:"events,omitempty"`
 }
 
 func (r *PluginRunner) Run(ctx context.Context, spec *WorkflowSpecV1, cfg PluginRunConfig) (*PluginRunResult, error) {
@@ -148,8 +148,8 @@ func (r *PluginRunner) Wait(ctx context.Context, runID RunID, cfg PluginRunConfi
 					return nil, err
 				}
 			case RunEventNodeToolResultV0:
-				if e.ToolResult.ToolCallID != "" {
-					handledToolCallIDs[e.ToolResult.ToolCallID] = struct{}{}
+				if e.ToolResult.ToolCall.ID != "" {
+					handledToolCallIDs[e.ToolResult.ToolCall.ID] = struct{}{}
 				}
 			}
 		}
@@ -175,14 +175,14 @@ func (r *PluginRunner) handleWaitingEvents(ctx context.Context, runID RunID, wai
 
 		var results []RunsToolResultItemV0
 		for _, call := range ev.Waiting.PendingToolCalls {
-			toolCallID := call.ToolCallID
+			toolCallID := call.ToolCall.ID
 			if toolCallID == "" {
 				continue
 			}
 			if _, ok := handled[toolCallID]; ok {
 				continue
 			}
-			name := call.Name
+			name := call.ToolCall.Name
 			if name == "" {
 				continue
 			}
@@ -190,13 +190,15 @@ func (r *PluginRunner) handleWaitingEvents(ctx context.Context, runID RunID, wai
 			tc := llm.ToolCall{
 				ID:       toolCallID,
 				Type:     llm.ToolTypeFunction,
-				Function: &llm.FunctionCall{Name: name, Arguments: call.Arguments},
+				Function: &llm.FunctionCall{Name: name, Arguments: call.ToolCall.Arguments},
 			}
 			execRes := registry.Execute(tc)
 			results = append(results, RunsToolResultItemV0{
-				ToolCallID: toolCallID,
-				Name:       name,
-				Output:     toolExecutionOutput(execRes),
+				ToolCall: ToolCall{
+					ID:   toolCallID,
+					Name: ToolName(name),
+				},
+				Output: toolExecutionOutput(execRes),
 			})
 		}
 		if len(results) == 0 {
@@ -212,8 +214,8 @@ func (r *PluginRunner) handleWaitingEvents(ctx context.Context, runID RunID, wai
 			return err
 		}
 		for _, res := range results {
-			if res.ToolCallID != "" {
-				handled[res.ToolCallID] = struct{}{}
+			if res.ToolCall.ID != "" {
+				handled[res.ToolCall.ID] = struct{}{}
 			}
 		}
 	}

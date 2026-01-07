@@ -1074,14 +1074,14 @@ type RunStatusV0 string
 
 // RunStepDetail defines model for RunStepDetail.
 type RunStepDetail struct {
-	LlmCall     *map[string]interface{}   `json:"llm_call,omitempty"`
-	LlmRequest  *map[string]interface{}   `json:"llm_request,omitempty"`
-	LlmResponse *map[string]interface{}   `json:"llm_response,omitempty"`
-	NodeId      string                    `json:"node_id"`
-	RequestId   *openapi_types.UUID       `json:"request_id,omitempty"`
-	Step        int                       `json:"step"`
-	ToolCalls   *[]map[string]interface{} `json:"tool_calls,omitempty"`
-	ToolResults *[]map[string]interface{} `json:"tool_results,omitempty"`
+	LlmCall     *map[string]interface{}  `json:"llm_call,omitempty"`
+	LlmRequest  *map[string]interface{}  `json:"llm_request,omitempty"`
+	LlmResponse *map[string]interface{}  `json:"llm_response,omitempty"`
+	NodeId      string                   `json:"node_id"`
+	RequestId   *openapi_types.UUID      `json:"request_id,omitempty"`
+	Step        int                      `json:"step"`
+	ToolCalls   *[]RunsPendingToolCallV0 `json:"tool_calls,omitempty"`
+	ToolResults *[]RunToolResultV0       `json:"tool_results,omitempty"`
 }
 
 // RunStepsResponse defines model for RunStepsResponse.
@@ -1101,20 +1101,37 @@ type RunSummary struct {
 
 // RunToolCallDetail defines model for RunToolCallDetail.
 type RunToolCallDetail struct {
-	NodeId     string                  `json:"node_id"`
-	Step       int                     `json:"step"`
-	ToolCall   map[string]interface{}  `json:"tool_call"`
-	ToolResult *map[string]interface{} `json:"tool_result,omitempty"`
+	NodeId   string `json:"node_id"`
+	Step     int    `json:"step"`
+	ToolCall struct {
+		// Arguments JSON-encoded arguments for the tool call
+		Arguments string `json:"arguments"`
+
+		// Id Unique identifier for a tool call. Treated as an opaque string and must be preserved exactly.
+		Id ToolCallId `json:"id"`
+
+		// Name Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
+		Name ToolName `json:"name"`
+	} `json:"tool_call"`
+
+	// ToolResult Result for a tool call executed during a run.
+	ToolResult *RunToolResultV0 `json:"tool_result,omitempty"`
 }
 
 // RunToolResultV0 Result for a tool call executed during a run.
 type RunToolResultV0 struct {
-	// Name Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
-	Name   ToolName `json:"name"`
-	Output string   `json:"output"`
+	Error    *string `json:"error,omitempty"`
+	Output   string  `json:"output"`
+	ToolCall struct {
+		// Arguments JSON-encoded arguments for the tool call
+		Arguments *string `json:"arguments,omitempty"`
 
-	// ToolCallId Unique identifier for a tool call. Treated as an opaque string and must be preserved exactly.
-	ToolCallId ToolCallId `json:"tool_call_id"`
+		// Id Unique identifier for a tool call. Treated as an opaque string and must be preserved exactly.
+		Id ToolCallId `json:"id"`
+
+		// Name Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
+		Name ToolName `json:"name"`
+	} `json:"tool_call"`
 }
 
 // RunsCreateOptionsV0 defines model for RunsCreateOptionsV0.
@@ -1163,14 +1180,16 @@ type RunsGetResponse struct {
 
 // RunsPendingToolCallV0 A pending tool call waiting for a result.
 type RunsPendingToolCallV0 struct {
-	// Arguments JSON-encoded arguments for the tool call
-	Arguments string `json:"arguments"`
+	ToolCall struct {
+		// Arguments JSON-encoded arguments for the tool call
+		Arguments string `json:"arguments"`
 
-	// Name Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
-	Name ToolName `json:"name"`
+		// Id Unique identifier for a tool call. Treated as an opaque string and must be preserved exactly.
+		Id ToolCallId `json:"id"`
 
-	// ToolCallId Unique identifier for a tool call. Treated as an opaque string and must be preserved exactly.
-	ToolCallId ToolCallId `json:"tool_call_id"`
+		// Name Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
+		Name ToolName `json:"name"`
+	} `json:"tool_call"`
 }
 
 // SessionCreateRequest Request body for creating a session.

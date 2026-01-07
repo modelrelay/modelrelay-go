@@ -86,7 +86,7 @@ const (
 type EventTypeV0 string
 
 const (
-	EventEnvelopeVersionV0 = "v1"
+	EventEnvelopeVersionV0 = "v2"
 
 	// ArtifactKeyNodeOutputV0 is the artifact key for a node's final output payload.
 	ArtifactKeyNodeOutputV0 = "node_output.v0"
@@ -128,6 +128,12 @@ type PayloadInfo struct {
 	Bytes    int64  `json:"bytes"`
 	SHA256   string `json:"sha256"`
 	Included bool   `json:"included"`
+}
+
+// PayloadArtifact identifies an artifact payload and its metadata.
+type PayloadArtifact struct {
+	ArtifactKey string      `json:"artifact_key"`
+	Info        PayloadInfo `json:"info"`
 }
 
 // NodeError represents an error from a node execution.
@@ -197,11 +203,8 @@ type EventV0Envelope struct {
 
 	Delta *NodeOutputDelta `json:"delta,omitempty"`
 
-	OutputInfo  *PayloadInfo `json:"output_info,omitempty"`
-	ArtifactKey string       `json:"artifact_key,omitempty"`
-
-	OutputsArtifactKey string       `json:"outputs_artifact_key,omitempty"`
-	OutputsInfo        *PayloadInfo `json:"outputs_info,omitempty"`
+	Output  *PayloadArtifact `json:"output,omitempty"`
+	Outputs *PayloadArtifact `json:"outputs,omitempty"`
 }
 
 // ToolCallID is a unique identifier for a tool call.
@@ -212,8 +215,16 @@ type ToolCallID = llm.ToolCallID
 // This is an alias to llm.ToolName.
 type ToolName = llm.ToolName
 
-// FunctionToolCall represents a function tool call.
-type FunctionToolCall struct {
+// ToolCall represents a tool call reference in run payloads.
+// Arguments are optional and omitted when absent.
+type ToolCall struct {
+	ID        ToolCallID `json:"id"`
+	Name      ToolName   `json:"name"`
+	Arguments string     `json:"arguments,omitempty"`
+}
+
+// ToolCallWithArguments represents a tool call that must include arguments.
+type ToolCallWithArguments struct {
 	ID        ToolCallID `json:"id"`
 	Name      ToolName   `json:"name"`
 	Arguments string     `json:"arguments"`
@@ -221,25 +232,23 @@ type FunctionToolCall struct {
 
 // NodeToolCall contains information about a tool call within a node.
 type NodeToolCall struct {
-	Step      int64            `json:"step"`
-	RequestID string           `json:"request_id"`
-	ToolCall  FunctionToolCall `json:"tool_call"`
+	Step      int64                 `json:"step"`
+	RequestID string                `json:"request_id"`
+	ToolCall  ToolCallWithArguments `json:"tool_call"`
 }
 
 // NodeToolResult contains the result of a tool call.
 type NodeToolResult struct {
-	Step       int64      `json:"step"`
-	RequestID  string     `json:"request_id"`
-	ToolCallID ToolCallID `json:"tool_call_id"`
-	Name       ToolName   `json:"name"`
-	Output     string     `json:"output"`
+	Step      int64    `json:"step"`
+	RequestID string   `json:"request_id"`
+	ToolCall  ToolCall `json:"tool_call"`
+	Output    string   `json:"output"`
+	Error     string   `json:"error,omitempty"`
 }
 
 // PendingToolCall represents a pending tool call awaiting execution.
 type PendingToolCall struct {
-	ToolCallID ToolCallID `json:"tool_call_id"`
-	Name       ToolName   `json:"name"`
-	Arguments  string     `json:"arguments"`
+	ToolCall ToolCallWithArguments `json:"tool_call"`
 }
 
 // NodeWaiting contains information about a node waiting for tool results.

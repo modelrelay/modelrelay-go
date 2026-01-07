@@ -45,23 +45,25 @@ type (
 	JoinCollectNodeInputV1        = workflow.JoinCollectNodeInputV1
 	RunID                         = workflow.RunID
 	PlanHash                      = workflow.PlanHash
-	RunEventType                = workflow.EventTypeV0
-	RunStatus                   = workflow.StatusV0
-	NodeStatus                  = workflow.NodeStatus
-	NodeError                   = workflow.NodeError
-	NodeResult                  = workflow.NodeResult
-	RunEventEnvelope            = workflow.EventV0Envelope
-	PayloadInfo                 = workflow.PayloadInfo
-	TokenUsage                  = workflow.TokenUsage
-	NodeOutputDelta             = workflow.NodeOutputDelta
-	NodeLLMCall                 = workflow.NodeLLMCall
-	FunctionToolCall            = workflow.FunctionToolCall
-	NodeToolCall                = workflow.NodeToolCall
-	NodeToolResult              = workflow.NodeToolResult
-	PendingToolCall             = workflow.PendingToolCall
-	NodeWaiting                 = workflow.NodeWaiting
-	RunCostSummary              = workflow.CostSummaryV0
-	RunCostLineItem             = workflow.CostLineItemV0
+	RunEventType                  = workflow.EventTypeV0
+	RunStatus                     = workflow.StatusV0
+	NodeStatus                    = workflow.NodeStatus
+	NodeError                     = workflow.NodeError
+	NodeResult                    = workflow.NodeResult
+	RunEventEnvelope              = workflow.EventV0Envelope
+	PayloadInfo                   = workflow.PayloadInfo
+	PayloadArtifact               = workflow.PayloadArtifact
+	TokenUsage                    = workflow.TokenUsage
+	NodeOutputDelta               = workflow.NodeOutputDelta
+	NodeLLMCall                   = workflow.NodeLLMCall
+	ToolCall                      = workflow.ToolCall
+	ToolCallWithArguments         = workflow.ToolCallWithArguments
+	NodeToolCall                  = workflow.NodeToolCall
+	NodeToolResult                = workflow.NodeToolResult
+	PendingToolCall               = workflow.PendingToolCall
+	NodeWaiting                   = workflow.NodeWaiting
+	RunCostSummary                = workflow.CostSummaryV0
+	RunCostLineItem               = workflow.CostLineItemV0
 	StreamEventKind               = workflow.StreamEventKind
 )
 
@@ -87,7 +89,7 @@ const (
 	LLMTextOutputPointer                    = workflow.LLMTextOutputPointer
 	LLMUserMessageTextPointer               = workflow.LLMUserMessageTextPointer
 	LLMUserMessageTextPointerIndex1         = workflow.LLMUserMessageTextPointerIndex1
-	RunEventEnvelopeVersion               = workflow.EventEnvelopeVersionV0
+	RunEventEnvelopeVersion                 = workflow.EventEnvelopeVersionV0
 	ArtifactKeyNodeOutputV0                 = workflow.ArtifactKeyNodeOutputV0
 	ArtifactKeyRunOutputsV0                 = workflow.ArtifactKeyRunOutputsV0
 	RunEventRunCompiled                     = workflow.EventRunCompiled
@@ -125,15 +127,15 @@ const (
 
 // Re-export workflow functions.
 var (
-	NewNodeID                = workflow.NewNodeID
-	NewOutputName            = workflow.NewOutputName
-	NewJSONPointer           = workflow.NewJSONPointer
-	NewPlaceholderName       = workflow.NewPlaceholderName
-	NewRunID                 = workflow.NewRunID
-	ParseRunID               = workflow.ParseRunID
-	ParsePlanHash            = workflow.ParsePlanHash
-	MapFanoutItemsFromLLM    = workflow.MapFanoutItemsFromLLM
-	MapFanoutItemsFromInput  = workflow.MapFanoutItemsFromInput
+	NewNodeID               = workflow.NewNodeID
+	NewOutputName           = workflow.NewOutputName
+	NewJSONPointer          = workflow.NewJSONPointer
+	NewPlaceholderName      = workflow.NewPlaceholderName
+	NewRunID                = workflow.NewRunID
+	ParseRunID              = workflow.ParseRunID
+	ParsePlanHash           = workflow.ParsePlanHash
+	MapFanoutItemsFromLLM   = workflow.MapFanoutItemsFromLLM
+	MapFanoutItemsFromInput = workflow.MapFanoutItemsFromInput
 )
 
 // ResponseID is a stable identifier for a /responses completion.

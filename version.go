@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 3.0.0: Breaking - run event envelope v2 with nested tool_call objects and output/outputs metadata.
 // 2.0.0: Breaking - rename EndUser identity to Customer; remove publishable keys (mr_pk_*).
 // 1.39.0: Add PAYGO wallet balance/reserved + overage indicator to customer usage summary.
 // 1.38.0: Flatten billing response types (return inner types directly, not wrappers).
@@ -136,4 +137,4 @@ package sdk
 // 1.41.0: Add admin billing invariants route constant.
 // 1.40.0: Add PAYGO wallet balance/reserved + overage indicator to customer usage summary.
 // 1.39.0: Restore TiersClient (list, get, checkout) for tier querying operations.
-const Version = "2.2.0"
+const Version = "3.0.0"
