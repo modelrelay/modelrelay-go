@@ -929,6 +929,9 @@ type Project struct {
 // ProviderId LLM provider identifier.
 type ProviderId string
 
+// RequestId Unique identifier for an LLM request within a workflow run.
+type RequestId = openapi_types.UUID
+
 // ResponsesBatchError defines model for ResponsesBatchError.
 type ResponsesBatchError struct {
 	Code *string `json:"code,omitempty"`
@@ -1024,6 +1027,48 @@ type RunCostSummaryV0 struct {
 // RunId Unique identifier for a workflow run.
 type RunId = openapi_types.UUID
 
+// RunNodeStepLLMCallV0 Per-step LLM call metadata.
+type RunNodeStepLLMCallV0 struct {
+	// Model LLM model identifier (e.g., claude-sonnet-4-5, gpt-4o).
+	Model *ModelId `json:"model,omitempty"`
+
+	// Provider LLM provider identifier.
+	Provider   *ProviderId `json:"provider,omitempty"`
+	ResponseId *string     `json:"response_id,omitempty"`
+	StopReason *string     `json:"stop_reason,omitempty"`
+
+	// Usage Token usage statistics. All fields default to 0 if not present.
+	Usage *Usage `json:"usage,omitempty"`
+}
+
+// RunNodeStepV0 Step-level execution details for a node.
+type RunNodeStepV0 struct {
+	// LlmCall Per-step LLM call metadata.
+	LlmCall *RunNodeStepLLMCallV0 `json:"llm_call,omitempty"`
+
+	// RequestId Unique identifier for an LLM request within a workflow run.
+	RequestId   RequestId                `json:"request_id"`
+	Step        uint64                   `json:"step"`
+	ToolCalls   *[]RunsPendingToolCallV0 `json:"tool_calls,omitempty"`
+	ToolResults *[]RunToolResultV0       `json:"tool_results,omitempty"`
+
+	// Waiting Waiting details for a step when client tools are pending.
+	Waiting *RunNodeStepWaitingV0 `json:"waiting,omitempty"`
+}
+
+// RunNodeStepWaitingV0 Waiting details for a step when client tools are pending.
+type RunNodeStepWaitingV0 struct {
+	PendingToolCalls *[]RunsPendingToolCallV0 `json:"pending_tool_calls,omitempty"`
+	Reason           *string                  `json:"reason,omitempty"`
+}
+
+// RunNodeStepsV0 Step history for a node in a workflow run.
+type RunNodeStepsV0 struct {
+	// NodeId Workflow node identifier. Must start with a lowercase letter and contain only lowercase letters, numbers, and underscores.
+	NodeId NodeId          `json:"node_id"`
+	Steps  []RunNodeStepV0 `json:"steps"`
+}
+
 // RunStatusV0 defines model for RunStatusV0.
 type RunStatusV0 string
 
@@ -1060,6 +1105,16 @@ type RunToolCallDetail struct {
 	Step       int                     `json:"step"`
 	ToolCall   map[string]interface{}  `json:"tool_call"`
 	ToolResult *map[string]interface{} `json:"tool_result,omitempty"`
+}
+
+// RunToolResultV0 Result for a tool call executed during a run.
+type RunToolResultV0 struct {
+	// Name Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
+	Name   ToolName `json:"name"`
+	Output string   `json:"output"`
+
+	// ToolCallId Unique identifier for a tool call. Treated as an opaque string and must be preserved exactly.
+	ToolCallId ToolCallId `json:"tool_call_id"`
 }
 
 // RunsCreateOptionsV0 defines model for RunsCreateOptionsV0.
@@ -1100,9 +1155,22 @@ type RunsGetResponse struct {
 	PlanHash PlanHash `json:"plan_hash"`
 
 	// RunId Unique identifier for a workflow run.
-	RunId   RunId       `json:"run_id"`
-	Status  RunStatusV0 `json:"status"`
-	Summary RunSummary  `json:"summary"`
+	RunId   RunId             `json:"run_id"`
+	Status  RunStatusV0       `json:"status"`
+	Steps   *[]RunNodeStepsV0 `json:"steps,omitempty"`
+	Summary RunSummary        `json:"summary"`
+}
+
+// RunsPendingToolCallV0 A pending tool call waiting for a result.
+type RunsPendingToolCallV0 struct {
+	// Arguments JSON-encoded arguments for the tool call
+	Arguments string `json:"arguments"`
+
+	// Name Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
+	Name ToolName `json:"name"`
+
+	// ToolCallId Unique identifier for a tool call. Treated as an opaque string and must be preserved exactly.
+	ToolCallId ToolCallId `json:"tool_call_id"`
 }
 
 // SessionCreateRequest Request body for creating a session.
@@ -1717,6 +1785,12 @@ type ListProjectWebhookEventsParams struct {
 // TestProjectWebhookJSONBody defines parameters for TestProjectWebhook.
 type TestProjectWebhookJSONBody struct {
 	EventType *string `json:"event_type,omitempty"`
+}
+
+// GetRunParams defines parameters for GetRun.
+type GetRunParams struct {
+	// Include Comma-separated list of additional fields to include. Supported values: steps, tool_calls.
+	Include *string `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // StreamRunEventsParams defines parameters for StreamRunEvents.
