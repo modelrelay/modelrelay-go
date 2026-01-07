@@ -107,6 +107,7 @@ type Client struct {
 	Responses *ResponsesClient
 	Workflows *WorkflowsClient
 	Runs      *RunsClient
+	Agents    *AgentsClient
 	Images    *ImagesClient
 	Auth      *AuthClient
 	Sessions  *SessionsClient
@@ -243,6 +244,7 @@ func newClientFromOptions(apiKey APIKeyAuth, accessToken string, opts clientOpti
 	client.Responses = &ResponsesClient{client: client}
 	client.Workflows = &WorkflowsClient{client: client}
 	client.Runs = &RunsClient{client: client}
+	client.Agents = &AgentsClient{client: client}
 	client.Images = &ImagesClient{client: client}
 	client.Auth = &AuthClient{client: client}
 	client.Sessions = &SessionsClient{client: client}
