@@ -1307,8 +1307,9 @@ type SkillSummaryV0 struct {
 
 // SkillsCompileRequest defines model for SkillsCompileRequest.
 type SkillsCompileRequest struct {
-	Model  *string `json:"model,omitempty"`
-	Source string  `json:"source"`
+	MaxAttempts *int    `json:"max_attempts,omitempty"`
+	Model       *string `json:"model,omitempty"`
+	Source      string  `json:"source"`
 }
 
 // SkillsCompileResponse defines model for SkillsCompileResponse.
