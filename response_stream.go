@@ -93,6 +93,13 @@ func (s *responseStream) CollectWithMetrics(ctx context.Context) (*Response, Res
 			model = ev.Model
 		}
 		switch ev.Kind {
+		case llm.StreamEventKindReasoningDelta:
+			// Reasoning tokens count toward TTFT. For reasoning models, the first
+			// token arrives during the reasoning phase, which is the correct moment
+			// to measure TTFT (not after reasoning completes).
+			if ev.ReasoningDelta != "" && firstToken.IsZero() {
+				firstToken = time.Now()
+			}
 		case llm.StreamEventKindMessageDelta:
 			if ev.TextDelta != "" {
 				if firstToken.IsZero() {

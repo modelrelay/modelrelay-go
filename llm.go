@@ -563,6 +563,7 @@ func parseNDJSONEvent(line []byte) (StreamEvent, error) {
 		StreamMode     string          `json:"stream_mode,omitempty"`
 		StreamVersion  string          `json:"stream_version,omitempty"`
 		Delta          string          `json:"delta,omitempty"`
+		ReasoningDelta string          `json:"reasoning_delta,omitempty"`
 		Content        string          `json:"content,omitempty"`
 		Patch          json.RawMessage `json:"patch,omitempty"`
 		Payload        json.RawMessage `json:"payload,omitempty"`
@@ -594,6 +595,8 @@ func parseNDJSONEvent(line []byte) (StreamEvent, error) {
 		kind = llm.StreamEventKindMessageDelta
 	case "completion":
 		kind = llm.StreamEventKindMessageStop
+	case "reasoning_delta":
+		kind = llm.StreamEventKindReasoningDelta
 	case "error":
 		kind = llm.StreamEventKindCustom // Error records are handled specially
 	case "keepalive":
@@ -630,6 +633,7 @@ func parseNDJSONEvent(line []byte) (StreamEvent, error) {
 		ResponseID:     envelope.RequestID,
 		Model:          NewModelID(envelope.Model),
 		TextDelta:      textDelta,
+		ReasoningDelta: envelope.ReasoningDelta,
 		CompleteFields: envelope.CompleteFields,
 		StopReason:     ParseStopReason(envelope.StopReason),
 		Usage:          envelope.Usage,

@@ -308,15 +308,16 @@ type Citation struct {
 type StreamEventKind string
 
 const (
-	StreamEventKindUnknown      StreamEventKind = ""
-	StreamEventKindMessageStart StreamEventKind = "message_start"
-	StreamEventKindMessageDelta StreamEventKind = "message_delta"
-	StreamEventKindMessageStop  StreamEventKind = "message_stop"
-	StreamEventKindToolUseStart StreamEventKind = "tool_use_start"
-	StreamEventKindToolUseDelta StreamEventKind = "tool_use_delta"
-	StreamEventKindToolUseStop  StreamEventKind = "tool_use_stop"
-	StreamEventKindPing         StreamEventKind = "ping"
-	StreamEventKindCustom       StreamEventKind = "custom"
+	StreamEventKindUnknown        StreamEventKind = ""
+	StreamEventKindMessageStart   StreamEventKind = "message_start"
+	StreamEventKindMessageDelta   StreamEventKind = "message_delta"
+	StreamEventKindMessageStop    StreamEventKind = "message_stop"
+	StreamEventKindReasoningDelta StreamEventKind = "reasoning_delta"
+	StreamEventKindToolUseStart   StreamEventKind = "tool_use_start"
+	StreamEventKindToolUseDelta   StreamEventKind = "tool_use_delta"
+	StreamEventKindToolUseStop    StreamEventKind = "tool_use_stop"
+	StreamEventKindPing           StreamEventKind = "ping"
+	StreamEventKindCustom         StreamEventKind = "custom"
 )
 
 // StreamEvent reflects a single provider event.
@@ -330,6 +331,10 @@ type StreamEvent struct {
 	StopReason string
 	// TextDelta contains the text fragment for message_delta events.
 	TextDelta string
+	// ReasoningDelta contains reasoning/thinking content for reasoning_delta events.
+	// This is emitted by reasoning models (e.g., Grok with reasoning enabled) before
+	// the main text output. Consumers can choose to display or ignore this content.
+	ReasoningDelta string
 	// ToolCalls contains completed tool calls when Kind is tool_use_stop or message_stop.
 	ToolCalls []ToolCall
 	// ToolCallDelta contains incremental tool call data when Kind is tool_use_delta.
