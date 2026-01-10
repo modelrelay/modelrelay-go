@@ -245,7 +245,7 @@ func (b LLMNodeBuilder) Tools(names ...string) LLMNodeBuilder {
 	for _, name := range names {
 		trimmed := strings.TrimSpace(name)
 		if trimmed == "" {
-			continue
+			panic("empty tool name")
 		}
 		refs = append(refs, workflowintent.ToolRef{
 			Tool: llm.Tool{
