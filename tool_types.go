@@ -1,6 +1,10 @@
 package sdk
 
-import llm "github.com/modelrelay/modelrelay/sdk/go/llm"
+import (
+	"strings"
+
+	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
+)
 
 // ToolName is the identifier for function tools (client tools in tools.v0).
 type ToolName = llm.ToolName
@@ -17,6 +21,35 @@ const (
 	ToolNameFSReadFile  ToolName = "fs.read_file"
 	ToolNameFSListFiles ToolName = "fs.list_files"
 	ToolNameFSSearch    ToolName = "fs.search"
+	ToolNameFSEdit      ToolName = "fs.edit"
 	ToolNameBash        ToolName = "bash"
 	ToolNameWriteFile   ToolName = "write_file"
 )
+
+// AllowedToolNames is the canonical list of allowed tools.v0 client tool names.
+var AllowedToolNames = []ToolName{
+	ToolNameFSReadFile,
+	ToolNameFSListFiles,
+	ToolNameFSSearch,
+	ToolNameFSEdit,
+	ToolNameBash,
+	ToolNameWriteFile,
+}
+
+// AllowedToolNamesString returns a comma-separated string of allowed tool names.
+func AllowedToolNamesString() string {
+	names := make([]string, len(AllowedToolNames))
+	for i, n := range AllowedToolNames {
+		names[i] = string(n)
+	}
+	return strings.Join(names, ", ")
+}
+
+// AllowedToolNamesSet returns a set of allowed tool names for fast lookup.
+func AllowedToolNamesSet() map[ToolName]struct{} {
+	set := make(map[ToolName]struct{}, len(AllowedToolNames))
+	for _, n := range AllowedToolNames {
+		set[n] = struct{}{}
+	}
+	return set
+}

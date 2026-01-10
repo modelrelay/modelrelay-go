@@ -245,4 +245,17 @@ func TestToolsConformance_LocalFS(t *testing.T) {
 			assertBehavior(ToolNameFSSearch, c)
 		}
 	})
+
+	t.Run("fs.edit", func(t *testing.T) {
+		fixture, ok := cases[string(ToolNameFSEdit)]
+		if !ok {
+			t.Fatalf("missing fs.edit fixture")
+		}
+		for _, c := range fixture.SchemaInvalid {
+			assertSchemaInvalid(ToolNameFSEdit, c)
+		}
+		for _, c := range fixture.Behavior {
+			assertBehavior(ToolNameFSEdit, c)
+		}
+	})
 }

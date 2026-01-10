@@ -119,7 +119,7 @@ func TestPluginConverter_ToWorkflow_AssignsToolModes(t *testing.T) {
 	if !strings.Contains(sys, "tools.v0") || !strings.Contains(sys, "docs/reference/tools.md") {
 		t.Fatalf("expected tools.v0 contract reference in system prompt, got: %q", sys)
 	}
-	for _, want := range []string{"fs.read_file", "fs.list_files", "fs.search", "bash", "write_file"} {
+	for _, want := range []string{"fs.read_file", "fs.list_files", "fs.search", "fs.edit", "bash", "write_file"} {
 		if !strings.Contains(sys, want) {
 			t.Fatalf("expected system prompt to mention %q, got: %q", want, sys)
 		}

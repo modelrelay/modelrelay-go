@@ -106,7 +106,7 @@ func (c *PluginConverter) ToWorkflow(ctx context.Context, plugin *Plugin, cmd st
 	return &spec, nil
 }
 
-const pluginToWorkflowSystemPrompt = `You convert a ModelRelay plugin (markdown files) into a single workflow.v1 JSON spec.
+var pluginToWorkflowSystemPrompt = `You convert a ModelRelay plugin (markdown files) into a single workflow.v1 JSON spec.
 
 Rules:
 - Output MUST be a single JSON object and MUST validate as workflow.v1.
@@ -117,7 +117,7 @@ Rules:
 - Tool contract:
   - Target tools.v0 client tools (see docs/reference/tools.md).
   - Workspace access MUST use these exact function tool names:
-    - fs.read_file, fs.list_files, fs.search, bash, write_file
+    - ` + AllowedToolNamesString() + `
   - Prefer fs.* tools for reading/listing/searching the workspace (use bash only when necessary).
   - Do NOT invent ad-hoc tool names (no repo.*, github.*, filesystem.*, etc.).
   - All client tools MUST be represented as type="function" tools.
@@ -241,13 +241,7 @@ func validatePluginWorkflowTargetsToolsV1(spec *WorkflowSpecV1) error {
 		return errors.New("workflow spec required")
 	}
 
-	allowed := map[ToolName]struct{}{
-		ToolNameFSReadFile:  {},
-		ToolNameFSListFiles: {},
-		ToolNameFSSearch:    {},
-		ToolNameBash:        {},
-		ToolNameWriteFile:   {},
-	}
+	allowed := AllowedToolNamesSet()
 
 	for i := range spec.Nodes {
 		if spec.Nodes[i].Type != WorkflowNodeTypeV1LLMResponses {

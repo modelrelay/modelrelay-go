@@ -118,6 +118,7 @@ func WithLocalFSMaxSearchBytes(n uint64) LocalFSOption {
 // - fs.read_file
 // - fs.list_files
 // - fs.search
+// - fs.edit
 //
 // The pack enforces a root sandbox, path traversal prevention, ignore lists, and size/time caps.
 //
@@ -209,6 +210,7 @@ func (p *LocalFSToolPack) RegisterInto(registry *ToolRegistry) *ToolRegistry {
 	registry.Register(ToolNameFSReadFile, p.readFileTool)
 	registry.Register(ToolNameFSListFiles, p.listFilesTool)
 	registry.Register(ToolNameFSSearch, p.searchTool)
+	registry.Register(ToolNameFSEdit, p.editTool)
 	return registry
 }
 
@@ -253,6 +255,55 @@ func (a *fsSearchArgs) Validate() error {
 		return errors.New("max_matches must be > 0")
 	}
 	return nil
+}
+
+// fsEditArgsWire is the wire format for fs.edit tool arguments.
+// Use Parse() to convert to validated domain type.
+type fsEditArgsWire struct {
+	Path       string  `json:"path"`
+	OldString  *string `json:"old_string"`
+	NewString  *string `json:"new_string"`
+	ReplaceAll *bool   `json:"replace_all,omitempty"`
+}
+
+func (a *fsEditArgsWire) Validate() error {
+	if strings.TrimSpace(a.Path) == "" {
+		return errors.New("path is required")
+	}
+	if a.OldString == nil || strings.TrimSpace(*a.OldString) == "" {
+		return errors.New("old_string is required")
+	}
+	if a.NewString == nil {
+		return errors.New("new_string is required")
+	}
+	return nil
+}
+
+// Parse validates and converts wire format to domain type.
+// After Parse(), all fields are guaranteed non-empty (except NewString which may be empty for deletions).
+func (a *fsEditArgsWire) Parse() (fsEditRequest, error) {
+	if err := a.Validate(); err != nil {
+		return fsEditRequest{}, err
+	}
+	replaceAll := false
+	if a.ReplaceAll != nil {
+		replaceAll = *a.ReplaceAll
+	}
+	return fsEditRequest{
+		Path:       a.Path,
+		OldString:  *a.OldString,
+		NewString:  *a.NewString,
+		ReplaceAll: replaceAll,
+	}, nil
+}
+
+// fsEditRequest is the validated domain type for fs.edit operations.
+// All fields are guaranteed valid after parsing - no nil checks needed.
+type fsEditRequest struct {
+	Path       string // non-empty
+	OldString  string // non-empty
+	NewString  string // may be empty (valid for deletion)
+	ReplaceAll bool   // default false
 }
 
 func (p *LocalFSToolPack) ensureReady() error {
@@ -485,6 +536,71 @@ func (p *LocalFSToolPack) searchTool(_ map[string]any, call llm.ToolCall) (any, 
 		return p.searchWithRipgrep(rg, args.Query, dirAbs, maxMatches)
 	}
 	return p.searchWithGo(args.Query, dirAbs, maxMatches)
+}
+
+func (p *LocalFSToolPack) editTool(_ map[string]any, call llm.ToolCall) (any, error) {
+	if err := p.ensureReady(); err != nil {
+		return nil, err
+	}
+
+	var wire fsEditArgsWire
+	if err := ParseToolArgs(call, &wire); err != nil {
+		return nil, err
+	}
+	req, err := wire.Parse()
+	if err != nil {
+		return nil, &ToolArgsError{Message: err.Error()}
+	}
+
+	abs, rel, err := p.resolveExistingPath(req.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := os.Stat(abs)
+	if err != nil {
+		return nil, fmt.Errorf("fs.edit: stat: %w", err)
+	}
+	if info.IsDir() {
+		return nil, fmt.Errorf("fs.edit: path is a directory: %s", req.Path)
+	}
+
+	//nolint:gosec // G304: path is sandboxed via resolveExistingPath (root containment + symlink resolution)
+	data, err := os.ReadFile(abs)
+	if err != nil {
+		return nil, fmt.Errorf("fs.edit: read: %w", err)
+	}
+	if !utf8.Valid(data) {
+		return nil, fmt.Errorf("fs.edit: file is not valid UTF-8: %s", req.Path)
+	}
+
+	contents := string(data)
+	matches := findOccurrences(contents, req.OldString)
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("fs.edit: old_string not found")
+	}
+	if !req.ReplaceAll && len(matches) > 1 {
+		return nil, fmt.Errorf("fs.edit: old_string appears multiple times")
+	}
+
+	applied := matches
+	if !req.ReplaceAll {
+		applied = matches[:1]
+	}
+
+	var updated string
+	if req.ReplaceAll {
+		updated = strings.ReplaceAll(contents, req.OldString, req.NewString)
+	} else {
+		updated = strings.Replace(contents, req.OldString, req.NewString, 1)
+	}
+
+	if err := os.WriteFile(abs, []byte(updated), info.Mode()); err != nil {
+		return nil, fmt.Errorf("fs.edit: write: %w", err)
+	}
+
+	lineSpec := formatLineRanges(buildLineRanges(contents, applied, len(req.OldString)))
+	return fmt.Sprintf("Edited %s (replacements=%d, lines %s)", rel, len(applied), lineSpec), nil
 }
 
 func (p *LocalFSToolPack) rgBinary() (string, bool) {
@@ -732,4 +848,99 @@ func defaultIgnoredDirNames() map[string]struct{} {
 		out[n] = struct{}{}
 	}
 	return out
+}
+
+type lineRange struct {
+	start int
+	end   int
+}
+
+func findOccurrences(haystack, needle string) []int {
+	if needle == "" {
+		return nil
+	}
+	out := make([]int, 0, 4)
+	for idx := 0; ; {
+		pos := strings.Index(haystack[idx:], needle)
+		if pos < 0 {
+			break
+		}
+		found := idx + pos
+		out = append(out, found)
+		idx = found + len(needle)
+		if idx >= len(haystack) {
+			break
+		}
+	}
+	return out
+}
+
+func buildLineRanges(contents string, positions []int, needleLen int) []lineRange {
+	if len(positions) == 0 {
+		return nil
+	}
+	newlines := make([]int, 0, strings.Count(contents, "\n"))
+	for i := 0; i < len(contents); i++ {
+		if contents[i] == '\n' {
+			newlines = append(newlines, i)
+		}
+	}
+	if needleLen < 1 {
+		needleLen = 1
+	}
+	ranges := make([]lineRange, 0, len(positions))
+	for _, pos := range positions {
+		endIdx := pos + needleLen - 1
+		ranges = append(ranges, lineRange{
+			start: lineNumberAt(newlines, pos),
+			end:   lineNumberAt(newlines, endIdx),
+		})
+	}
+	return ranges
+}
+
+func lineNumberAt(newlines []int, index int) int {
+	if index < 0 {
+		return 1
+	}
+	lo, hi := 0, len(newlines)
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if newlines[mid] < index {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	return lo + 1
+}
+
+func formatLineRanges(ranges []lineRange) string {
+	if len(ranges) == 0 {
+		return ""
+	}
+	merged := make([]lineRange, 0, len(ranges))
+	for _, r := range ranges {
+		if len(merged) == 0 {
+			merged = append(merged, r)
+			continue
+		}
+		last := &merged[len(merged)-1]
+		if r.start <= last.end+1 {
+			if r.end > last.end {
+				last.end = r.end
+			}
+			continue
+		}
+		merged = append(merged, r)
+	}
+	parts := make([]string, 0, len(merged))
+	for _, r := range merged {
+		if r.start == r.end {
+			parts = append(parts, fmt.Sprintf("%d", r.start))
+		} else {
+			parts = append(parts, fmt.Sprintf("%d-%d", r.start, r.end))
+		}
+	}
+	return strings.Join(parts, ",")
 }

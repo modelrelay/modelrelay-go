@@ -370,10 +370,11 @@ type Stream interface {
 }
 
 // MarshalEvent is a helper to encode arbitrary payloads.
+// Panics on marshal failure since streaming event types are well-defined.
 func MarshalEvent(payload any) []byte {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return nil
+		panic("MarshalEvent: failed to marshal streaming event: " + err.Error())
 	}
 	return data
 }
