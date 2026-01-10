@@ -1143,7 +1143,7 @@ type RunsCreateOptionsV0 struct {
 	IdempotencyKey *string `json:"idempotency_key,omitempty"`
 }
 
-// RunsCreateRequest defines model for RunsCreateRequest.
+// RunsCreateRequest Create a workflow run. The workflow spec must include a resolved model for every llm.responses/route.switch node (including map.fanout subnodes); /runs does not resolve tiers or default models.
 type RunsCreateRequest struct {
 	// Input Runtime inputs for the workflow. Required when the spec uses from_input references (e.g., map.fanout with items.from_input). Each key is the input name, and the value is the JSON data to provide.
 	Input   *map[string]interface{} `json:"input,omitempty"`
