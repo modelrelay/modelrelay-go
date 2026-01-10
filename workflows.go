@@ -15,7 +15,7 @@ type WorkflowsClient struct {
 	client *Client
 }
 
-type WorkflowsCompileResponseV1 struct {
+type WorkflowsCompileResponse struct {
 	PlanJSON json.RawMessage `json:"plan_json"`
 	PlanHash PlanHash        `json:"plan_hash"`
 }
@@ -45,10 +45,10 @@ func WithWorkflowsCompileRetry(cfg RetryConfig) WorkflowsCompileOption {
 	return func(o *workflowsCompileOptions) { o.retry = &cfg }
 }
 
-// CompileV1 compiles a workflow.v1 spec into a canonical plan JSON and plan_hash.
+// Compile compiles a workflow spec into a canonical plan JSON and plan_hash.
 //
 // On validation failures, it returns WorkflowValidationError.
-func (c *WorkflowsClient) CompileV1(ctx context.Context, spec WorkflowSpecV1, opts ...WorkflowsCompileOption) (*WorkflowsCompileResponseV1, error) {
+func (c *WorkflowsClient) Compile(ctx context.Context, spec WorkflowSpec, opts ...WorkflowsCompileOption) (*WorkflowsCompileResponse, error) {
 	options := buildWorkflowsCompileOptions(opts)
 
 	req, err := c.client.newJSONRequest(ctx, http.MethodPost, routes.WorkflowsCompile, spec)
@@ -78,7 +78,7 @@ func (c *WorkflowsClient) CompileV1(ctx context.Context, spec WorkflowSpecV1, op
 		return nil, decodeAPIErrorFromBytes(resp.StatusCode, body, nil)
 	}
 
-	var out WorkflowsCompileResponseV1
+	var out WorkflowsCompileResponse
 	if err := json.Unmarshal(body, &out); err != nil {
 		return nil, err
 	}

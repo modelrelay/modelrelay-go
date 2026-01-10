@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
+	"github.com/modelrelay/modelrelay/sdk/go/workflowintent"
 )
 
 type PluginConverter struct {
@@ -38,7 +39,7 @@ func NewPluginConverter(client *Client, opts ...PluginConverterOption) *PluginCo
 	return pc
 }
 
-func (c *PluginConverter) ToWorkflow(ctx context.Context, plugin *Plugin, cmd string, task string) (*WorkflowSpecV1, error) {
+func (c *PluginConverter) ToWorkflow(ctx context.Context, plugin *Plugin, cmd string, task string) (*WorkflowSpec, error) {
 	if c == nil || c.client == nil || c.client.Responses == nil {
 		return nil, errors.New("plugin converter: client required")
 	}
@@ -64,7 +65,7 @@ func (c *PluginConverter) ToWorkflow(ctx context.Context, plugin *Plugin, cmd st
 		return nil, errors.New("plugin converter: unknown command")
 	}
 
-	rf := MustOutputFormatFromType[WorkflowSpecV1]("workflow_v1")
+	rf := MustOutputFormatFromType[WorkflowSpec]("workflow")
 	prompt, err := buildPluginConversionPrompt(*plugin, command, task)
 	if err != nil {
 		return nil, err
@@ -90,30 +91,34 @@ func (c *PluginConverter) ToWorkflow(ctx context.Context, plugin *Plugin, cmd st
 		return nil, TransportError{Kind: TransportErrorOther, Message: "converter returned empty output"}
 	}
 
-	var spec WorkflowSpecV1
+	var spec WorkflowSpec
 	if err := json.Unmarshal([]byte(raw), &spec); err != nil {
 		return nil, TransportError{Kind: TransportErrorOther, Message: "converter returned invalid workflow JSON"}
 	}
-	if spec.Kind != WorkflowKindV1 {
+	if spec.Kind != WorkflowKindIntent {
 		return nil, TransportError{Kind: TransportErrorOther, Message: "converter returned wrong kind"}
 	}
-	if err := normalizeWorkflowToolExecutionModes(&spec); err != nil {
+	if strings.TrimSpace(c.converterModel.String()) != "" {
+		spec.Model = c.converterModel.String()
+	}
+	if err := normalizeWorkflowIntentToolExecutionModes(&spec); err != nil {
 		return nil, err
 	}
-	if err := validatePluginWorkflowTargetsToolsV1(&spec); err != nil {
+	if err := validatePluginWorkflowTargetsToolsLite(&spec); err != nil {
 		return nil, err
 	}
 	return &spec, nil
 }
 
-var pluginToWorkflowSystemPrompt = `You convert a ModelRelay plugin (markdown files) into a single workflow.v1 JSON spec.
+var pluginToWorkflowSystemPrompt = `You convert a ModelRelay plugin (markdown files) into a single workflow JSON spec.
 
 Rules:
-- Output MUST be a single JSON object and MUST validate as workflow.v1.
+- Output MUST be a single JSON object and MUST validate as workflow.
 - Do NOT output markdown, commentary, or code fences.
 - Use a DAG with parallelism when multiple agents are independent.
 - Use join.all to aggregate parallel branches and then a final synthesizer node.
-- Bind node outputs using bindings when passing data forward.
+- Use depends_on for edges between nodes.
+- Bind node outputs using {{placeholders}} when passing data forward.
 - Tool contract:
   - Target tools.v0 client tools (see docs/reference/tools.md).
   - Workspace access MUST use these exact function tool names:
@@ -121,7 +126,7 @@ Rules:
   - Prefer fs.* tools for reading/listing/searching the workspace (use bash only when necessary).
   - Do NOT invent ad-hoc tool names (no repo.*, github.*, filesystem.*, etc.).
   - All client tools MUST be represented as type="function" tools.
-  - Any node that includes request.tools MUST set tool_execution.mode="client".
+  - Any node that includes tools MUST set tool_execution.mode="client".
 - Prefer minimal nodes needed to satisfy the task.
 `
 
@@ -171,49 +176,43 @@ func buildPluginConversionPrompt(plugin Plugin, cmd PluginCommand, userTask stri
 	return b.String(), nil
 }
 
-func normalizeWorkflowToolExecutionModes(spec *WorkflowSpecV1) error {
+func normalizeWorkflowIntentToolExecutionModes(spec *WorkflowSpec) error {
 	if spec == nil {
 		return errors.New("workflow spec required")
 	}
 	for i := range spec.Nodes {
-		if spec.Nodes[i].Type != WorkflowNodeTypeV1LLMResponses {
+		if spec.Nodes[i].Type != WorkflowNodeTypeLLM {
 			continue
 		}
-		var input llmResponsesNodeInputV1
-		if err := json.Unmarshal(spec.Nodes[i].Input, &input); err != nil {
-			return fmt.Errorf("node %q: invalid input JSON: %w", spec.Nodes[i].ID, err)
-		}
-		mode, err := desiredToolExecutionMode(input.Request.Tools)
+		mode, err := desiredToolExecutionMode(toolRefsToTools(spec.Nodes[i].Tools))
 		if err != nil {
 			return fmt.Errorf("node %q: %w", spec.Nodes[i].ID, err)
 		}
 		if mode == "" {
 			continue
 		}
-		if input.ToolExecution != nil && input.ToolExecution.Mode == mode {
+		if spec.Nodes[i].ToolExecution != nil && spec.Nodes[i].ToolExecution.Mode == mode {
 			continue
 		}
-		input.ToolExecution = &ToolExecutionV1{Mode: ToolExecutionModeV1(mode)}
-		raw, err := json.Marshal(input)
-		if err != nil {
-			return fmt.Errorf("node %q: failed to marshal input: %w", spec.Nodes[i].ID, err)
-		}
-		spec.Nodes[i].Input = raw
+		spec.Nodes[i].ToolExecution = &workflowintent.ToolExecution{Mode: mode}
 	}
 	return nil
 }
 
-func desiredToolExecutionMode(tools []llm.Tool) (ToolExecutionModeV1, error) {
-	var wanted ToolExecutionModeV1
-	for _, tool := range tools {
+func desiredToolExecutionMode(tools []llm.Tool) (workflowintent.ToolExecutionMode, error) {
+	var wanted workflowintent.ToolExecutionMode
+	for i, tool := range tools {
 		if tool.Type != llm.ToolTypeFunction || tool.Function == nil {
-			return ToolExecutionModeClientV1, nil
+			return workflowintent.ToolExecutionModeClient, nil
 		}
 		name := tool.Function.Name
 		if name == "" {
-			continue
+			return "", fmt.Errorf("tool at index %d has empty name", i)
 		}
-		mode := toolNameMode(name)
+		mode, err := toolNameMode(name)
+		if err != nil {
+			return "", err
+		}
 		if wanted == "" {
 			wanted = mode
 			continue
@@ -225,18 +224,23 @@ func desiredToolExecutionMode(tools []llm.Tool) (ToolExecutionModeV1, error) {
 	return wanted, nil
 }
 
-func toolNameMode(name ToolName) ToolExecutionModeV1 {
-	switch name {
-	case ToolNameBash, ToolNameWriteFile:
-		return ToolExecutionModeClientV1
-	case ToolNameFSReadFile, ToolNameFSSearch, ToolNameFSListFiles:
-		return ToolExecutionModeClientV1
-	default:
-		return ToolExecutionModeClientV1
-	}
+// knownClientTools is the set of tools that support client-side execution.
+var knownClientTools = map[ToolName]struct{}{
+	ToolNameBash:        {},
+	ToolNameWriteFile:   {},
+	ToolNameFSReadFile:  {},
+	ToolNameFSSearch:    {},
+	ToolNameFSListFiles: {},
 }
 
-func validatePluginWorkflowTargetsToolsV1(spec *WorkflowSpecV1) error {
+func toolNameMode(name ToolName) (workflowintent.ToolExecutionMode, error) {
+	if _, ok := knownClientTools[name]; ok {
+		return workflowintent.ToolExecutionModeClient, nil
+	}
+	return "", fmt.Errorf("unknown tool %q for mode detection; expected one of: bash, write_file, fs.read_file, fs.search, fs.list_files", name)
+}
+
+func validatePluginWorkflowTargetsToolsLite(spec *WorkflowSpec) error {
 	if spec == nil {
 		return errors.New("workflow spec required")
 	}
@@ -244,20 +248,16 @@ func validatePluginWorkflowTargetsToolsV1(spec *WorkflowSpecV1) error {
 	allowed := AllowedToolNamesSet()
 
 	for i := range spec.Nodes {
-		if spec.Nodes[i].Type != WorkflowNodeTypeV1LLMResponses {
+		if spec.Nodes[i].Type != WorkflowNodeTypeLLM {
 			continue
 		}
-		var input llmResponsesNodeInputV1
-		if err := json.Unmarshal(spec.Nodes[i].Input, &input); err != nil {
-			return fmt.Errorf("node %q: invalid input JSON: %w", spec.Nodes[i].ID, err)
-		}
-		if len(input.Request.Tools) == 0 {
+		if len(spec.Nodes[i].Tools) == 0 {
 			continue
 		}
-		if input.ToolExecution == nil || input.ToolExecution.Mode != ToolExecutionModeClientV1 {
-			return ProtocolError{Message: fmt.Sprintf("node %q: tool_execution.mode must be %q for plugin conversion", spec.Nodes[i].ID, ToolExecutionModeClientV1)}
+		if spec.Nodes[i].ToolExecution == nil || spec.Nodes[i].ToolExecution.Mode != "client" {
+			return ProtocolError{Message: fmt.Sprintf("node %q: tool_execution.mode must be %q for plugin conversion", spec.Nodes[i].ID, "client")}
 		}
-		for _, tool := range input.Request.Tools {
+		for _, tool := range toolRefsToTools(spec.Nodes[i].Tools) {
 			if tool.Type != llm.ToolTypeFunction || tool.Function == nil {
 				return ProtocolError{Message: fmt.Sprintf("node %q: plugin conversion only supports tools.v0 function tools (got type=%q)", spec.Nodes[i].ID, tool.Type)}
 			}
@@ -271,4 +271,15 @@ func validatePluginWorkflowTargetsToolsV1(spec *WorkflowSpecV1) error {
 		}
 	}
 	return nil
+}
+
+func toolRefsToTools(refs []workflowintent.ToolRef) []llm.Tool {
+	if len(refs) == 0 {
+		return nil
+	}
+	out := make([]llm.Tool, 0, len(refs))
+	for _, ref := range refs {
+		out = append(out, ref.Tool)
+	}
+	return out
 }

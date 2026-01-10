@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/modelrelay/modelrelay/sdk/go/routes"
+	"github.com/modelrelay/modelrelay/sdk/go/workflow"
 )
 
 // RunEvent is the strongly-typed (discriminated) run event union.
@@ -325,8 +326,14 @@ func (c *RunsClient) RunEventSchemaV0(ctx context.Context) (json.RawMessage, err
 	return json.RawMessage(b), nil
 }
 
+type runsCreateRequestLite struct {
+	Spec      WorkflowSpec     `json:"spec"`
+	SessionID *uuid.UUID             `json:"session_id,omitempty"`
+	Input     map[string]interface{} `json:"input,omitempty"`
+}
+
 type runsCreateRequestV1 struct {
-	Spec      WorkflowSpecV1         `json:"spec"`
+	Spec      workflow.SpecV1         `json:"spec"`
 	SessionID *uuid.UUID             `json:"session_id,omitempty"`
 	Input     map[string]interface{} `json:"input,omitempty"`
 }
@@ -486,15 +493,18 @@ func (c *RunsClient) ListEvents(ctx context.Context, runID RunID, opts ...RunEve
 }
 
 // Create starts a workflow run and returns its run id.
-func (c *RunsClient) Create(ctx context.Context, spec WorkflowSpecV1, opts ...RunCreateOption) (*RunsCreateResponse, error) {
+func (c *RunsClient) Create(ctx context.Context, spec WorkflowSpec, opts ...RunCreateOption) (*RunsCreateResponse, error) {
 	options := buildRunCreateOptions(opts)
 
-	payload := runsCreateRequestV1{Spec: spec}
+	payload := runsCreateRequestLite{Spec: spec}
 	if options.sessionID != nil {
 		if *options.sessionID == uuid.Nil {
 			return nil, ConfigError{Reason: "session id is required"}
 		}
 		payload.SessionID = options.sessionID
+	}
+	if options.inputs != nil {
+		payload.Input = options.inputs
 	}
 	req, err := c.client.newJSONRequest(ctx, http.MethodPost, routes.Runs, payload)
 	if err != nil {
@@ -529,8 +539,10 @@ func (c *RunsClient) Create(ctx context.Context, spec WorkflowSpecV1, opts ...Ru
 	return &out, nil
 }
 
-// CreateV1 starts a workflow run using a v1 spec and returns its run id.
-func (c *RunsClient) CreateV1(ctx context.Context, spec WorkflowSpecV1, opts ...RunCreateOption) (*RunsCreateResponse, error) {
+// CreateV1 starts a workflow run from a workflow.v1 spec.
+//
+// Deprecated: prefer Create with workflow specs.
+func (c *RunsClient) CreateV1(ctx context.Context, spec workflow.SpecV1, opts ...RunCreateOption) (*RunsCreateResponse, error) {
 	options := buildRunCreateOptions(opts)
 
 	payload := runsCreateRequestV1{Spec: spec}
@@ -575,6 +587,7 @@ func (c *RunsClient) CreateV1(ctx context.Context, spec WorkflowSpecV1, opts ...
 	}
 	return &out, nil
 }
+
 
 // Get returns the derived snapshot state for a run.
 func (c *RunsClient) Get(ctx context.Context, runID RunID, opts ...RunGetOption) (*RunsGetResponse, error) {
@@ -701,7 +714,7 @@ func WithRunSessionID(sessionID uuid.UUID) RunCreateOption {
 	}
 }
 
-// WithRunInputs provides input values for workflow.v1 runs that use from_input bindings.
+// WithRunInputs provides input values for workflow runs that use from_input bindings.
 // The inputs map keys correspond to InputName values referenced in the workflow spec.
 func WithRunInputs(inputs map[string]interface{}) RunCreateOption {
 	return func(o *runCreateOptions) {

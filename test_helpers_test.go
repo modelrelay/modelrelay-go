@@ -1,25 +1,9 @@
 package sdk
 
 import (
-	"encoding/json"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/modelrelay/modelrelay/platform/workflow"
 )
-
-func canonicalJSON(t *testing.T, raw []byte) []byte {
-	t.Helper()
-	var anyVal any
-	if err := json.Unmarshal(raw, &anyVal); err != nil {
-		t.Fatalf("unmarshal json: %v", err)
-	}
-	canon, err := workflow.MarshalCanonicalJSON(anyVal)
-	if err != nil {
-		t.Fatalf("canonicalize json: %v", err)
-	}
-	return canon
-}
 
 func mustSecretKey(t *testing.T, raw string) SecretKey {
 	t.Helper()

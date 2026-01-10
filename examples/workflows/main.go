@@ -117,97 +117,45 @@ func bootstrapSecretKey(ctx context.Context, apiBaseURL string) (string, error) 
 	return created.APIKey.SecretKey, nil
 }
 
-func multiAgentSpec(modelA, modelB, modelC, modelAgg string, runTimeoutMS int64) (sdk.WorkflowSpecV1, error) {
-	maxPar := int64(3)
-	nodeTimeout := int64(20_000)
-	if runTimeoutMS == 0 {
-		runTimeoutMS = 30_000
-	}
-
-	exec := sdk.WorkflowExecutionV1{
-		MaxParallelism: &maxPar,
-		NodeTimeoutMS:  &nodeTimeout,
-		RunTimeoutMS:   &runTimeoutMS,
-	}
-
-	reqA, _, err := (sdk.ResponseBuilder{}).
-		Model(sdk.NewModelID(modelA)).
-		MaxOutputTokens(64).
-		System("You are Agent A.").
-		User("Write 3 ideas for a landing page.").
-		Build()
-	if err != nil {
-		return sdk.WorkflowSpecV1{}, err
-	}
-	reqB, _, err := (sdk.ResponseBuilder{}).
-		Model(sdk.NewModelID(modelB)).
-		MaxOutputTokens(64).
-		System("You are Agent B.").
-		User("Write 3 objections a user might have.").
-		Build()
-	if err != nil {
-		return sdk.WorkflowSpecV1{}, err
-	}
-	reqC, _, err := (sdk.ResponseBuilder{}).
-		Model(sdk.NewModelID(modelC)).
-		MaxOutputTokens(64).
-		System("You are Agent C.").
-		User("Write 3 alternative headlines.").
-		Build()
-	if err != nil {
-		return sdk.WorkflowSpecV1{}, err
-	}
-	reqAgg, _, err := (sdk.ResponseBuilder{}).
-		Model(sdk.NewModelID(modelAgg)).
-		MaxOutputTokens(256).
-		System("Synthesize the best answer from the following agent outputs (JSON).").
-		User(""). // overwritten by bindings
-		Build()
-	if err != nil {
-		return sdk.WorkflowSpecV1{}, err
-	}
-
-	b := sdk.WorkflowV1().
-		Name("multi_agent_v1_example").
-		Execution(exec)
-
-	b, err = b.LLMResponsesNode("agent_a", reqA, sdk.BoolPtr(false))
-	if err != nil {
-		return sdk.WorkflowSpecV1{}, err
-	}
-	b, err = b.LLMResponsesNode("agent_b", reqB, nil)
-	if err != nil {
-		return sdk.WorkflowSpecV1{}, err
-	}
-	b, err = b.LLMResponsesNode("agent_c", reqC, nil)
-	if err != nil {
-		return sdk.WorkflowSpecV1{}, err
-	}
-	b = b.JoinAllNode("join")
-	b, err = b.LLMResponsesNodeWithBindings("aggregate", reqAgg, nil, []sdk.LLMResponsesBindingV1{
-		{
-			From:     "join",
-			To:       sdk.JSONPointer("/input/1/content/0/text"),
-			Encoding: sdk.LLMResponsesBindingEncodingJSONStringV1,
-		},
-	})
-	if err != nil {
-		return sdk.WorkflowSpecV1{}, err
-	}
-
-	b = b.
+func multiAgentSpec(modelA, modelB, modelC, modelAgg string) (sdk.WorkflowSpec, error) {
+	spec, err := sdk.WorkflowIntent().
+		Name("multi_agent_lite_example").
+		LLM("agent_a", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+			return n.Model(modelA).
+				System("You are Agent A.").
+				User("Write 3 ideas for a landing page.")
+		}).
+		LLM("agent_b", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+			return n.Model(modelB).
+				System("You are Agent B.").
+				User("Write 3 objections a user might have.")
+		}).
+		LLM("agent_c", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+			return n.Model(modelC).
+				System("You are Agent C.").
+				User("Write 3 alternative headlines.")
+		}).
+		JoinAll("join").
+		LLM("aggregate", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+			return n.Model(modelAgg).
+				System("Synthesize the best answer from the following agent outputs (JSON).").
+				User("Agent outputs: {{join}}")
+		}).
 		Edge("agent_a", "join").
 		Edge("agent_b", "join").
 		Edge("agent_c", "join").
 		Edge("join", "aggregate").
-		Output("final", "aggregate", "")
-
-	return b.Build()
+		Output("final", "aggregate").
+		Build()
+	if err != nil {
+		return sdk.WorkflowSpec{}, err
+	}
+	return spec, nil
 }
 
-func runOnce(ctx context.Context, client *sdk.Client, label string, spec sdk.WorkflowSpecV1) error {
+func runOnce(ctx context.Context, client *sdk.Client, label string, spec sdk.WorkflowSpec) error {
 	raw, _ := json.MarshalIndent(spec, "", "  ")
-	log.Printf("[%s] compiled workflow.v1: %s", label, string(raw))
+	log.Printf("[%s] compiled workflow: %s", label, string(raw))
 
 	created, err := client.Runs.Create(ctx, spec)
 	if err != nil {
@@ -284,7 +232,7 @@ func run() error {
 	}
 
 	// Use per-run contexts so the example doesn't fail due to cumulative wall-clock time.
-	specSuccess, err := multiAgentSpec(modelOK, modelOK, modelOK, modelOK, 0)
+	specSuccess, err := multiAgentSpec(modelOK, modelOK, modelOK, modelOK)
 	if err != nil {
 		return err
 	}
@@ -296,7 +244,7 @@ func run() error {
 	runCancel()
 
 	// Partial failure: one node uses an unknown model; the run fails and cancels downstream work.
-	specFail, err := multiAgentSpec(modelOK, modelBad, modelOK, modelOK, 0)
+	specFail, err := multiAgentSpec(modelOK, modelBad, modelOK, modelOK)
 	if err != nil {
 		return err
 	}
@@ -304,18 +252,6 @@ func run() error {
 	if runErr := runOnce(runCtx, client, "partial_failure", specFail); runErr != nil {
 		runCancel()
 		return runErr
-	}
-	runCancel()
-
-	// Cancellation: an unrealistically short run timeout produces run_canceled.
-	specCancel, err := multiAgentSpec(modelOK, modelOK, modelOK, modelOK, 1)
-	if err != nil {
-		return err
-	}
-	runCtx, runCancel = context.WithTimeout(context.Background(), 45*time.Second)
-	if err := runOnce(runCtx, client, "cancellation", specCancel); err != nil {
-		runCancel()
-		return err
 	}
 	runCancel()
 

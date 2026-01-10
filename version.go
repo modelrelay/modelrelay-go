@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 5.0.0: Breaking - standardize on workflow in public SDK (runs/specs/builders).
 // 4.0.1: Add skills compile max_attempts request field.
 // 3.0.0: Breaking - run event envelope v2 with nested tool_call objects and output/outputs metadata.
 // 2.0.0: Breaking - rename EndUser identity to Customer; remove publishable keys (mr_pk_*).
@@ -141,5 +142,6 @@ package sdk
 // 4.0.0: Breaking - CustomerMeUsage: remove credits_granted_cents/credits_remaining_cents,
 // add spend_limit_cents/spend_remaining_cents. SpendLimitCents is now the single source of truth
 // for usage budget (distinct from subscription price).
-// 4.1.0: Add fs.edit to tools.v0 LocalFSToolPack + conformance fixtures.
-const Version = "4.1.0"
+// 5.1.0: Breaking - standardize on workflow in public SDK (runs/specs/builders).
+// 5.0.1: Add fs.edit to tools.v0 LocalFSToolPack + conformance fixtures.
+const Version = "5.1.0"

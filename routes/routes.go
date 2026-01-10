@@ -65,7 +65,7 @@ const (
 	// ResponsesBatch runs multiple /responses calls concurrently under a single request.
 	ResponsesBatch = "/responses:batch"
 
-	// Runs starts a workflow run (workflow.v1) and returns a run_id.
+	// Runs starts a workflow run (workflow) and returns a run_id.
 	Runs = "/runs"
 
 	// RunsByID returns snapshot state for a run.
@@ -80,7 +80,7 @@ const (
 	// RunsPendingTools returns the currently pending tool calls for an in-progress run.
 	RunsPendingTools = "/runs/{run_id}/pending-tools"
 
-	// WorkflowsCompile compiles a workflow spec (workflow.v1) into a canonical plan and plan_hash.
+	// WorkflowsCompile compiles a workflow spec (workflow) into a canonical plan and plan_hash.
 	WorkflowsCompile = "/workflows/compile"
 
 	// RunEventSchema returns the run event envelope v0 JSON Schema (draft-07).

@@ -1152,8 +1152,8 @@ type RunsCreateRequest struct {
 	// SessionId Optional session ID to link this run to a session.
 	SessionId *openapi_types.UUID `json:"session_id,omitempty"`
 
-	// Spec A `workflow.v1` spec. The canonical JSON Schema is available at `/schemas/workflow_v1.schema.json`.
-	Spec WorkflowSpecV1 `json:"spec"`
+	// Spec A `workflow` spec. The canonical JSON Schema is available at `/schemas/workflow.schema.json`.
+	Spec WorkflowSpec `json:"spec"`
 }
 
 // RunsCreateResponse defines model for RunsCreateResponse.
@@ -1331,8 +1331,8 @@ type SkillsCompileResponse struct {
 	Skill      SkillSummaryV0 `json:"skill"`
 	SourceRef  string         `json:"source_ref"`
 
-	// Workflow A `workflow.v1` spec. The canonical JSON Schema is available at `/schemas/workflow_v1.schema.json`.
-	Workflow WorkflowSpecV1 `json:"workflow"`
+	// Workflow A `workflow` spec. The canonical JSON Schema is available at `/schemas/workflow.schema.json`.
+	Workflow WorkflowSpec `json:"workflow"`
 }
 
 // Subscription defines model for Subscription.
@@ -1708,8 +1708,8 @@ type WebhookTestResult struct {
 // WebhookTestResultStatus defines model for WebhookTestResult.Status.
 type WebhookTestResultStatus string
 
-// WorkflowSpecV1 A `workflow.v1` spec. The canonical JSON Schema is available at `/schemas/workflow_v1.schema.json`.
-type WorkflowSpecV1 map[string]interface{}
+// WorkflowSpec A `workflow` spec. The canonical JSON Schema is available at `/schemas/workflow.schema.json`.
+type WorkflowSpec map[string]interface{}
 
 // ProjectID defines model for ProjectID.
 type ProjectID = openapi_types.UUID
