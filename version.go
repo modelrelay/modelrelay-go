@@ -142,6 +142,7 @@ package sdk
 // 4.0.0: Breaking - CustomerMeUsage: remove credits_granted_cents/credits_remaining_cents,
 // add spend_limit_cents/spend_remaining_cents. SpendLimitCents is now the single source of truth
 // for usage budget (distinct from subscription price).
+// 5.2.0: Add high-level workflow helpers (Chain, Parallel, Workflow, LLM) for ergonomic workflow building.
 // 5.1.0: Breaking - standardize on workflow in public SDK (runs/specs/builders).
 // 5.0.1: Add fs.edit to tools.v0 LocalFSToolPack + conformance fixtures.
-const Version = "5.1.0"
+const Version = "5.2.0"

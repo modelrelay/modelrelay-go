@@ -275,3 +275,117 @@ func (b LLMNodeBuilder) ToolDefs(tools ...llm.Tool) LLMNodeBuilder {
 func (b LLMNodeBuilder) Build() workflowintent.Node {
 	return b.node
 }
+
+// Workflow is an alias for WorkflowIntent with a cleaner name.
+func Workflow() WorkflowIntentBuilder {
+	return WorkflowIntentBuilder{}
+}
+
+// LLM creates a standalone LLM node for use with Chain and Parallel.
+func LLM(id string, configure func(LLMNodeBuilder) LLMNodeBuilder) workflowintent.Node {
+	node := NewLLMNode(id)
+	if configure != nil {
+		node = configure(node)
+	}
+	return node.Build()
+}
+
+// ChainOptions configures the Chain helper.
+type ChainOptions struct {
+	Name  string
+	Model string
+}
+
+// Chain creates a sequential workflow where each step depends on the previous one.
+// Edges are automatically wired based on order.
+//
+// Example:
+//
+//	spec, _ := sdk.Chain([]workflowintent.Node{
+//	    sdk.LLM("summarize", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+//	        return n.System("Summarize.").User("{{task}}")
+//	    }),
+//	    sdk.LLM("translate", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+//	        return n.System("Translate to French.").User("{{summarize}}")
+//	    }),
+//	}, sdk.ChainOptions{Name: "summarize-translate"}).
+//	    Output("result", "translate").
+//	    Build()
+func Chain(steps []workflowintent.Node, opts ChainOptions) WorkflowIntentBuilder {
+	b := WorkflowIntentBuilder{}
+
+	if opts.Name != "" {
+		b = b.Name(opts.Name)
+	}
+	if opts.Model != "" {
+		b = b.Model(opts.Model)
+	}
+
+	// Add all nodes
+	for i := range steps {
+		b = b.Node(steps[i])
+	}
+
+	// Wire edges sequentially: step[0] -> step[1] -> step[2] -> ...
+	for i := 1; i < len(steps); i++ {
+		b = b.Edge(steps[i-1].ID, steps[i].ID)
+	}
+
+	return b
+}
+
+// ParallelOptions configures the Parallel helper.
+type ParallelOptions struct {
+	Name   string
+	Model  string
+	JoinID string // defaults to "join"
+}
+
+// Parallel creates a parallel workflow where all steps run concurrently, then join.
+// Edges are automatically wired to a join.all node.
+//
+// Example:
+//
+//	spec, _ := sdk.Parallel([]workflowintent.Node{
+//	    sdk.LLM("agent_a", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+//	        return n.User("Write 3 ideas for {{task}}")
+//	    }),
+//	    sdk.LLM("agent_b", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+//	        return n.User("Write 3 objections for {{task}}")
+//	    }),
+//	}, sdk.ParallelOptions{Name: "multi-agent"}).
+//	    LLM("aggregate", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+//	        return n.System("Synthesize.").User("{{join}}")
+//	    }).
+//	    Edge("join", "aggregate").
+//	    Output("result", "aggregate").
+//	    Build()
+func Parallel(steps []workflowintent.Node, opts ParallelOptions) WorkflowIntentBuilder {
+	b := WorkflowIntentBuilder{}
+	joinID := opts.JoinID
+	if joinID == "" {
+		joinID = "join"
+	}
+
+	if opts.Name != "" {
+		b = b.Name(opts.Name)
+	}
+	if opts.Model != "" {
+		b = b.Model(opts.Model)
+	}
+
+	// Add all parallel nodes
+	for i := range steps {
+		b = b.Node(steps[i])
+	}
+
+	// Add join node
+	b = b.JoinAll(joinID)
+
+	// Wire all parallel nodes to the join
+	for i := range steps {
+		b = b.Edge(steps[i].ID, joinID)
+	}
+
+	return b
+}

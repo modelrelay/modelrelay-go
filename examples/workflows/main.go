@@ -118,32 +118,29 @@ func bootstrapSecretKey(ctx context.Context, apiBaseURL string) (string, error) 
 }
 
 func multiAgentSpec(modelA, modelB, modelC, modelAgg string) (sdk.WorkflowSpec, error) {
-	spec, err := sdk.WorkflowIntent().
-		Name("multi_agent_lite_example").
-		LLM("agent_a", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+	// Use the Parallel() helper for automatic edge wiring
+	spec, err := sdk.Parallel([]sdk.WorkflowIntentNode{
+		sdk.LLM("agent_a", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
 			return n.Model(modelA).
 				System("You are Agent A.").
 				User("Write 3 ideas for a landing page.")
-		}).
-		LLM("agent_b", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+		}),
+		sdk.LLM("agent_b", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
 			return n.Model(modelB).
 				System("You are Agent B.").
 				User("Write 3 objections a user might have.")
-		}).
-		LLM("agent_c", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+		}),
+		sdk.LLM("agent_c", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
 			return n.Model(modelC).
 				System("You are Agent C.").
 				User("Write 3 alternative headlines.")
-		}).
-		JoinAll("join").
+		}),
+	}, sdk.ParallelOptions{Name: "multi_agent_example"}).
 		LLM("aggregate", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
 			return n.Model(modelAgg).
 				System("Synthesize the best answer from the following agent outputs (JSON).").
 				User("Agent outputs: {{join}}")
 		}).
-		Edge("agent_a", "join").
-		Edge("agent_b", "join").
-		Edge("agent_c", "join").
 		Edge("join", "aggregate").
 		Output("final", "aggregate").
 		Build()

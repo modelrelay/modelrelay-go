@@ -111,24 +111,19 @@ for {
 
 ## Workflows
 
-Build multi-step AI pipelines with `WorkflowIntent()`:
+Build multi-step AI pipelines with the workflow helpers.
 
 ### Sequential Chain
 
 ```go
-spec, _ := sdk.WorkflowIntent().
-    Name("summarize-translate").
-    LLM("summarize", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
-        return n.Model("claude-sonnet-4-5").
-            System("Summarize the input concisely.").
-            User("{{task}}")
-    }).
-    LLM("translate", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
-        return n.Model("claude-sonnet-4-5").
-            System("Translate to French.").
-            User("{{summarize}}")
-    }).
-    Edge("summarize", "translate").
+spec, _ := sdk.Chain([]sdk.WorkflowIntentNode{
+    sdk.LLM("summarize", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+        return n.System("Summarize.").User("{{task}}")
+    }),
+    sdk.LLM("translate", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+        return n.System("Translate to French.").User("{{summarize}}")
+    }),
+}, sdk.ChainOptions{Name: "summarize-translate", Model: "claude-sonnet-4-5"}).
     Output("result", "translate").
     Build()
 
@@ -138,41 +133,18 @@ created, _ := client.Runs.Create(ctx, spec)
 ### Parallel with Aggregation
 
 ```go
-spec, _ := sdk.WorkflowIntent().
-    Name("multi-agent").
-    LLM("agent_a", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
-        return n.Model("claude-sonnet-4-5").User("Write 3 ideas for {{task}}.")
-    }).
-    LLM("agent_b", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
-        return n.Model("claude-sonnet-4-5").User("Write 3 objections for {{task}}.")
-    }).
-    JoinAll("join").
+spec, _ := sdk.Parallel([]sdk.WorkflowIntentNode{
+    sdk.LLM("agent_a", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+        return n.User("Write 3 ideas for {{task}}.")
+    }),
+    sdk.LLM("agent_b", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+        return n.User("Write 3 objections for {{task}}.")
+    }),
+}, sdk.ParallelOptions{Name: "multi-agent", Model: "claude-sonnet-4-5"}).
     LLM("aggregate", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
-        return n.Model("claude-sonnet-4-5").
-            System("Synthesize the best answer.").
-            User("Agent outputs: {{join}}")
+        return n.System("Synthesize.").User("{{join}}")
     }).
-    Edge("agent_a", "join").
-    Edge("agent_b", "join").
     Edge("join", "aggregate").
-    Output("result", "aggregate").
-    Build()
-```
-
-### Map Fan-out
-
-```go
-spec, _ := sdk.WorkflowIntent().
-    Name("fanout-example").
-    LLM("generator", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
-        return n.Model("claude-sonnet-4-5").User("Generate 3 subquestions for {{task}}")
-    }).
-    MapFanout("fanout", "generator", "/questions",
-        sdk.NewLLMNode("answer").User("Answer: {{item}}").Build(),
-    ).
-    LLM("aggregate", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
-        return n.Model("claude-sonnet-4-5").User("Combine: {{fanout}}")
-    }).
     Output("result", "aggregate").
     Build()
 ```
