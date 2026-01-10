@@ -111,72 +111,69 @@ for {
 
 ## Workflows
 
-High-level helpers for common workflow patterns:
+Build multi-step AI pipelines with `WorkflowIntent()`:
 
-### Chain (Sequential)
-
-Sequential LLM calls where each step's output feeds the next step's input:
+### Sequential Chain
 
 ```go
-summarizeReq, _, _ := (sdk.ResponseBuilder{}).
-    Model(sdk.NewModelID("claude-sonnet-4-5")).
-    System("Summarize the input concisely.").
-    User("The quick brown fox...").
+spec, _ := sdk.WorkflowIntent().
+    Name("summarize-translate").
+    LLM("summarize", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+        return n.Model("claude-sonnet-4-5").
+            System("Summarize the input concisely.").
+            User("{{task}}")
+    }).
+    LLM("translate", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+        return n.Model("claude-sonnet-4-5").
+            System("Translate to French.").
+            User("{{summarize}}")
+    }).
+    Edge("summarize", "translate").
+    Output("result", "translate").
     Build()
 
-translateReq, _, _ := (sdk.ResponseBuilder{}).
-    Model(sdk.NewModelID("claude-sonnet-4-5")).
-    System("Translate the input to French.").
-    User(""). // Bound from previous step
-    Build()
+created, _ := client.Runs.Create(ctx, spec)
+```
 
-spec, _ := sdk.Chain("summarize-translate",
-    sdk.LLMStep("summarize", summarizeReq),
-    sdk.LLMStep("translate", translateReq).WithStream(),
-).
-    OutputLast("result").
+### Parallel with Aggregation
+
+```go
+spec, _ := sdk.WorkflowIntent().
+    Name("multi-agent").
+    LLM("agent_a", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+        return n.Model("claude-sonnet-4-5").User("Write 3 ideas for {{task}}.")
+    }).
+    LLM("agent_b", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+        return n.Model("claude-sonnet-4-5").User("Write 3 objections for {{task}}.")
+    }).
+    JoinAll("join").
+    LLM("aggregate", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+        return n.Model("claude-sonnet-4-5").
+            System("Synthesize the best answer.").
+            User("Agent outputs: {{join}}")
+    }).
+    Edge("agent_a", "join").
+    Edge("agent_b", "join").
+    Edge("join", "aggregate").
+    Output("result", "aggregate").
     Build()
 ```
 
-### Parallel (Fan-out with Aggregation)
-
-Concurrent LLM calls with optional aggregation:
+### Map Fan-out
 
 ```go
-gpt4Req, _, _ := (sdk.ResponseBuilder{}).Model(sdk.NewModelID("gpt-4.1")).User("Analyze this...").Build()
-claudeReq, _, _ := (sdk.ResponseBuilder{}).Model(sdk.NewModelID("claude-sonnet-4-5")).User("Analyze this...").Build()
-synthesizeReq, _, _ := (sdk.ResponseBuilder{}).
-    Model(sdk.NewModelID("claude-sonnet-4-5")).
-    System("Synthesize the analyses into a unified view.").
-    User(""). // Bound from join output
-    Build()
-
-spec, _ := sdk.Parallel("multi-model-compare",
-    sdk.LLMStep("gpt4", gpt4Req),
-    sdk.LLMStep("claude", claudeReq),
-).
-    Aggregate("synthesize", synthesizeReq).
-    Output("result", "synthesize").
-    Build()
-```
-
-### MapReduce (Parallel Map with Reduce)
-
-Process items in parallel, then combine results:
-
-```go
-combineReq, _, _ := (sdk.ResponseBuilder{}).
-    Model(sdk.NewModelID("claude-sonnet-4-5")).
-    System("Combine summaries into a cohesive overview.").
-    User(""). // Bound from join output
-    Build()
-
-spec, _ := sdk.MapReduce("summarize-docs").
-    Item("doc1", doc1Req).
-    Item("doc2", doc2Req).
-    Item("doc3", doc3Req).
-    Reduce("combine", combineReq).
-    Output("result", "combine").
+spec, _ := sdk.WorkflowIntent().
+    Name("fanout-example").
+    LLM("generator", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+        return n.Model("claude-sonnet-4-5").User("Generate 3 subquestions for {{task}}")
+    }).
+    MapFanout("fanout", "generator", "/questions",
+        sdk.NewLLMNode("answer").User("Answer: {{item}}").Build(),
+    ).
+    LLM("aggregate", func(n sdk.LLMNodeBuilder) sdk.LLMNodeBuilder {
+        return n.Model("claude-sonnet-4-5").User("Combine: {{fanout}}")
+    }).
+    Output("result", "aggregate").
     Build()
 ```
 
