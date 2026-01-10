@@ -1305,11 +1305,18 @@ type SkillSummaryV0 struct {
 	Name        string   `json:"name"`
 }
 
-// SkillsCompileRequest defines model for SkillsCompileRequest.
+// SkillsCompileRequest Request to compile a skill into a workflow. One of source, content, or files must be provided (mutually exclusive).
 type SkillsCompileRequest struct {
-	MaxAttempts *int    `json:"max_attempts,omitempty"`
-	Model       *string `json:"model,omitempty"`
-	Source      string  `json:"source"`
+	// Content Inline skill content (single SKILL.md file). Mutually exclusive with source and files.
+	Content *string `json:"content,omitempty"`
+
+	// Files Map of file paths to content for inline skills with multiple files (e.g., SKILL.md, agents/worker.md, commands/run.md). Mutually exclusive with source and content.
+	Files       *map[string]string `json:"files,omitempty"`
+	MaxAttempts *int               `json:"max_attempts,omitempty"`
+	Model       *string            `json:"model,omitempty"`
+
+	// Source GitHub URL to fetch skill from. Mutually exclusive with content and files.
+	Source *string `json:"source,omitempty"`
 }
 
 // SkillsCompileResponse defines model for SkillsCompileResponse.
