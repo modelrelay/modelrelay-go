@@ -908,6 +908,12 @@ type OutputItemType string
 // PlanHash SHA-256 hash of the compiled workflow plan (64 hex characters).
 type PlanHash = string
 
+// PluginAgentV0 defines model for PluginAgentV0.
+type PluginAgentV0 struct {
+	Name         string `json:"name"`
+	SystemPrompt string `json:"system_prompt"`
+}
+
 // PriceInterval Billing interval for a tier.
 type PriceInterval string
 
@@ -1300,9 +1306,9 @@ type SessionWithMessagesResponse struct {
 
 // SkillSummaryV0 defines model for SkillSummaryV0.
 type SkillSummaryV0 struct {
-	Agents      []string `json:"agents"`
-	Description *string  `json:"description,omitempty"`
-	Name        string   `json:"name"`
+	Agents      []PluginAgentV0 `json:"agents"`
+	Description *string         `json:"description,omitempty"`
+	Name        string          `json:"name"`
 }
 
 // SkillsCompileRequest Request to compile a skill into a workflow. One of source, content, or files must be provided (mutually exclusive).
