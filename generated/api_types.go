@@ -147,6 +147,13 @@ const (
 	RunStatusV0Waiting   RunStatusV0 = "waiting"
 )
 
+// Defines values for RunTaskStatus.
+const (
+	Completed  RunTaskStatus = "completed"
+	InProgress RunTaskStatus = "in_progress"
+	Pending    RunTaskStatus = "pending"
+)
+
 // Defines values for SubscriptionStatusKind.
 const (
 	Active            SubscriptionStatusKind = "active"
@@ -979,11 +986,12 @@ type ResponsesRequest struct {
 	OutputFormat *OutputFormat `json:"output_format,omitempty"`
 
 	// Provider LLM provider identifier.
-	Provider    *ProviderId `json:"provider,omitempty"`
-	Stop        *[]string   `json:"stop,omitempty"`
-	Temperature *float32    `json:"temperature,omitempty"`
-	ToolChoice  *ToolChoice `json:"tool_choice,omitempty"`
-	Tools       *[]Tool     `json:"tools,omitempty"`
+	Provider    *ProviderId         `json:"provider,omitempty"`
+	SessionId   *openapi_types.UUID `json:"session_id,omitempty"`
+	Stop        *[]string           `json:"stop,omitempty"`
+	Temperature *float32            `json:"temperature,omitempty"`
+	ToolChoice  *ToolChoice         `json:"tool_choice,omitempty"`
+	Tools       *[]Tool             `json:"tools,omitempty"`
 }
 
 // ResponsesResponse defines model for ResponsesResponse.
@@ -1101,6 +1109,21 @@ type RunSummary struct {
 	TotalOutputTokens int `json:"total_output_tokens"`
 	TotalSteps        int `json:"total_steps"`
 	TotalToolCalls    int `json:"total_tool_calls"`
+}
+
+// RunTask defines model for RunTask.
+type RunTask struct {
+	ActiveForm *string       `json:"active_form,omitempty"`
+	Content    string        `json:"content"`
+	Status     RunTaskStatus `json:"status"`
+}
+
+// RunTaskStatus defines model for RunTaskStatus.
+type RunTaskStatus string
+
+// RunTasksResponse defines model for RunTasksResponse.
+type RunTasksResponse struct {
+	Tasks *[]RunTask `json:"tasks,omitempty"`
 }
 
 // RunToolCallDetail defines model for RunToolCallDetail.

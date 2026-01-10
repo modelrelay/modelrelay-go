@@ -1,6 +1,10 @@
 package sdk
 
 // Version is the published SDK version.
+// 5.4.0: Add /responses session_id for stateful tools like tasks.write.
+// 5.3.0: Add run tasks endpoint and tasks.write tool support.
+// 5.2.0: Add high-level workflow helpers (Chain, Parallel, Workflow, LLM) for ergonomic workflow building.
+// 5.1.0: Add fs.edit to tools.v0 LocalFSToolPack + conformance fixtures.
 // 5.0.0: Breaking - standardize on workflow in public SDK (runs/specs/builders).
 // 4.0.1: Add skills compile max_attempts request field.
 // 3.0.0: Breaking - run event envelope v2 with nested tool_call objects and output/outputs metadata.
@@ -142,7 +146,4 @@ package sdk
 // 4.0.0: Breaking - CustomerMeUsage: remove credits_granted_cents/credits_remaining_cents,
 // add spend_limit_cents/spend_remaining_cents. SpendLimitCents is now the single source of truth
 // for usage budget (distinct from subscription price).
-// 5.2.0: Add high-level workflow helpers (Chain, Parallel, Workflow, LLM) for ergonomic workflow building.
-// 5.1.0: Breaking - standardize on workflow in public SDK (runs/specs/builders).
-// 5.0.1: Add fs.edit to tools.v0 LocalFSToolPack + conformance fixtures.
-const Version = "5.2.0"
+const Version = "5.4.0"
