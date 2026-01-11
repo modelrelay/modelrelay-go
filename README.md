@@ -149,6 +149,22 @@ spec, _ := sdk.Parallel([]sdk.WorkflowIntentNode{
     Build()
 ```
 
+### Precompiled Workflows
+
+For workflows that run repeatedly, compile once and reuse:
+
+```go
+// Compile once
+compiled, _ := client.Workflows().Compile(ctx, spec)
+
+// Run multiple times with different inputs
+for _, task := range tasks {
+    run, _ := client.Runs.CreateFromPlan(ctx, compiled.PlanHash,
+        sdk.WithRunInputs(map[string]any{"task": task}),
+    )
+}
+```
+
 ## Structured Outputs
 
 ```go

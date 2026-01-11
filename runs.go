@@ -340,6 +340,13 @@ type runsCreateRequestV1 struct {
 	Stream    *bool                  `json:"stream,omitempty"`
 }
 
+type runsCreateFromPlanRequest struct {
+	PlanHash  PlanHash               `json:"plan_hash"`
+	SessionID *uuid.UUID             `json:"session_id,omitempty"`
+	Input     map[string]interface{} `json:"input,omitempty"`
+	Stream    *bool                  `json:"stream,omitempty"`
+}
+
 type RunsCreateResponse struct {
 	RunID    RunID     `json:"run_id"`
 	Status   RunStatus `json:"status"`
@@ -584,6 +591,69 @@ func (c *RunsClient) CreateV1(ctx context.Context, spec workflow.SpecV1, opts ..
 			var verr WorkflowValidationError
 			if err := json.Unmarshal(body, &verr); err == nil && len(verr.Issues) > 0 {
 				return nil, verr
+			}
+		}
+		return nil, decodeAPIErrorFromBytes(resp.StatusCode, body, nil)
+	}
+
+	var out RunsCreateResponse
+	if err := json.Unmarshal(body, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// CreateFromPlan starts a workflow run using a precompiled plan hash.
+//
+// Use Workflows().Compile() to compile a workflow spec and obtain a plan_hash,
+// then use this method to start runs without re-compiling each time.
+// This is useful for workflows that are run repeatedly with the same structure
+// but different inputs.
+//
+// The plan_hash must have been compiled in the current server session;
+// if the server has restarted since compilation, the plan will not be found
+// and you'll need to recompile.
+func (c *RunsClient) CreateFromPlan(ctx context.Context, planHash PlanHash, opts ...RunCreateOption) (*RunsCreateResponse, error) {
+	if !planHash.Valid() {
+		return nil, ConfigError{Reason: "plan hash is required"}
+	}
+	options := buildRunCreateOptions(opts)
+
+	payload := runsCreateFromPlanRequest{PlanHash: planHash}
+	if options.sessionID != nil {
+		if *options.sessionID == uuid.Nil {
+			return nil, ConfigError{Reason: "session id is required"}
+		}
+		payload.SessionID = options.sessionID
+	}
+	if options.inputs != nil {
+		payload.Input = options.inputs
+	}
+	if options.stream != nil {
+		payload.Stream = options.stream
+	}
+	req, err := c.client.newJSONRequest(ctx, http.MethodPost, routes.Runs, payload)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, _, err := c.client.send(req, options.timeout, options.retry)
+	if err != nil {
+		return nil, err
+	}
+	body, readErr := io.ReadAll(resp.Body)
+	//nolint:errcheck // best-effort cleanup on return
+	_ = resp.Body.Close()
+	if readErr != nil {
+		return nil, readErr
+	}
+	if resp.StatusCode >= 400 {
+		// Plan not found returns 404
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, APIError{
+				Status:  resp.StatusCode,
+				Message: "plan_hash not found - compile workflow first via Workflows().Compile()",
 			}
 		}
 		return nil, decodeAPIErrorFromBytes(resp.StatusCode, body, nil)

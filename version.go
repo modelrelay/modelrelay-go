@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 5.6.0: Add CreateFromPlan for running precompiled workflows via plan_hash.
 // 5.5.0: Add include_output support for inlining workflow run outputs in events.
 // 5.4.0: Add /responses session_id for stateful tools like tasks.write.
 // 5.3.0: Add run tasks endpoint and tasks.write tool support.
@@ -148,4 +149,5 @@ package sdk
 // add spend_limit_cents/spend_remaining_cents. SpendLimitCents is now the single source of truth
 // for usage budget (distinct from subscription price).
 // 5.6.0: Add ThoughtSignature to FunctionCall for Gemini 3 thinking model function calling.
-const Version = "5.6.0"
+// 5.7.0: Add CreateFromPlan for running precompiled workflows via plan_hash.
+const Version = "5.7.0"
