@@ -327,15 +327,17 @@ func (c *RunsClient) RunEventSchemaV0(ctx context.Context) (json.RawMessage, err
 }
 
 type runsCreateRequestLite struct {
-	Spec      WorkflowSpec     `json:"spec"`
+	Spec      WorkflowSpec           `json:"spec"`
 	SessionID *uuid.UUID             `json:"session_id,omitempty"`
 	Input     map[string]interface{} `json:"input,omitempty"`
+	Stream    *bool                  `json:"stream,omitempty"`
 }
 
 type runsCreateRequestV1 struct {
-	Spec      workflow.SpecV1         `json:"spec"`
+	Spec      workflow.SpecV1        `json:"spec"`
 	SessionID *uuid.UUID             `json:"session_id,omitempty"`
 	Input     map[string]interface{} `json:"input,omitempty"`
+	Stream    *bool                  `json:"stream,omitempty"`
 }
 
 type RunsCreateResponse struct {
@@ -506,6 +508,9 @@ func (c *RunsClient) Create(ctx context.Context, spec WorkflowSpec, opts ...RunC
 	if options.inputs != nil {
 		payload.Input = options.inputs
 	}
+	if options.stream != nil {
+		payload.Stream = options.stream
+	}
 	req, err := c.client.newJSONRequest(ctx, http.MethodPost, routes.Runs, payload)
 	if err != nil {
 		return nil, err
@@ -555,6 +560,9 @@ func (c *RunsClient) CreateV1(ctx context.Context, spec workflow.SpecV1, opts ..
 	if options.inputs != nil {
 		payload.Input = options.inputs
 	}
+	if options.stream != nil {
+		payload.Stream = options.stream
+	}
 	req, err := c.client.newJSONRequest(ctx, http.MethodPost, routes.Runs, payload)
 	if err != nil {
 		return nil, err
@@ -587,7 +595,6 @@ func (c *RunsClient) CreateV1(ctx context.Context, spec workflow.SpecV1, opts ..
 	}
 	return &out, nil
 }
-
 
 // Get returns the derived snapshot state for a run.
 func (c *RunsClient) Get(ctx context.Context, runID RunID, opts ...RunGetOption) (*RunsGetResponse, error) {
@@ -684,6 +691,7 @@ type runCreateOptions struct {
 	retry     *RetryConfig
 	sessionID *uuid.UUID
 	inputs    map[string]interface{}
+	stream    *bool
 }
 
 type RunCreateOption func(*runCreateOptions)
@@ -719,6 +727,13 @@ func WithRunSessionID(sessionID uuid.UUID) RunCreateOption {
 func WithRunInputs(inputs map[string]interface{}) RunCreateOption {
 	return func(o *runCreateOptions) {
 		o.inputs = inputs
+	}
+}
+
+// WithRunStream overrides all LLM nodes in the workflow to stream (emit node_output_delta events).
+func WithRunStream(stream bool) RunCreateOption {
+	return func(o *runCreateOptions) {
+		o.stream = &stream
 	}
 }
 
