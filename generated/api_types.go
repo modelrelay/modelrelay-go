@@ -281,6 +281,13 @@ const (
 	Failed    WebhookTestResultStatus = "failed"
 )
 
+// APIError defines model for APIError.
+type APIError struct {
+	Code    string `json:"code"`
+	Error   string `json:"error"`
+	Message string `json:"message"`
+}
+
 // Agent defines model for Agent.
 type Agent struct {
 	CreatedAt       time.Time          `json:"created_at"`
@@ -1219,6 +1226,49 @@ type RunsPendingToolCallV0 struct {
 	} `json:"tool_call"`
 }
 
+// RunsPendingToolsNodeV0 A node with pending tool calls.
+type RunsPendingToolsNodeV0 struct {
+	// NodeId Workflow node identifier. Must start with a lowercase letter and contain only lowercase letters, numbers, and underscores.
+	NodeId NodeId `json:"node_id"`
+
+	// RequestId Unique identifier for an LLM request within a workflow run.
+	RequestId RequestId `json:"request_id"`
+
+	// Step The step number within the node execution
+	Step      uint64                   `json:"step"`
+	ToolCalls *[]RunsPendingToolCallV0 `json:"tool_calls,omitempty"`
+}
+
+// RunsPendingToolsResponse Response containing pending tool calls for a workflow run.
+type RunsPendingToolsResponse struct {
+	Pending *[]RunsPendingToolsNodeV0 `json:"pending,omitempty"`
+
+	// RunId Unique identifier for a workflow run.
+	RunId RunId `json:"run_id"`
+}
+
+// RunsToolResultsRequest Request to submit tool execution results for a waiting run.
+type RunsToolResultsRequest struct {
+	// NodeId Workflow node identifier. Must start with a lowercase letter and contain only lowercase letters, numbers, and underscores.
+	NodeId NodeId `json:"node_id"`
+
+	// RequestId Unique identifier for an LLM request within a workflow run.
+	RequestId RequestId `json:"request_id"`
+
+	// Results Tool execution results
+	Results []RunToolResultV0 `json:"results"`
+
+	// Step Execution step from pending-tools
+	Step int64 `json:"step"`
+}
+
+// RunsToolResultsResponse Response after submitting tool results.
+type RunsToolResultsResponse struct {
+	// Accepted Number of tool results accepted
+	Accepted int64       `json:"accepted"`
+	Status   RunStatusV0 `json:"status"`
+}
+
 // SessionCreateRequest Request body for creating a session.
 type SessionCreateRequest struct {
 	// CustomerId Optional customer ID to associate with the session
@@ -1731,8 +1781,50 @@ type WebhookTestResult struct {
 // WebhookTestResultStatus defines model for WebhookTestResult.Status.
 type WebhookTestResultStatus string
 
+// WorkflowIssue A lint or compile issue for a workflow spec.
+type WorkflowIssue struct {
+	// Code Issue code
+	Code string `json:"code"`
+
+	// Message Human-readable issue description
+	Message string `json:"message"`
+
+	// Path JSON path to the issue location (e.g., $.nodes[0].id)
+	Path string `json:"path"`
+}
+
 // WorkflowSpec A `workflow` spec. The canonical JSON Schema is available at `/schemas/workflow.schema.json`.
 type WorkflowSpec map[string]interface{}
+
+// WorkflowsCompileResponse Response from compiling a workflow spec.
+type WorkflowsCompileResponse struct {
+	// PlanHash Hash of the compiled plan
+	PlanHash string `json:"plan_hash"`
+
+	// PlanJson Canonical compiled plan JSON
+	PlanJson map[string]interface{} `json:"plan_json"`
+}
+
+// WorkflowsLintResponse Response from linting a workflow spec.
+type WorkflowsLintResponse struct {
+	// CompileError Non-validation compile failure message
+	CompileError *string `json:"compile_error,omitempty"`
+
+	// CompileIssues Compile issues (when compile is enabled)
+	CompileIssues *[]WorkflowIssue `json:"compile_issues,omitempty"`
+
+	// Kind Workflow kind (e.g., workflow)
+	Kind *string `json:"kind,omitempty"`
+
+	// LintIssues Lint issues found in the spec
+	LintIssues *[]WorkflowIssue `json:"lint_issues,omitempty"`
+
+	// PlanHash Plan hash (when compile succeeds)
+	PlanHash *string `json:"plan_hash,omitempty"`
+
+	// PlanJson Compiled plan JSON (when compile succeeds)
+	PlanJson *map[string]interface{} `json:"plan_json,omitempty"`
+}
 
 // ProjectID defines model for ProjectID.
 type ProjectID = openapi_types.UUID
@@ -1855,6 +1947,9 @@ type StreamRunEventsParams struct {
 	// Wait When false, returns currently available events then closes.
 	Wait *bool `form:"wait,omitempty" json:"wait,omitempty"`
 
+	// IncludeOutput When true, inline node_output and run_completed payloads when they are <= 1MB.
+	IncludeOutput *bool `form:"include_output,omitempty" json:"include_output,omitempty"`
+
 	// Limit Maximum number of events to send before closing.
 	Limit *uint32 `form:"limit,omitempty" json:"limit,omitempty"`
 }
@@ -1869,6 +1964,12 @@ type ListSessionsParams struct {
 
 	// CustomerId Filter sessions by customer ID
 	CustomerId *openapi_types.UUID `form:"customer_id,omitempty" json:"customer_id,omitempty"`
+}
+
+// LintWorkflowParams defines parameters for LintWorkflow.
+type LintWorkflowParams struct {
+	// Compile Whether to compile the workflow after linting (default: true)
+	Compile *bool `form:"compile,omitempty" json:"compile,omitempty"`
 }
 
 // MintCustomerTokenJSONRequestBody defines body for MintCustomerToken for application/json ContentType.
@@ -1964,6 +2065,9 @@ type CreateResponsesBatchJSONRequestBody = ResponsesBatchRequest
 // CreateRunJSONRequestBody defines body for CreateRun for application/json ContentType.
 type CreateRunJSONRequestBody = RunsCreateRequest
 
+// SubmitRunToolResultsJSONRequestBody defines body for SubmitRunToolResults for application/json ContentType.
+type SubmitRunToolResultsJSONRequestBody = RunsToolResultsRequest
+
 // CreateSessionJSONRequestBody defines body for CreateSession for application/json ContentType.
 type CreateSessionJSONRequestBody = SessionCreateRequest
 
@@ -1975,3 +2079,9 @@ type AddSessionMessageJSONRequestBody = SessionMessageCreateRequest
 
 // CompileSkillJSONRequestBody defines body for CompileSkill for application/json ContentType.
 type CompileSkillJSONRequestBody = SkillsCompileRequest
+
+// CompileWorkflowJSONRequestBody defines body for CompileWorkflow for application/json ContentType.
+type CompileWorkflowJSONRequestBody = WorkflowSpec
+
+// LintWorkflowJSONRequestBody defines body for LintWorkflow for application/json ContentType.
+type LintWorkflowJSONRequestBody = WorkflowSpec
