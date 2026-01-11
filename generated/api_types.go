@@ -441,6 +441,53 @@ type AuthTokens struct {
 	RefreshToken *string    `json:"refresh_token,omitempty"`
 }
 
+// AutoTopupConfigRequest defines model for AutoTopupConfigRequest.
+type AutoTopupConfigRequest struct {
+	AmountCents    int64 `json:"amount_cents"`
+	Enabled        bool  `json:"enabled"`
+	ThresholdCents int64 `json:"threshold_cents"`
+}
+
+// AutoTopupConfigResponse defines model for AutoTopupConfigResponse.
+type AutoTopupConfigResponse struct {
+	AmountCents     int64                   `json:"amount_cents"`
+	Enabled         bool                    `json:"enabled"`
+	FailureCount    int                     `json:"failure_count"`
+	LastTriggeredAt *time.Time              `json:"last_triggered_at,omitempty"`
+	Limits          AutoTopupLimits         `json:"limits"`
+	PaymentMethod   *AutoTopupPaymentMethod `json:"payment_method,omitempty"`
+	ThresholdCents  int64                   `json:"threshold_cents"`
+}
+
+// AutoTopupConfirmRequest defines model for AutoTopupConfirmRequest.
+type AutoTopupConfirmRequest struct {
+	SetupIntentId string `json:"setup_intent_id"`
+}
+
+// AutoTopupLimits defines model for AutoTopupLimits.
+type AutoTopupLimits struct {
+	MaxDailyCents   int64 `json:"max_daily_cents"`
+	MaxMonthlyCents int64 `json:"max_monthly_cents"`
+	MaxSingleCents  int64 `json:"max_single_cents"`
+	MinTopupCents   int64 `json:"min_topup_cents"`
+}
+
+// AutoTopupPaymentMethod defines model for AutoTopupPaymentMethod.
+type AutoTopupPaymentMethod struct {
+	Brand    string `json:"brand"`
+	ExpMonth int64  `json:"exp_month"`
+	ExpYear  int64  `json:"exp_year"`
+	Id       string `json:"id"`
+	Last4    string `json:"last4"`
+}
+
+// AutoTopupSetupResponse defines model for AutoTopupSetupResponse.
+type AutoTopupSetupResponse struct {
+	ClientSecret  string  `json:"client_secret"`
+	SetupIntentId string  `json:"setup_intent_id"`
+	Status        *string `json:"status,omitempty"`
+}
+
 // BillingMode Billing mode for a project. 'managed' uses ModelRelay billing with tiers and subscriptions. 'byob' (Bring Your Own Billing) allows external billing.
 type BillingMode string
 
@@ -1184,6 +1231,9 @@ type RunsCreateRequest struct {
 
 	// Spec A `workflow` spec. The canonical JSON Schema is available at `/schemas/workflow.schema.json`.
 	Spec WorkflowSpec `json:"spec"`
+
+	// Stream When true, overrides all llm.responses and route.switch nodes to stream (emit node_output_delta events). When false or omitted, uses the workflow spec defaults.
+	Stream *bool `json:"stream,omitempty"`
 }
 
 // RunsCreateResponse defines model for RunsCreateResponse.
@@ -1933,6 +1983,12 @@ type TestProjectWebhookJSONBody struct {
 	EventType *string `json:"event_type,omitempty"`
 }
 
+// CreateRunParams defines parameters for CreateRun.
+type CreateRunParams struct {
+	// Stream When true, override all llm.responses and route.switch nodes to stream (emit node_output_delta events). When false or omitted, uses the workflow spec defaults.
+	Stream *bool `form:"stream,omitempty" json:"stream,omitempty"`
+}
+
 // GetRunParams defines parameters for GetRun.
 type GetRunParams struct {
 	// Include Comma-separated list of additional fields to include. Supported values: steps, tool_calls.
@@ -1971,6 +2027,12 @@ type LintWorkflowParams struct {
 	// Compile Whether to compile the workflow after linting (default: true)
 	Compile *bool `form:"compile,omitempty" json:"compile,omitempty"`
 }
+
+// UpdateAccountAutoTopupJSONRequestBody defines body for UpdateAccountAutoTopup for application/json ContentType.
+type UpdateAccountAutoTopupJSONRequestBody = AutoTopupConfigRequest
+
+// ConfirmAccountAutoTopupSetupJSONRequestBody defines body for ConfirmAccountAutoTopupSetup for application/json ContentType.
+type ConfirmAccountAutoTopupSetupJSONRequestBody = AutoTopupConfirmRequest
 
 // MintCustomerTokenJSONRequestBody defines body for MintCustomerToken for application/json ContentType.
 type MintCustomerTokenJSONRequestBody MintCustomerTokenJSONBody
