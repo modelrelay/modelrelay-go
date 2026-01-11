@@ -228,6 +228,10 @@ type ToolCall struct {
 type FunctionCall struct {
 	Name      ToolName `json:"name"`
 	Arguments string   `json:"arguments"` // JSON string
+	// ThoughtSignature is an opaque token from Gemini 3 models that must be
+	// preserved and returned with tool results. Required for function calling
+	// with thinking models.
+	ThoughtSignature []byte `json:"thought_signature,omitempty"`
 }
 
 // ============================================================================

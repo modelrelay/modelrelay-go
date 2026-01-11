@@ -147,4 +147,5 @@ package sdk
 // 4.0.0: Breaking - CustomerMeUsage: remove credits_granted_cents/credits_remaining_cents,
 // add spend_limit_cents/spend_remaining_cents. SpendLimitCents is now the single source of truth
 // for usage budget (distinct from subscription price).
-const Version = "5.5.0"
+// 5.6.0: Add ThoughtSignature to FunctionCall for Gemini 3 thinking model function calling.
+const Version = "5.6.0"
