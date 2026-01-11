@@ -104,7 +104,7 @@ func (c *PluginConverter) ToWorkflow(ctx context.Context, plugin *Plugin, cmd st
 	if err := normalizeWorkflowIntentToolExecutionModes(&spec); err != nil {
 		return nil, err
 	}
-	if err := validatePluginWorkflowTargetsToolsLite(&spec); err != nil {
+	if err := validatePluginWorkflowTargetsToolsIntent(&spec); err != nil {
 		return nil, err
 	}
 	return &spec, nil
@@ -240,7 +240,7 @@ func toolNameMode(name ToolName) (workflowintent.ToolExecutionMode, error) {
 	return "", fmt.Errorf("unknown tool %q for mode detection; expected one of: bash, write_file, fs.read_file, fs.search, fs.list_files", name)
 }
 
-func validatePluginWorkflowTargetsToolsLite(spec *WorkflowSpec) error {
+func validatePluginWorkflowTargetsToolsIntent(spec *WorkflowSpec) error {
 	if spec == nil {
 		return errors.New("workflow spec required")
 	}

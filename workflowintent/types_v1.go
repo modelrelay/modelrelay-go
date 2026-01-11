@@ -7,7 +7,7 @@ import (
 	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
 
-// Kind identifies the workflow.lite spec version.
+// Kind identifies the workflow intent spec version.
 type Kind string
 
 const (
@@ -41,11 +41,12 @@ func (t NodeType) Valid() bool {
 
 // Spec defines the workflow schema.
 type Spec struct {
-	Kind    Kind        `json:"kind"`
-	Name    string      `json:"name,omitempty"`
-	Model   string      `json:"model,omitempty"`
-	Nodes   []Node      `json:"nodes"`
-	Outputs []OutputRef `json:"outputs"`
+	Kind           Kind        `json:"kind"`
+	Name           string      `json:"name,omitempty"`
+	Model          string      `json:"model,omitempty"`
+	MaxParallelism *int64      `json:"max_parallelism,omitempty"`
+	Nodes          []Node      `json:"nodes"`
+	Outputs        []OutputRef `json:"outputs"`
 }
 
 // Node defines a workflow node.
@@ -127,7 +128,7 @@ func (o ConditionOp) Valid() bool {
 	}
 }
 
-// Condition mirrors workflow.ConditionV1 for lite specs.
+// Condition mirrors workflow.ConditionV1 for intent specs.
 type Condition struct {
 	Source ConditionSource `json:"source"`
 	Op     ConditionOp     `json:"op"`
@@ -159,7 +160,7 @@ func (m ToolExecutionMode) Valid() bool {
 	}
 }
 
-// ToolExecution configures tool execution behavior for lite LLM nodes.
+// ToolExecution configures tool execution behavior for intent LLM nodes.
 type ToolExecution struct {
 	Mode ToolExecutionMode `json:"mode"`
 }

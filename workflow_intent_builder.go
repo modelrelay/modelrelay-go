@@ -15,11 +15,12 @@ type workflowIntentEdge struct {
 
 // WorkflowIntentBuilder builds workflow specs.
 type WorkflowIntentBuilder struct {
-	name    string
-	model   string
-	nodes   []workflowintent.Node
-	edges   []workflowIntentEdge
-	outputs []workflowintent.OutputRef
+	name           string
+	model          string
+	maxParallelism *int64
+	nodes          []workflowintent.Node
+	edges          []workflowIntentEdge
+	outputs        []workflowintent.OutputRef
 }
 
 // WorkflowIntent starts a workflow builder.
@@ -34,6 +35,11 @@ func (b WorkflowIntentBuilder) Name(name string) WorkflowIntentBuilder {
 
 func (b WorkflowIntentBuilder) Model(model string) WorkflowIntentBuilder {
 	b.model = strings.TrimSpace(model)
+	return b
+}
+
+func (b WorkflowIntentBuilder) MaxParallelism(n int64) WorkflowIntentBuilder {
+	b.maxParallelism = &n
 	return b
 }
 
@@ -132,6 +138,9 @@ func (b WorkflowIntentBuilder) Build() (workflowintent.Spec, error) {
 		Nodes:   append([]workflowintent.Node{}, b.nodes...),
 		Outputs: append([]workflowintent.OutputRef{}, b.outputs...),
 	}
+	if b.maxParallelism != nil {
+		spec.MaxParallelism = b.maxParallelism
+	}
 
 	index := map[string]int{}
 	for i := range spec.Nodes {
@@ -168,7 +177,7 @@ func appendUnique(values []string, value string) []string {
 	return append(values, value)
 }
 
-// LLMNodeBuilder configures a workflow.lite LLM node.
+// LLMNodeBuilder configures a workflow intent LLM node.
 type LLMNodeBuilder struct {
 	node workflowintent.Node
 }
