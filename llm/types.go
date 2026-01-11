@@ -170,26 +170,14 @@ type ToolType string
 
 const (
 	ToolTypeFunction      ToolType = "function"
-	ToolTypeWeb           ToolType = "web"
 	ToolTypeXSearch       ToolType = "x_search"
 	ToolTypeCodeExecution ToolType = "code_execution"
-)
-
-// WebToolIntent describes the user's intent for web access.
-// Providers map intent to their supported web tooling.
-type WebToolIntent string
-
-const (
-	WebIntentAuto      WebToolIntent = "auto"
-	WebIntentSearchWeb WebToolIntent = "search_web"
-	WebIntentFetchURL  WebToolIntent = "fetch_url"
 )
 
 // Tool represents a tool the model can invoke.
 type Tool struct {
 	Type          ToolType        `json:"type"`
 	Function      *FunctionTool   `json:"function,omitempty"`
-	Web           *WebToolConfig  `json:"web,omitempty"`
 	XSearch       *XSearchConfig  `json:"x_search,omitempty"`
 	CodeExecution *CodeExecConfig `json:"code_execution,omitempty"`
 }
@@ -199,14 +187,6 @@ type FunctionTool struct {
 	Name        ToolName        `json:"name"`
 	Description string          `json:"description,omitempty"`
 	Parameters  json.RawMessage `json:"parameters,omitempty"`
-}
-
-// WebToolConfig configures web search/fetch intent and constraints.
-type WebToolConfig struct {
-	AllowedDomains  []string      `json:"allowed_domains,omitempty"`
-	ExcludedDomains []string      `json:"excluded_domains,omitempty"`
-	MaxUses         *int          `json:"max_uses,omitempty"` // Anthropic only
-	Intent          WebToolIntent `json:"intent,omitempty"`
 }
 
 // XSearchConfig configures X/Twitter search (Grok only).
@@ -530,16 +510,9 @@ type ProviderCapabilities struct {
 
 // ToolCapability describes a tool's availability and configuration options.
 type ToolCapability struct {
-	Supported         bool           `json:"supported"`
-	Options           []string       `json:"options,omitempty"`
-	PricingPer1KCents *int           `json:"pricing_per_1k_cents,omitempty"`
-	Web               *WebCapability `json:"web,omitempty"`
-}
-
-// WebCapability captures provider-level web abilities.
-type WebCapability struct {
-	SupportsSearch bool `json:"supports_search"`
-	SupportsFetch  bool `json:"supports_fetch"`
+	Supported         bool     `json:"supported"`
+	Options           []string `json:"options,omitempty"`
+	PricingPer1KCents *int     `json:"pricing_per_1k_cents,omitempty"`
 }
 
 // ValidateTools checks that all tools in the request are supported by this provider.

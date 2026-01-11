@@ -276,7 +276,7 @@ func TestPluginConverter_ToWorkflow_RejectsNonFunctionTools(t *testing.T) {
 						Mode: "client",
 					},
 					Tools: []workflowintent.ToolRef{
-						{Tool: llm.Tool{Type: llm.ToolTypeWeb, Web: &llm.WebToolConfig{Intent: llm.WebIntentAuto}}},
+						{Tool: llm.Tool{Type: llm.ToolTypeXSearch}},
 					},
 				},
 			},
