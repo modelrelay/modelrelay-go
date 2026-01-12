@@ -4,6 +4,55 @@
 go get github.com/modelrelay/modelrelay/sdk/go
 ```
 
+## Convenience API
+
+The simplest way to get started. Three methods cover the most common use cases:
+
+### Ask — Get a Quick Answer
+
+```go
+client, _ := sdk.NewClientFromAPIKey(os.Getenv("MODELRELAY_API_KEY"))
+
+answer, _ := client.Ask(ctx, "claude-sonnet-4-5", "What is 2 + 2?", nil)
+fmt.Println(answer) // "4"
+```
+
+### Chat — Full Response with Metadata
+
+```go
+response, _ := client.Chat(ctx, "claude-sonnet-4-5", "Explain quantum computing", &sdk.ChatOptions{
+    System: "You are a physics professor",
+})
+
+fmt.Println(response.AssistantText())
+fmt.Println("Tokens:", response.Usage.TotalTokens)
+```
+
+### Agent — Agentic Tool Loops
+
+Run an agent that automatically executes tools until completion:
+
+```go
+type ReadFileArgs struct {
+    Path string `json:"path" description:"File path to read"`
+}
+
+tools := sdk.NewToolBuilder()
+sdk.AddFunc(tools, "read_file", "Read a file", func(args ReadFileArgs) (any, error) {
+    content, err := os.ReadFile(args.Path)
+    return string(content), err
+})
+
+result, _ := client.Agent(ctx, "claude-sonnet-4-5", sdk.AgentOptions{
+    Tools:  tools,
+    Prompt: "Read config.json and summarize it",
+    System: "You are a helpful file assistant",
+})
+
+fmt.Println(result.Output)
+fmt.Println("Tool calls:", result.Usage.ToolCalls)
+```
+
 ## Token Providers (Automatic Bearer Auth)
 
 Use token providers when you want the SDK to automatically obtain/refresh **bearer tokens** for data-plane calls like `/responses` and `/runs`.

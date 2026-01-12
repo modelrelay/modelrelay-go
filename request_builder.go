@@ -174,6 +174,89 @@ func (b ResponseBuilder) ToolResultText(toolCallID ToolCallID, content string) R
 	})
 }
 
+// ToolResult is a convenience type for tool results used with ContinueFrom and ToolResults.
+type ToolResult struct {
+	ID     ToolCallID
+	Result any
+}
+
+// ContinueFrom continues a conversation from a previous response with tool results.
+//
+// This is the most ergonomic way to handle tool call loops. It:
+// 1. Preserves existing input
+// 2. Adds the assistant message with tool calls from the response
+// 3. Adds all tool results as messages
+//
+// Example:
+//
+//	builder = builder.ContinueFrom(response, []sdk.ToolResult{
+//		{ID: "call_1", Result: map[string]any{"temp": 72}},
+//	})
+func (b ResponseBuilder) ContinueFrom(response *Response, results []ToolResult) ResponseBuilder {
+	// Add assistant message with tool calls
+	toolCalls := response.ToolCalls()
+	if len(toolCalls) > 0 {
+		b = b.Item(AssistantMessageWithToolCalls(response.AssistantText(), toolCalls))
+	}
+
+	// Add tool results
+	for _, r := range results {
+		b = b.ToolResultAny(r.ID, r.Result)
+	}
+
+	return b
+}
+
+// AssistantToolCalls adds an assistant message with tool calls.
+//
+// Use this when manually constructing tool call conversations.
+//
+// Example:
+//
+//	builder = builder.AssistantToolCalls(toolCalls, "Let me check that for you")
+func (b ResponseBuilder) AssistantToolCalls(toolCalls []llm.ToolCall, content string) ResponseBuilder {
+	return b.Item(AssistantMessageWithToolCalls(content, toolCalls))
+}
+
+// ToolResults adds multiple tool result messages at once.
+//
+// Example:
+//
+//	builder = builder.ToolResults([]sdk.ToolResult{
+//		{ID: "call_1", Result: map[string]any{"temp": 72}},
+//		{ID: "call_2", Result: "File contents here"},
+//	})
+func (b ResponseBuilder) ToolResults(results []ToolResult) ResponseBuilder {
+	for _, r := range results {
+		b = b.ToolResultAny(r.ID, r.Result)
+	}
+	return b
+}
+
+// ToolResultAny adds a single tool result with any JSON-serializable value.
+//
+// Unlike ToolResultText which only accepts strings, this method accepts any
+// value and serializes it to JSON if needed.
+func (b ResponseBuilder) ToolResultAny(toolCallID ToolCallID, result any) ResponseBuilder {
+	var content string
+	switch v := result.(type) {
+	case string:
+		content = v
+	case []byte:
+		content = string(v)
+	case json.RawMessage:
+		content = string(v)
+	default:
+		data, err := json.Marshal(result)
+		if err != nil {
+			content = "Error: failed to serialize result"
+		} else {
+			content = string(data)
+		}
+	}
+	return b.ToolResultText(toolCallID, content)
+}
+
 // CustomerID applies X-ModelRelay-Customer-Id and allows omitting Model().
 func (b ResponseBuilder) CustomerID(customerID string) ResponseBuilder {
 	b.customerID = strings.TrimSpace(customerID)

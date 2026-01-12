@@ -63,6 +63,91 @@ func NewUsage(input, output, total int64) llm.Usage {
 }
 
 // ============================================================================
+// ToolCall Accessor Helpers
+// ============================================================================
+
+// GetToolName returns the function name from a tool call, or empty string if not available.
+//
+// Example:
+//
+//	name := sdk.GetToolName(call) // "get_weather"
+func GetToolName(call llm.ToolCall) ToolName {
+	if call.Function == nil {
+		return ""
+	}
+	return call.Function.Name
+}
+
+// GetToolArgsRaw returns the raw JSON arguments string from a tool call.
+//
+// Example:
+//
+//	raw := sdk.GetToolArgsRaw(call) // `{"location": "Paris"}`
+func GetToolArgsRaw(call llm.ToolCall) string {
+	if call.Function == nil {
+		return ""
+	}
+	return call.Function.Arguments
+}
+
+// GetToolArgs parses the tool call arguments into the target struct.
+// Returns an error if parsing fails.
+//
+// Example:
+//
+//	var args struct {
+//		Location string `json:"location"`
+//	}
+//	if err := sdk.GetToolArgs(call, &args); err != nil {
+//		// handle error
+//	}
+//	fmt.Println(args.Location) // "Paris"
+func GetToolArgs(call llm.ToolCall, target any) error {
+	raw := GetToolArgsRaw(call)
+	if raw == "" {
+		return nil
+	}
+	return json.Unmarshal([]byte(raw), target)
+}
+
+// GetToolArgsMap parses the tool call arguments into a map[string]any.
+// Returns an empty map if the call has no arguments or if parsing fails.
+//
+// Example:
+//
+//	args := sdk.GetToolArgsMap(call)
+//	location := args["location"].(string)
+func GetToolArgsMap(call llm.ToolCall) map[string]any {
+	raw := GetToolArgsRaw(call)
+	if raw == "" {
+		return map[string]any{}
+	}
+	var args map[string]any
+	if err := json.Unmarshal([]byte(raw), &args); err != nil {
+		return map[string]any{}
+	}
+	return args
+}
+
+// GetAllToolCalls extracts all tool calls from a Response.
+// This is a standalone helper equivalent to response.ToolCalls().
+//
+// Example:
+//
+//	calls := sdk.GetAllToolCalls(response)
+//	for _, call := range calls {
+//		name := sdk.GetToolName(call)
+//		args := sdk.GetToolArgsMap(call)
+//		// handle each tool call
+//	}
+func GetAllToolCalls(response *Response) []llm.ToolCall {
+	if response == nil {
+		return nil
+	}
+	return response.ToolCalls()
+}
+
+// ============================================================================
 // Schema Inference from Go Types
 // ============================================================================
 

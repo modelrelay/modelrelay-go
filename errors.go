@@ -137,6 +137,21 @@ func (e ProtocolError) Error() string {
 
 func (e ProtocolError) Unwrap() error { return e.Cause }
 
+// AgentMaxTurnsError indicates the agent hit its turn limit without completing.
+// This means the model kept requesting tool calls for more turns than allowed.
+type AgentMaxTurnsError struct {
+	// MaxTurns is the limit that was reached.
+	MaxTurns int
+	// LastResponse is the final response from the model (may contain tool calls).
+	LastResponse *Response
+	// Usage is the accumulated usage across the agent run.
+	Usage AgentUsage
+}
+
+func (e AgentMaxTurnsError) Error() string {
+	return fmt.Sprintf("agent exceeded maximum turns (%d) without completing", e.MaxTurns)
+}
+
 // StreamTimeoutKind indicates which streaming timeout triggered.
 type StreamTimeoutKind string
 
