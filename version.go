@@ -1,13 +1,13 @@
 package sdk
 
 // Version is the published SDK version.
+// 7.0.0: Breaking - remove ThoughtSignature from FunctionCall; provider-specific state handled server-side.
 // 6.0.0: Breaking - /responses no longer accepts session_id; add state handles for persistent tool state.
 // 5.10.0: Add TierCode field to CustomerTokenRequest for customers without existing subscriptions.
 // 5.10.0: Add TypedTool helper for tool definition + typed argument parsing.
 // 5.9.0: Add /responses state_id for scoped tool persistence.
 // 5.8.0: Add run model overrides + workflow intent input declarations.
 // 5.7.0: Add CreateFromPlan for running precompiled workflows via plan_hash.
-// 5.6.0: Add ThoughtSignature to FunctionCall for Gemini 3 thinking model function calling.
 // 5.5.0: Add include_output support for inlining workflow run outputs in events.
 // 5.4.0: Add /responses session_id for stateful tools like tasks.write.
 // 5.3.0: Add run tasks endpoint and tasks.write tool support.
@@ -154,4 +154,4 @@ package sdk
 // 4.0.0: Breaking - CustomerMeUsage: remove credits_granted_cents/credits_remaining_cents,
 // add spend_limit_cents/spend_remaining_cents. SpendLimitCents is now the single source of truth
 // for usage budget (distinct from subscription price).
-const Version = "6.0.0"
+const Version = "7.0.0"
