@@ -1477,6 +1477,12 @@ type StateHandleCreateRequest struct {
 	TtlSeconds *int64 `json:"ttl_seconds,omitempty"`
 }
 
+// StateHandleListResponse defines model for StateHandleListResponse.
+type StateHandleListResponse struct {
+	NextCursor   *string               `json:"next_cursor,omitempty"`
+	StateHandles []StateHandleResponse `json:"state_handles"`
+}
+
 // StateHandleResponse defines model for StateHandleResponse.
 type StateHandleResponse struct {
 	CreatedAt  string              `json:"created_at"`
@@ -2051,6 +2057,12 @@ type ListSessionsParams struct {
 
 	// CustomerId Filter sessions by customer ID
 	CustomerId *openapi_types.UUID `form:"customer_id,omitempty" json:"customer_id,omitempty"`
+}
+
+// ListStateHandlesParams defines parameters for ListStateHandles.
+type ListStateHandlesParams struct {
+	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // LintWorkflowParams defines parameters for LintWorkflow.

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestStateHandlesClientCreate(t *testing.T) {
@@ -84,4 +86,49 @@ func TestStateHandlesClientValidation(t *testing.T) {
 			t.Fatalf("expected ttl_seconds max validation error")
 		}
 	})
+}
+
+func TestStateHandlesClientListAndDelete(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/state-handles" && r.Method == http.MethodGet:
+			if r.URL.RawQuery != "limit=1&offset=5" {
+				t.Fatalf("unexpected query: %s", r.URL.RawQuery)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{
+			  "state_handles": [
+			    {
+			      "id": "550e8400-e29b-41d4-a716-446655440000",
+			      "project_id": "11111111-2222-3333-4444-555555555555",
+			      "created_at": "2025-01-15T10:30:00.000Z"
+			    }
+			  ],
+			  "next_cursor": "6"
+			}`))
+		case r.URL.Path == "/state-handles/550e8400-e29b-41d4-a716-446655440000" && r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv, "mr_sk_state")
+
+	resp, err := client.StateHandles.List(context.Background(), StateHandleListOptions{
+		Limit:  1,
+		Offset: 5,
+	})
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(resp.StateHandles) != 1 {
+		t.Fatalf("unexpected list length: %d", len(resp.StateHandles))
+	}
+
+	id := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
+	if err := client.StateHandles.Delete(context.Background(), id); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
 }
