@@ -18,6 +18,7 @@ type WorkflowIntentBuilder struct {
 	name           string
 	model          string
 	maxParallelism *int64
+	inputs         []workflowintent.InputDecl
 	nodes          []workflowintent.Node
 	edges          []workflowIntentEdge
 	outputs        []workflowintent.OutputRef
@@ -40,6 +41,11 @@ func (b WorkflowIntentBuilder) Model(model string) WorkflowIntentBuilder {
 
 func (b WorkflowIntentBuilder) MaxParallelism(n int64) WorkflowIntentBuilder {
 	b.maxParallelism = &n
+	return b
+}
+
+func (b WorkflowIntentBuilder) Inputs(inputs []workflowintent.InputDecl) WorkflowIntentBuilder {
+	b.inputs = append([]workflowintent.InputDecl{}, inputs...)
 	return b
 }
 
@@ -137,6 +143,9 @@ func (b WorkflowIntentBuilder) Build() (workflowintent.Spec, error) {
 		Model:   strings.TrimSpace(b.model),
 		Nodes:   append([]workflowintent.Node{}, b.nodes...),
 		Outputs: append([]workflowintent.OutputRef{}, b.outputs...),
+	}
+	if len(b.inputs) > 0 {
+		spec.Inputs = append([]workflowintent.InputDecl{}, b.inputs...)
 	}
 	if b.maxParallelism != nil {
 		spec.MaxParallelism = b.maxParallelism

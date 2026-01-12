@@ -327,24 +327,30 @@ func (c *RunsClient) RunEventSchemaV0(ctx context.Context) (json.RawMessage, err
 }
 
 type runsCreateRequestLite struct {
-	Spec      WorkflowSpec           `json:"spec"`
-	SessionID *uuid.UUID             `json:"session_id,omitempty"`
-	Input     map[string]interface{} `json:"input,omitempty"`
-	Stream    *bool                  `json:"stream,omitempty"`
+	Spec           WorkflowSpec           `json:"spec"`
+	SessionID      *uuid.UUID             `json:"session_id,omitempty"`
+	Input          map[string]interface{} `json:"input,omitempty"`
+	ModelOverride  *string                `json:"model_override,omitempty"`
+	ModelOverrides *RunModelOverrides     `json:"model_overrides,omitempty"`
+	Stream         *bool                  `json:"stream,omitempty"`
 }
 
 type runsCreateRequestV1 struct {
-	Spec      workflow.SpecV1        `json:"spec"`
-	SessionID *uuid.UUID             `json:"session_id,omitempty"`
-	Input     map[string]interface{} `json:"input,omitempty"`
-	Stream    *bool                  `json:"stream,omitempty"`
+	Spec           workflow.SpecV1        `json:"spec"`
+	SessionID      *uuid.UUID             `json:"session_id,omitempty"`
+	Input          map[string]interface{} `json:"input,omitempty"`
+	ModelOverride  *string                `json:"model_override,omitempty"`
+	ModelOverrides *RunModelOverrides     `json:"model_overrides,omitempty"`
+	Stream         *bool                  `json:"stream,omitempty"`
 }
 
 type runsCreateFromPlanRequest struct {
-	PlanHash  PlanHash               `json:"plan_hash"`
-	SessionID *uuid.UUID             `json:"session_id,omitempty"`
-	Input     map[string]interface{} `json:"input,omitempty"`
-	Stream    *bool                  `json:"stream,omitempty"`
+	PlanHash       PlanHash               `json:"plan_hash"`
+	SessionID      *uuid.UUID             `json:"session_id,omitempty"`
+	Input          map[string]interface{} `json:"input,omitempty"`
+	ModelOverride  *string                `json:"model_override,omitempty"`
+	ModelOverrides *RunModelOverrides     `json:"model_overrides,omitempty"`
+	Stream         *bool                  `json:"stream,omitempty"`
 }
 
 type RunsCreateResponse struct {
@@ -515,6 +521,12 @@ func (c *RunsClient) Create(ctx context.Context, spec WorkflowSpec, opts ...RunC
 	if options.inputs != nil {
 		payload.Input = options.inputs
 	}
+	if options.modelOverride != nil {
+		payload.ModelOverride = options.modelOverride
+	}
+	if options.modelOverrides != nil {
+		payload.ModelOverrides = options.modelOverrides
+	}
 	if options.stream != nil {
 		payload.Stream = options.stream
 	}
@@ -566,6 +578,12 @@ func (c *RunsClient) CreateV1(ctx context.Context, spec workflow.SpecV1, opts ..
 	}
 	if options.inputs != nil {
 		payload.Input = options.inputs
+	}
+	if options.modelOverride != nil {
+		payload.ModelOverride = options.modelOverride
+	}
+	if options.modelOverrides != nil {
+		payload.ModelOverrides = options.modelOverrides
 	}
 	if options.stream != nil {
 		payload.Stream = options.stream
@@ -628,6 +646,12 @@ func (c *RunsClient) CreateFromPlan(ctx context.Context, planHash PlanHash, opts
 	}
 	if options.inputs != nil {
 		payload.Input = options.inputs
+	}
+	if options.modelOverride != nil {
+		payload.ModelOverride = options.modelOverride
+	}
+	if options.modelOverrides != nil {
+		payload.ModelOverrides = options.modelOverrides
 	}
 	if options.stream != nil {
 		payload.Stream = options.stream
@@ -757,11 +781,26 @@ func (c *RunsClient) PendingTools(ctx context.Context, runID RunID, opts ...RunP
 }
 
 type runCreateOptions struct {
-	timeout   *time.Duration
-	retry     *RetryConfig
-	sessionID *uuid.UUID
-	inputs    map[string]interface{}
-	stream    *bool
+	timeout        *time.Duration
+	retry          *RetryConfig
+	sessionID      *uuid.UUID
+	inputs         map[string]interface{}
+	modelOverride  *string
+	modelOverrides *RunModelOverrides
+	stream         *bool
+}
+
+// RunModelOverrides declares model overrides for a run.
+type RunModelOverrides struct {
+	Nodes          map[string]string          `json:"nodes,omitempty"`
+	FanoutSubnodes []RunFanoutSubnodeOverride `json:"fanout_subnodes,omitempty"`
+}
+
+// RunFanoutSubnodeOverride identifies a map.fanout subnode override.
+type RunFanoutSubnodeOverride struct {
+	ParentID  string `json:"parent_id"`
+	SubnodeID string `json:"subnode_id"`
+	Model     string `json:"model"`
 }
 
 type RunCreateOption func(*runCreateOptions)
@@ -797,6 +836,27 @@ func WithRunSessionID(sessionID uuid.UUID) RunCreateOption {
 func WithRunInputs(inputs map[string]interface{}) RunCreateOption {
 	return func(o *runCreateOptions) {
 		o.inputs = inputs
+	}
+}
+
+// WithRunModelOverride overrides all llm.responses/route.switch models for a run.
+func WithRunModelOverride(model string) RunCreateOption {
+	return func(o *runCreateOptions) {
+		trimmed := strings.TrimSpace(model)
+		if trimmed == "" {
+			return
+		}
+		o.modelOverride = &trimmed
+	}
+}
+
+// WithRunModelOverrides overrides models per node ID and map.fanout subnodes.
+func WithRunModelOverrides(overrides RunModelOverrides) RunCreateOption {
+	return func(o *runCreateOptions) {
+		if len(overrides.Nodes) == 0 && len(overrides.FanoutSubnodes) == 0 {
+			return
+		}
+		o.modelOverrides = &overrides
 	}
 }
 

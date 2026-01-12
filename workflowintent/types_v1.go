@@ -45,8 +45,18 @@ type Spec struct {
 	Name           string      `json:"name,omitempty"`
 	Model          string      `json:"model,omitempty"`
 	MaxParallelism *int64      `json:"max_parallelism,omitempty"`
+	Inputs         []InputDecl `json:"inputs,omitempty"`
 	Nodes          []Node      `json:"nodes"`
 	Outputs        []OutputRef `json:"outputs"`
+}
+
+// InputDecl declares a workflow input for validation and documentation.
+type InputDecl struct {
+	Name        string          `json:"name"`
+	Type        string          `json:"type,omitempty"` // "string", "number", "object", "array", "boolean", "null", "json"
+	Required    bool            `json:"required,omitempty"`
+	Description string          `json:"description,omitempty"`
+	Default     json.RawMessage `json:"default,omitempty"`
 }
 
 // Node defines a workflow node.

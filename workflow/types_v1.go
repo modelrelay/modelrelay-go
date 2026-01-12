@@ -92,6 +92,7 @@ type SpecV1 struct {
 	Kind      Kind          `json:"kind"`
 	Name      string        `json:"name,omitempty"`
 	Execution *ExecutionV1  `json:"execution,omitempty"`
+	Inputs    []InputDeclV1 `json:"inputs,omitempty"`
 	Nodes     []NodeV1      `json:"nodes"`
 	Edges     []EdgeV1      `json:"edges,omitempty"`
 	Outputs   []OutputRefV1 `json:"outputs"`
@@ -189,6 +190,15 @@ type InputName string
 
 func (n InputName) Valid() bool {
 	return strings.TrimSpace(string(n)) != ""
+}
+
+// InputDeclV1 declares a workflow input for validation and documentation.
+type InputDeclV1 struct {
+	Name        InputName       `json:"name"`
+	Type        string          `json:"type,omitempty"` // "string", "number", "object", "array", "boolean", "null", "json"
+	Required    bool            `json:"required,omitempty"`
+	Description string          `json:"description,omitempty"`
+	Default     json.RawMessage `json:"default,omitempty"`
 }
 
 // MapFanoutItemsV1 specifies where to get the items array for a map.fanout node.

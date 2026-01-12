@@ -1220,11 +1220,24 @@ type RunsCreateOptionsV0 struct {
 	IdempotencyKey *string `json:"idempotency_key,omitempty"`
 }
 
-// RunsCreateRequest Create a workflow run. The workflow spec must include a resolved model for every llm.responses/route.switch node (including map.fanout subnodes); /runs does not resolve tiers or default models.
+// RunsCreateRequest Create a workflow run. The workflow spec must include a resolved model for every llm.responses/route.switch node (including map.fanout subnodes); /runs does not resolve tiers or default models. Use model_override or model_overrides to override models at runtime.
 type RunsCreateRequest struct {
 	// Input Runtime inputs for the workflow. Required when the spec uses from_input references (e.g., map.fanout with items.from_input). Each key is the input name, and the value is the JSON data to provide.
-	Input   *map[string]interface{} `json:"input,omitempty"`
-	Options *RunsCreateOptionsV0    `json:"options,omitempty"`
+	Input *map[string]interface{} `json:"input,omitempty"`
+
+	// ModelOverride Default model override applied to all llm.responses and route.switch nodes (including map.fanout subnodes) unless overridden by model_overrides.
+	ModelOverride *string `json:"model_override,omitempty"`
+
+	// ModelOverrides Per-node model overrides. Use nodes for top-level nodes and fanout_subnodes for map.fanout subnodes.
+	ModelOverrides *struct {
+		FanoutSubnodes *[]struct {
+			Model     string `json:"model"`
+			ParentId  string `json:"parent_id"`
+			SubnodeId string `json:"subnode_id"`
+		} `json:"fanout_subnodes,omitempty"`
+		Nodes *map[string]string `json:"nodes,omitempty"`
+	} `json:"model_overrides,omitempty"`
+	Options *RunsCreateOptionsV0 `json:"options,omitempty"`
 
 	// SessionId Optional session ID to link this run to a session.
 	SessionId *openapi_types.UUID `json:"session_id,omitempty"`
