@@ -1041,7 +1041,6 @@ type ResponsesRequest struct {
 
 	// Provider LLM provider identifier.
 	Provider    *ProviderId         `json:"provider,omitempty"`
-	SessionId   *openapi_types.UUID `json:"session_id,omitempty"`
 	StateId     *openapi_types.UUID `json:"state_id,omitempty"`
 	Stop        *[]string           `json:"stop,omitempty"`
 	Temperature *float32            `json:"temperature,omitempty"`
@@ -1470,6 +1469,21 @@ type SkillsCompileResponse struct {
 
 	// Workflow A `workflow` spec. The canonical JSON Schema is available at `/schemas/workflow.schema.json`.
 	Workflow WorkflowSpec `json:"workflow"`
+}
+
+// StateHandleCreateRequest defines model for StateHandleCreateRequest.
+type StateHandleCreateRequest struct {
+	// TtlSeconds TTL in seconds for the state handle. Maximum is 1 year (31536000 seconds).
+	TtlSeconds *int64 `json:"ttl_seconds,omitempty"`
+}
+
+// StateHandleResponse defines model for StateHandleResponse.
+type StateHandleResponse struct {
+	CreatedAt  string              `json:"created_at"`
+	CustomerId *openapi_types.UUID `json:"customer_id,omitempty"`
+	ExpiresAt  *string             `json:"expires_at,omitempty"`
+	Id         openapi_types.UUID  `json:"id"`
+	ProjectId  openapi_types.UUID  `json:"project_id"`
 }
 
 // Subscription defines model for Subscription.
@@ -2158,6 +2172,9 @@ type AddSessionMessageJSONRequestBody = SessionMessageCreateRequest
 
 // CompileSkillJSONRequestBody defines body for CompileSkill for application/json ContentType.
 type CompileSkillJSONRequestBody = SkillsCompileRequest
+
+// CreateStateHandleJSONRequestBody defines body for CreateStateHandle for application/json ContentType.
+type CreateStateHandleJSONRequestBody = StateHandleCreateRequest
 
 // CompileWorkflowJSONRequestBody defines body for CompileWorkflow for application/json ContentType.
 type CompileWorkflowJSONRequestBody = WorkflowSpec

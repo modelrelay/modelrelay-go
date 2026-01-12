@@ -3,8 +3,6 @@ package sdk
 import (
 	"testing"
 
-	"github.com/google/uuid"
-
 	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
 
@@ -60,19 +58,5 @@ func TestResponseBuilderValidation(t *testing.T) {
 	}
 	if len(req.input) != 1 || req.outputFormat == nil || req.outputFormat.Type != llm.OutputFormatTypeJSONSchema {
 		t.Fatalf("builder failed: %+v", req)
-	}
-}
-
-func TestResponseBuilderRejectsSessionAndState(t *testing.T) {
-	sessionID := uuid.New()
-	stateID := uuid.New()
-	_, _, err := (&ResponsesClient{}).New().
-		Model(NewModelID("gpt-5.1")).
-		User("hello").
-		SessionID(sessionID).
-		StateID(stateID).
-		Build()
-	if err == nil {
-		t.Fatalf("expected validation error for session_id and state_id")
 	}
 }

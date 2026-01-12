@@ -43,15 +43,6 @@ func (b ResponseBuilder) Model(model ModelID) ResponseBuilder {
 	return b
 }
 
-// SessionID scopes stateful tools to a server-side session.
-func (b ResponseBuilder) SessionID(sessionID uuid.UUID) ResponseBuilder {
-	if sessionID == uuid.Nil {
-		return b
-	}
-	b.req.sessionID = &sessionID
-	return b
-}
-
 // StateID scopes stateful tools to an explicit state handle.
 func (b ResponseBuilder) StateID(stateID uuid.UUID) ResponseBuilder {
 	if stateID == uuid.Nil {

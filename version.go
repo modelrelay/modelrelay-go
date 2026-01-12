@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 6.0.0: Breaking - /responses no longer accepts session_id; add state handles for persistent tool state.
 // 5.10.0: Add TierCode field to CustomerTokenRequest for customers without existing subscriptions.
 // 5.9.0: Add /responses state_id for scoped tool persistence.
 // 5.8.0: Add run model overrides + workflow intent input declarations.
@@ -152,4 +153,4 @@ package sdk
 // 4.0.0: Breaking - CustomerMeUsage: remove credits_granted_cents/credits_remaining_cents,
 // add spend_limit_cents/spend_remaining_cents. SpendLimitCents is now the single source of truth
 // for usage budget (distinct from subscription price).
-const Version = "5.10.0"
+const Version = "6.0.0"
