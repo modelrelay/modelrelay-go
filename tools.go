@@ -485,6 +485,79 @@ func FunctionToolFromType[T any](name ToolName, description string) (llm.Tool, e
 	}, nil
 }
 
+// TypedTool binds a tool definition to its typed argument parser.
+// Use ParseCall to validate the tool name and parse arguments into T.
+type TypedTool[T any] struct {
+	name        ToolName
+	description string
+	tool        llm.Tool
+}
+
+// TypedToolCall is a tool call with parsed arguments.
+type TypedToolCall[T any] struct {
+	Call llm.ToolCall
+	Args T
+}
+
+// NewTypedTool creates a typed tool definition from a Go struct type.
+func NewTypedTool[T any](name ToolName, description string) (TypedTool[T], error) {
+	tool, err := FunctionToolFromType[T](name, description)
+	if err != nil {
+		return TypedTool[T]{}, err
+	}
+	return TypedTool[T]{
+		name:        name,
+		description: description,
+		tool:        tool,
+	}, nil
+}
+
+// MustTypedTool creates a typed tool definition, panicking on error.
+func MustTypedTool[T any](name ToolName, description string) TypedTool[T] {
+	tool := MustFunctionToolFromType[T](name, description)
+	return TypedTool[T]{
+		name:        name,
+		description: description,
+		tool:        tool,
+	}
+}
+
+// Definition returns the tool definition for API requests.
+func (t TypedTool[T]) Definition() llm.Tool {
+	return t.tool
+}
+
+// Name returns the tool's name.
+func (t TypedTool[T]) Name() ToolName {
+	return t.name
+}
+
+// ParseCall validates the tool name and parses arguments into T.
+// If T implements Validator, validation is applied.
+func (t TypedTool[T]) ParseCall(call llm.ToolCall) (TypedToolCall[T], error) {
+	if call.Function == nil {
+		return TypedToolCall[T]{}, &ToolArgsError{
+			Message:      "tool call missing function",
+			ToolCallID:   call.ID,
+			ToolName:     t.name,
+			RawArguments: "",
+		}
+	}
+	if call.Function.Name != t.name {
+		return TypedToolCall[T]{}, &ToolArgsError{
+			Message:      "expected tool '" + t.name.String() + "', got '" + call.Function.Name.String() + "'",
+			ToolCallID:   call.ID,
+			ToolName:     t.name,
+			RawArguments: call.Function.Arguments,
+		}
+	}
+	var args T
+	if err := ParseAndValidateToolArgs(call, &args); err != nil {
+		return TypedToolCall[T]{}, err
+	}
+	return TypedToolCall[T]{Call: call, Args: args}, nil
+}
+
 // MustFunctionToolFromType creates a function tool from a Go struct type, panicking on error.
 // Useful for static tool definitions.
 func MustFunctionToolFromType[T any](name ToolName, description string) llm.Tool {

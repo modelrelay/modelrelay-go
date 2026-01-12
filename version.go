@@ -3,6 +3,7 @@ package sdk
 // Version is the published SDK version.
 // 6.0.0: Breaking - /responses no longer accepts session_id; add state handles for persistent tool state.
 // 5.10.0: Add TierCode field to CustomerTokenRequest for customers without existing subscriptions.
+// 5.10.0: Add TypedTool helper for tool definition + typed argument parsing.
 // 5.9.0: Add /responses state_id for scoped tool persistence.
 // 5.8.0: Add run model overrides + workflow intent input declarations.
 // 5.7.0: Add CreateFromPlan for running precompiled workflows via plan_hash.

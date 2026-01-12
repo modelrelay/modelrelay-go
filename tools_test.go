@@ -1135,3 +1135,69 @@ func TestFunctionToolFromType(t *testing.T) {
 		}
 	})
 }
+
+func TestTypedTool(t *testing.T) {
+	type ReadFileArgs struct {
+		Path string `json:"path"`
+	}
+
+	t.Run("parses typed call", func(t *testing.T) {
+		tool, err := NewTypedTool[ReadFileArgs]("read_file", "Read a file")
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		call := llm.ToolCall{
+			ID:   "call_1",
+			Type: llm.ToolTypeFunction,
+			Function: &llm.FunctionCall{
+				Name:      "read_file",
+				Arguments: `{"path":"./config.json"}`,
+			},
+		}
+
+		typedCall, err := tool.ParseCall(call)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if typedCall.Args.Path != "./config.json" {
+			t.Fatalf("expected path ./config.json, got %q", typedCall.Args.Path)
+		}
+	})
+
+	t.Run("rejects mismatched tool name", func(t *testing.T) {
+		tool := MustTypedTool[ReadFileArgs]("read_file", "Read a file")
+		call := llm.ToolCall{
+			ID:   "call_2",
+			Type: llm.ToolTypeFunction,
+			Function: &llm.FunctionCall{
+				Name:      "other_tool",
+				Arguments: `{"path":"./config.json"}`,
+			},
+		}
+
+		_, err := tool.ParseCall(call)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if _, ok := err.(*ToolArgsError); !ok {
+			t.Fatalf("expected ToolArgsError, got %T", err)
+		}
+	})
+
+	t.Run("rejects missing function", func(t *testing.T) {
+		tool := MustTypedTool[ReadFileArgs]("read_file", "Read a file")
+		call := llm.ToolCall{
+			ID:   "call_3",
+			Type: llm.ToolTypeFunction,
+		}
+
+		_, err := tool.ParseCall(call)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if _, ok := err.(*ToolArgsError); !ok {
+			t.Fatalf("expected ToolArgsError, got %T", err)
+		}
+	})
+}
