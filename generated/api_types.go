@@ -1042,6 +1042,7 @@ type ResponsesRequest struct {
 	// Provider LLM provider identifier.
 	Provider    *ProviderId         `json:"provider,omitempty"`
 	SessionId   *openapi_types.UUID `json:"session_id,omitempty"`
+	StateId     *openapi_types.UUID `json:"state_id,omitempty"`
 	Stop        *[]string           `json:"stop,omitempty"`
 	Temperature *float32            `json:"temperature,omitempty"`
 	ToolChoice  *ToolChoice         `json:"tool_choice,omitempty"`

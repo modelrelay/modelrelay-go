@@ -15,6 +15,10 @@ type ResponseRequest struct {
 	Provider string `json:"provider,omitempty"`
 	// Model is optional for customer-attributed requests (subscription tier controls model).
 	Model string `json:"model,omitempty"`
+	// SessionID optionally scopes stateful tools to a server-side session.
+	SessionID string `json:"session_id,omitempty"`
+	// StateID optionally scopes stateful tools to a server-side state handle.
+	StateID string `json:"state_id,omitempty"`
 
 	// Input is the ordered list of input items (messages, tool results, etc.).
 	Input []InputItem `json:"input"`

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/modelrelay/modelrelay/sdk/go/headers"
 	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
@@ -30,6 +32,8 @@ func (p ProviderID) String() string       { return string(p) }
 type ResponseRequest struct {
 	provider        ProviderID
 	model           ModelID
+	sessionID       *uuid.UUID
+	stateID         *uuid.UUID
 	input           []llm.InputItem
 	outputFormat    *llm.OutputFormat
 	maxOutputTokens int64
@@ -50,6 +54,15 @@ func (r ResponseRequest) validate(requireModel bool) error {
 	}
 	if len(r.input) == 0 {
 		return fmt.Errorf("input is required")
+	}
+	if r.sessionID != nil && *r.sessionID == uuid.Nil {
+		return fmt.Errorf("session_id is required")
+	}
+	if r.stateID != nil && *r.stateID == uuid.Nil {
+		return fmt.Errorf("state_id is required")
+	}
+	if r.sessionID != nil && r.stateID != nil {
+		return fmt.Errorf("session_id and state_id are mutually exclusive")
 	}
 	// The SDK does not validate model identifiers beyond non-emptiness.
 	// Callers may pass arbitrary custom ids; the server performs

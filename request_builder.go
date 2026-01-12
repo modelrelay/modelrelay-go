@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/modelrelay/modelrelay/sdk/go/headers"
 	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 )
@@ -38,6 +40,24 @@ func (b ResponseBuilder) Provider(provider ProviderID) ResponseBuilder {
 
 func (b ResponseBuilder) Model(model ModelID) ResponseBuilder {
 	b.req.model = model
+	return b
+}
+
+// SessionID scopes stateful tools to a server-side session.
+func (b ResponseBuilder) SessionID(sessionID uuid.UUID) ResponseBuilder {
+	if sessionID == uuid.Nil {
+		return b
+	}
+	b.req.sessionID = &sessionID
+	return b
+}
+
+// StateID scopes stateful tools to an explicit state handle.
+func (b ResponseBuilder) StateID(stateID uuid.UUID) ResponseBuilder {
+	if stateID == uuid.Nil {
+		return b
+	}
+	b.req.stateID = &stateID
 	return b
 }
 

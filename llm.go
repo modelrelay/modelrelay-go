@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/modelrelay/modelrelay/sdk/go/headers"
 	llm "github.com/modelrelay/modelrelay/sdk/go/llm"
 	"github.com/modelrelay/modelrelay/sdk/go/routes"
@@ -330,6 +332,8 @@ func StreamJSON[T any](ctx context.Context, c *ResponsesClient, req ResponseRequ
 type responseRequestPayload struct {
 	Provider        string            `json:"provider,omitempty"`
 	Model           string            `json:"model,omitempty"`
+	SessionID       *uuid.UUID        `json:"session_id,omitempty"`
+	StateID         *uuid.UUID        `json:"state_id,omitempty"`
 	Input           []llm.InputItem   `json:"input"`
 	OutputFormat    *llm.OutputFormat `json:"output_format,omitempty"`
 	MaxOutputTokens int64             `json:"max_output_tokens,omitempty"`
@@ -352,6 +356,12 @@ func newResponseRequestPayload(req ResponseRequest) responseRequestPayload {
 	}
 	if !req.model.IsEmpty() {
 		payload.Model = req.model.String()
+	}
+	if req.sessionID != nil {
+		payload.SessionID = req.sessionID
+	}
+	if req.stateID != nil {
+		payload.StateID = req.stateID
 	}
 	if len(req.stop) > 0 {
 		payload.Stop = req.stop
