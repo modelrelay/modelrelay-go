@@ -1265,6 +1265,9 @@ type RunsGetResponse struct {
 	Nodes       *[]NodeResultV0         `json:"nodes,omitempty"`
 	Outputs     *map[string]interface{} `json:"outputs,omitempty"`
 
+	// ParentRunId Unique identifier for a workflow run.
+	ParentRunId *RunId `json:"parent_run_id,omitempty"`
+
 	// PlanHash SHA-256 hash of the compiled workflow plan (64 hex characters).
 	PlanHash PlanHash `json:"plan_hash"`
 
