@@ -98,6 +98,18 @@ type RunEventNodeWaitingV0 struct {
 	Waiting NodeWaiting
 }
 
+type RunEventNodeUserAskV0 struct {
+	RunEventBase
+	NodeID  NodeID
+	UserAsk NodeUserAsk
+}
+
+type RunEventNodeUserAnswerV0 struct {
+	RunEventBase
+	NodeID     NodeID
+	UserAnswer NodeUserAnswer
+}
+
 type RunEventNodeOutputDeltaV0 struct {
 	RunEventBase
 	NodeID NodeID
@@ -122,6 +134,8 @@ func (RunEventNodeLLMCallV0) isRunEvent()     {}
 func (RunEventNodeToolCallV0) isRunEvent()    {}
 func (RunEventNodeToolResultV0) isRunEvent()  {}
 func (RunEventNodeWaitingV0) isRunEvent()     {}
+func (RunEventNodeUserAskV0) isRunEvent()     {}
+func (RunEventNodeUserAnswerV0) isRunEvent()  {}
 func (RunEventNodeOutputDeltaV0) isRunEvent() {}
 func (RunEventNodeOutputV0) isRunEvent()      {}
 
@@ -201,7 +215,7 @@ func decodeRunEvent(env RunEventEnvelope) (RunEvent, error) {
 			return nil, ProtocolError{Message: "unknown run event type"}
 		}
 
-	case RunEventNodeLLMCall, RunEventNodeToolCall, RunEventNodeToolResult, RunEventNodeWaiting, RunEventNodeStarted, RunEventNodeSucceeded, RunEventNodeFailed, RunEventNodeOutputDelta, RunEventNodeOutput:
+	case RunEventNodeLLMCall, RunEventNodeToolCall, RunEventNodeToolResult, RunEventNodeWaiting, RunEventNodeUserAsk, RunEventNodeUserAnswer, RunEventNodeStarted, RunEventNodeSucceeded, RunEventNodeFailed, RunEventNodeOutputDelta, RunEventNodeOutput:
 		if env.PlanHash != nil {
 			return nil, ProtocolError{Message: "node-scoped event must not include plan_hash"}
 		}
@@ -245,6 +259,22 @@ func decodeRunEvent(env RunEventEnvelope) (RunEvent, error) {
 				return nil, ProtocolError{Message: "node_waiting must include waiting payload"}
 			}
 			return RunEventNodeWaitingV0{RunEventBase: base, NodeID: env.NodeID, Waiting: *env.Waiting}, nil
+		case RunEventNodeUserAsk:
+			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.Output != nil {
+				return nil, ProtocolError{Message: "node_user_ask must not include error/llm_call/tool_call/tool_result/waiting/delta/output"}
+			}
+			if env.UserAsk == nil || strings.TrimSpace(env.UserAsk.RequestID) == "" || env.UserAsk.Step < 0 || strings.TrimSpace(env.UserAsk.Question) == "" {
+				return nil, ProtocolError{Message: "node_user_ask must include user_ask payload"}
+			}
+			return RunEventNodeUserAskV0{RunEventBase: base, NodeID: env.NodeID, UserAsk: *env.UserAsk}, nil
+		case RunEventNodeUserAnswer:
+			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.Output != nil {
+				return nil, ProtocolError{Message: "node_user_answer must not include error/llm_call/tool_call/tool_result/waiting/delta/output"}
+			}
+			if env.UserAnswer == nil || strings.TrimSpace(env.UserAnswer.RequestID) == "" || env.UserAnswer.Step < 0 || strings.TrimSpace(env.UserAnswer.Answer) == "" {
+				return nil, ProtocolError{Message: "node_user_answer must include user_answer payload"}
+			}
+			return RunEventNodeUserAnswerV0{RunEventBase: base, NodeID: env.NodeID, UserAnswer: *env.UserAnswer}, nil
 		case RunEventNodeStarted:
 			if env.Error != nil || env.LLMCall != nil || env.ToolCall != nil || env.ToolResult != nil || env.Waiting != nil || env.Delta != nil || env.Output != nil {
 				return nil, ProtocolError{Message: "node_started must not include error/delta/output"}

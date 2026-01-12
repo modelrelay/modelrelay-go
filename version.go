@@ -154,4 +154,5 @@ package sdk
 // 4.0.0: Breaking - CustomerMeUsage: remove credits_granted_cents/credits_remaining_cents,
 // add spend_limit_cents/spend_remaining_cents. SpendLimitCents is now the single source of truth
 // for usage budget (distinct from subscription price).
-const Version = "7.0.0"
+// 7.1.0: Add user.ask tool helpers + user interaction run events.
+const Version = "7.1.0"

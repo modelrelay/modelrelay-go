@@ -235,7 +235,7 @@ func toolExecutionOutput(res ToolExecutionResult) string {
 	default:
 		b, err := json.Marshal(v)
 		if err != nil {
-			return "Error: failed to marshal tool result"
+			return fmt.Sprintf("Error: failed to marshal tool result (type=%T): %v", v, err)
 		}
 		return string(b)
 	}

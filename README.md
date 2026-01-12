@@ -53,6 +53,44 @@ fmt.Println(result.Output)
 fmt.Println("Tool calls:", result.Usage.ToolCalls)
 ```
 
+### User Interaction — `user.ask`
+
+Use the built-in `user.ask` tool to request human input in a workflow run:
+
+```go
+tools := []llm.Tool{sdk.UserAskTool()}
+
+// Start a run that allows tools (omitted: workflow spec setup).
+run, _ := client.Runs.Create(ctx, spec)
+
+stream, _ := client.Runs.StreamEvents(ctx, run.RunID)
+defer stream.Close()
+
+for {
+    event, ok, _ := stream.Next()
+    if !ok {
+        break
+    }
+    ask, ok := event.(sdk.RunEventNodeUserAskV0)
+    if !ok {
+        continue
+    }
+
+    answer := prompt(ask.UserAsk.Question) // your UI/input here
+    output, _ := sdk.UserAskResultFreeform(answer)
+
+    _, _ = client.Runs.SubmitToolResults(ctx, run.RunID, sdk.RunsToolResultsRequest{
+        NodeID:    ask.NodeID,
+        Step:      ask.UserAsk.Step,
+        RequestID: ask.UserAsk.RequestID,
+        Results: []sdk.RunsToolResultItemV0{{
+            ToolCall: sdk.ToolCall{ID: ask.UserAsk.ToolCall.ID, Name: ask.UserAsk.ToolCall.Name},
+            Output:   output,
+        }},
+    })
+}
+```
+
 ## Token Providers (Automatic Bearer Auth)
 
 Use token providers when you want the SDK to automatically obtain/refresh **bearer tokens** for data-plane calls like `/responses` and `/runs`.

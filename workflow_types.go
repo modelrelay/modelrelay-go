@@ -56,6 +56,9 @@ type (
 	NodeToolResult                  = workflow.NodeToolResult
 	PendingToolCall                 = workflow.PendingToolCall
 	NodeWaiting                     = workflow.NodeWaiting
+	UserAskOption                   = workflow.UserAskOption
+	NodeUserAsk                     = workflow.NodeUserAsk
+	NodeUserAnswer                  = workflow.NodeUserAnswer
 	RunCostSummary                  = workflow.CostSummaryV0
 	RunCostLineItem                 = workflow.CostLineItemV0
 	StreamEventKind                 = workflow.StreamEventKind
@@ -90,6 +93,8 @@ const (
 	RunEventNodeToolCall            = workflow.EventNodeToolCall
 	RunEventNodeToolResult          = workflow.EventNodeToolResult
 	RunEventNodeWaiting             = workflow.EventNodeWaiting
+	RunEventNodeUserAsk             = workflow.EventNodeUserAsk
+	RunEventNodeUserAnswer          = workflow.EventNodeUserAnswer
 	RunEventNodeStarted             = workflow.EventNodeStarted
 	RunEventNodeSucceeded           = workflow.EventNodeSucceeded
 	RunEventNodeFailed              = workflow.EventNodeFailed

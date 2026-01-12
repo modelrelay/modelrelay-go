@@ -103,6 +103,8 @@ const (
 	EventNodeToolCall   EventTypeV0 = "node_tool_call"
 	EventNodeToolResult EventTypeV0 = "node_tool_result"
 	EventNodeWaiting    EventTypeV0 = "node_waiting"
+	EventNodeUserAsk    EventTypeV0 = "node_user_ask"
+	EventNodeUserAnswer EventTypeV0 = "node_user_answer"
 
 	EventNodeStarted     EventTypeV0 = "node_started"
 	EventNodeSucceeded   EventTypeV0 = "node_succeeded"
@@ -200,6 +202,8 @@ type EventV0Envelope struct {
 	ToolCall   *NodeToolCall   `json:"tool_call,omitempty"`
 	ToolResult *NodeToolResult `json:"tool_result,omitempty"`
 	Waiting    *NodeWaiting    `json:"waiting,omitempty"`
+	UserAsk    *NodeUserAsk    `json:"user_ask,omitempty"`
+	UserAnswer *NodeUserAnswer `json:"user_answer,omitempty"`
 
 	Delta *NodeOutputDelta `json:"delta,omitempty"`
 
@@ -257,6 +261,31 @@ type NodeWaiting struct {
 	RequestID        string            `json:"request_id"`
 	PendingToolCalls []PendingToolCall `json:"pending_tool_calls"`
 	Reason           string            `json:"reason"`
+}
+
+// UserAskOption is a multiple-choice option for user.ask.
+type UserAskOption struct {
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
+}
+
+// NodeUserAsk captures a user.ask prompt emitted by a node.
+type NodeUserAsk struct {
+	Step          int64                 `json:"step"`
+	RequestID     string                `json:"request_id"`
+	ToolCall      ToolCallWithArguments `json:"tool_call"`
+	Question      string                `json:"question"`
+	Options       []UserAskOption       `json:"options,omitempty"`
+	AllowFreeform bool                  `json:"allow_freeform"`
+}
+
+// NodeUserAnswer captures the user's response to a user.ask prompt.
+type NodeUserAnswer struct {
+	Step       int64    `json:"step"`
+	RequestID  string   `json:"request_id"`
+	ToolCall   ToolCall `json:"tool_call"`
+	Answer     string   `json:"answer"`
+	IsFreeform bool     `json:"is_freeform"`
 }
 
 // ProviderID identifies an LLM provider.

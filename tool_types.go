@@ -24,6 +24,7 @@ const (
 	ToolNameFSEdit      ToolName = "fs.edit"
 	ToolNameBash        ToolName = "bash"
 	ToolNameWriteFile   ToolName = "write_file"
+	ToolNameUserAsk     ToolName = "user.ask"
 )
 
 // AllowedToolNames is the canonical list of allowed tools.v0 client tool names.
@@ -34,6 +35,7 @@ var AllowedToolNames = []ToolName{
 	ToolNameFSEdit,
 	ToolNameBash,
 	ToolNameWriteFile,
+	ToolNameUserAsk,
 }
 
 // AllowedToolNamesString returns a comma-separated string of allowed tool names.
