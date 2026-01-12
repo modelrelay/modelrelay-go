@@ -104,16 +104,17 @@ type Client struct {
 	retryCfg       RetryConfig
 
 	// Grouped service clients.
-	Responses *ResponsesClient
-	Workflows *WorkflowsClient
-	Runs      *RunsClient
-	Agents    *AgentsClient
-	Images    *ImagesClient
-	Auth      *AuthClient
-	Sessions  *SessionsClient
+	Responses    *ResponsesClient
+	Workflows    *WorkflowsClient
+	Runs         *RunsClient
+	Agents       *AgentsClient
+	Images       *ImagesClient
+	Auth         *AuthClient
+	Sessions     *SessionsClient
 	StateHandles *StateHandlesClient
-	Tiers     *TiersClient
-	Billing   *BillingClient
+	Messages     *MessagesClient
+	Tiers        *TiersClient
+	Billing      *BillingClient
 
 	pluginsOnce sync.Once
 	plugins     *PluginsClient
@@ -250,6 +251,7 @@ func newClientFromOptions(apiKey APIKeyAuth, accessToken string, opts clientOpti
 	client.Auth = &AuthClient{client: client}
 	client.Sessions = &SessionsClient{client: client}
 	client.StateHandles = &StateHandlesClient{client: client}
+	client.Messages = &MessagesClient{client: client}
 	client.Tiers = &TiersClient{client: client}
 	client.Billing = &BillingClient{client: client}
 	return client, nil

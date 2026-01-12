@@ -858,8 +858,37 @@ type JSONSchemaFormat struct {
 	Strict      *bool                   `json:"strict,omitempty"`
 }
 
+// MessageListResponse defines model for MessageListResponse.
+type MessageListResponse struct {
+	Messages   []MessageResponse `json:"messages"`
+	NextCursor *string           `json:"next_cursor,omitempty"`
+}
+
+// MessageResponse defines model for MessageResponse.
+type MessageResponse struct {
+	Body      map[string]interface{} `json:"body"`
+	CreatedAt string                 `json:"created_at"`
+	From      string                 `json:"from"`
+	Id        openapi_types.UUID     `json:"id"`
+	ProjectId openapi_types.UUID     `json:"project_id"`
+	Read      bool                   `json:"read"`
+	ReadAt    *string                `json:"read_at,omitempty"`
+	Subject   string                 `json:"subject"`
+	ThreadId  openapi_types.UUID     `json:"thread_id"`
+	To        string                 `json:"to"`
+}
+
 // MessageRole defines model for MessageRole.
 type MessageRole string
+
+// MessageSendRequest defines model for MessageSendRequest.
+type MessageSendRequest struct {
+	Body     map[string]interface{} `json:"body"`
+	From     *string                `json:"from,omitempty"`
+	Subject  string                 `json:"subject"`
+	ThreadId *openapi_types.UUID    `json:"thread_id,omitempty"`
+	To       string                 `json:"to"`
+}
 
 // Model defines model for Model.
 type Model struct {
@@ -1980,6 +2009,15 @@ type SubscribeCustomerJSONBody struct {
 	TierId     openapi_types.UUID `json:"tier_id"`
 }
 
+// ListMessagesParams defines parameters for ListMessages.
+type ListMessagesParams struct {
+	To       *string             `form:"to,omitempty" json:"to,omitempty"`
+	ThreadId *openapi_types.UUID `form:"thread_id,omitempty" json:"thread_id,omitempty"`
+	Unread   *bool               `form:"unread,omitempty" json:"unread,omitempty"`
+	Limit    *int32              `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset   *int32              `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // ListModelsParams defines parameters for ListModels.
 type ListModelsParams struct {
 	// Provider Filter results to a specific provider
@@ -2118,6 +2156,9 @@ type CreateCustomerTopupJSONRequestBody = CustomerTopupRequest
 
 // GenerateImageJSONRequestBody defines body for GenerateImage for application/json ContentType.
 type GenerateImageJSONRequestBody = ImageRequest
+
+// SendMessageJSONRequestBody defines body for SendMessage for application/json ContentType.
+type SendMessageJSONRequestBody = MessageSendRequest
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody CreateProjectJSONBody
