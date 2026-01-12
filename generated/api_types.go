@@ -1907,6 +1907,9 @@ type MintCustomerTokenJSONBody struct {
 	// CustomerId Internal customer UUID (provide exactly one of customer_id or customer_external_id)
 	CustomerId *openapi_types.UUID `json:"customer_id,omitempty"`
 
+	// TierCode Tier code for the customer. Required when creating a subscription for new customers. Customers with an existing subscription can omit this field.
+	TierCode *string `json:"tier_code,omitempty"`
+
 	// TtlSeconds Requested token TTL in seconds (server may cap this)
 	TtlSeconds *uint32 `json:"ttl_seconds,omitempty"`
 }

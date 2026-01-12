@@ -19,10 +19,14 @@ const TokenTypeBearer TokenType = "Bearer"
 
 // CustomerTokenRequest mints a customer-scoped bearer token (requires secret key auth).
 // Exactly one of CustomerID or CustomerExternalID is required.
+// TierCode is required for customers without an existing subscription.
 type CustomerTokenRequest struct {
 	CustomerID         *uuid.UUID         `json:"customer_id,omitempty"`
 	CustomerExternalID CustomerExternalID `json:"customer_external_id,omitempty"`
 	TTLSeconds         int64              `json:"ttl_seconds,omitempty"`
+	// TierCode is required for customers without an existing subscription.
+	// When provided, a billing profile is created for the customer with this tier.
+	TierCode TierCode `json:"tier_code,omitempty"`
 }
 
 func NewCustomerTokenRequestForCustomerID(customerID uuid.UUID) CustomerTokenRequest {
@@ -104,6 +108,9 @@ type GetOrCreateCustomerTokenRequest struct {
 	Metadata CustomerMetadata `json:"metadata,omitempty"`
 	// TTLSeconds is the optional token TTL in seconds (default: 7 days, max: 30 days).
 	TTLSeconds int64 `json:"ttl_seconds,omitempty"`
+	// TierCode is required for customers without an existing subscription.
+	// When provided, a billing profile is created for the customer with this tier.
+	TierCode TierCode `json:"tier_code,omitempty"`
 }
 
 // Validate checks that required fields are present.
