@@ -25,11 +25,23 @@ version: 1.2.3
 
 This description should be ignored because front matter exists.
 `
-	command := `# analyze
+	command := `---
+tools:
+  - fs.read_file
+  - fs.search
+---
+
+# analyze
 
 Use agents/reviewer.md to review changes.
 `
-	agent := `# reviewer
+	agent := `---
+description: Expert reviewer
+tools:
+  - fs.read_file
+---
+
+# reviewer
 
 You are a reviewer.`
 
@@ -202,11 +214,27 @@ func TestPluginLoader_Load_NormalizesGitHubURLs(t *testing.T) {
 			if !ok || strings.TrimSpace(cmd.Prompt) == "" {
 				t.Fatalf("missing analyze command: %#v", p.Commands)
 			}
+			if len(cmd.Tools) != 2 || cmd.Tools[0] != ToolNameFSReadFile || cmd.Tools[1] != ToolNameFSSearch {
+				t.Fatalf("unexpected command tools: %#v", cmd.Tools)
+			}
+			if strings.HasPrefix(strings.TrimSpace(cmd.Prompt), "---") {
+				t.Fatalf("expected frontmatter to be stripped from command prompt")
+			}
 			if len(cmd.AgentRefs) != 1 || cmd.AgentRefs[0].String() != "reviewer" {
 				t.Fatalf("unexpected command agent refs: %#v", cmd.AgentRefs)
 			}
-			if _, ok := p.Agents[PluginAgentName("reviewer")]; !ok {
+			agent, ok := p.Agents[PluginAgentName("reviewer")]
+			if !ok {
 				t.Fatalf("missing reviewer agent: %#v", p.Agents)
+			}
+			if agent.Description != "Expert reviewer" {
+				t.Fatalf("unexpected agent description: %q", agent.Description)
+			}
+			if len(agent.Tools) != 1 || agent.Tools[0] != ToolNameFSReadFile {
+				t.Fatalf("unexpected agent tools: %#v", agent.Tools)
+			}
+			if strings.HasPrefix(strings.TrimSpace(agent.SystemPrompt), "---") {
+				t.Fatalf("expected frontmatter to be stripped from agent system prompt")
 			}
 			if _, ok := p.RawFiles[PluginRepoPath("plugins/my/PLUGIN.md")]; !ok {
 				t.Fatalf("missing raw PLUGIN.md")

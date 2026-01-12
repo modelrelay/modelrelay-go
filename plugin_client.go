@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -61,6 +62,13 @@ func WithPluginModel(model string) PluginQuickRunOption {
 	}
 }
 
+// WithOrchestrationMode sets how agents are selected and orchestrated.
+func WithOrchestrationMode(mode OrchestrationMode) PluginQuickRunOption {
+	return func(o *pluginQuickRunOptions) {
+		o.cfg.OrchestrationMode = mode
+	}
+}
+
 func (p *PluginsClient) Load(ctx context.Context, pluginURL string) (*Plugin, error) {
 	if p == nil || p.client == nil || p.loader == nil {
 		return nil, errors.New("plugins client: not initialized")
@@ -89,17 +97,40 @@ func (p *PluginsClient) Run(ctx context.Context, plugin *Plugin, command string,
 		return nil, errors.New("plugins client: user task required")
 	}
 
+	mode, err := normalizeOrchestrationMode(cfg.OrchestrationMode)
+	if err != nil {
+		return nil, err
+	}
+
 	converter := p.converter
 	if !cfg.ConverterModel.IsEmpty() {
 		converter = NewPluginConverter(p.client, WithPluginConverterModel(cfg.ConverterModel.String()))
 	}
 
-	spec, err := converter.ToWorkflow(ctx, plugin, command, cfg.UserTask)
+	var spec *WorkflowSpec
+	switch mode {
+	case OrchestrationModeDynamic:
+		spec, err = converter.ToWorkflowDynamic(ctx, plugin, command, cfg.UserTask)
+	default:
+		spec, err = converter.ToWorkflow(ctx, plugin, command, cfg.UserTask)
+	}
 	if err != nil {
 		return nil, err
 	}
 	if err := applyWorkflowModelOverride(spec, cfg.Model); err != nil {
 		return nil, err
+	}
+	// Validate tool capability against the final execution model (after override).
+	if specRequiresTools(spec) {
+		execModel := cfg.Model
+		if execModel.IsEmpty() {
+			execModel = NewModelID(spec.Model)
+		}
+		if !execModel.IsEmpty() {
+			if toolErr := ensureModelSupportsTools(ctx, p.client, execModel); toolErr != nil {
+				return nil, toolErr
+			}
+		}
 	}
 	return p.runner.Run(ctx, spec, cfg)
 }
@@ -121,4 +152,14 @@ func (p *PluginsClient) QuickRun(ctx context.Context, pluginURL, command, task s
 		return nil, err
 	}
 	return p.Run(ctx, plugin, command, o.cfg)
+}
+
+func normalizeOrchestrationMode(mode OrchestrationMode) (OrchestrationMode, error) {
+	if strings.TrimSpace(string(mode)) == "" {
+		return OrchestrationModeDAG, nil
+	}
+	if !mode.Valid() {
+		return "", fmt.Errorf("plugins client: invalid orchestration mode %q", mode)
+	}
+	return mode, nil
 }

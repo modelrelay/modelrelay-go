@@ -23,6 +23,8 @@ type PluginRunConfig struct {
 	Model ModelID
 	// ConverterModel overrides the converter model used to create the workflow spec.
 	ConverterModel ModelID
+	// OrchestrationMode controls how agents are selected and orchestrated.
+	OrchestrationMode OrchestrationMode
 	// UserTask is the user-provided task/prompt for the plugin command.
 	UserTask string
 	// ToolHandler executes client-side tool calls when the run enters waiting status.

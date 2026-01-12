@@ -196,8 +196,20 @@ func (l *PluginLoader) Load(ctx context.Context, sourceURL string) (*Plugin, err
 			return nil, fmt.Errorf("fetch %s: %w", filePath, err)
 		}
 		out.RawFiles[PluginRepoPath(filePath)] = body
+		_, tools, prompt, ok, parseErr := parseMarkdownFrontMatter(body)
+		if parseErr != nil {
+			return nil, fmt.Errorf("parse %s frontmatter: %w", filePath, parseErr)
+		}
+		if ok {
+			body = prompt
+		}
 		name := PluginCommandName(strings.TrimSuffix(path.Base(filePath), ".md"))
-		out.Commands[name] = PluginCommand{Name: name, Prompt: body, AgentRefs: extractAgentRefs(body)}
+		out.Commands[name] = PluginCommand{
+			Name:      name,
+			Prompt:    body,
+			Tools:     tools,
+			AgentRefs: extractAgentRefs(body),
+		}
 	}
 	for _, filePath := range agentFiles {
 		body, err := l.getText(ctx, l.rawURL(ref, filePath))
@@ -206,7 +218,19 @@ func (l *PluginLoader) Load(ctx context.Context, sourceURL string) (*Plugin, err
 		}
 		out.RawFiles[PluginRepoPath(filePath)] = body
 		name := PluginAgentName(strings.TrimSuffix(path.Base(filePath), ".md"))
-		out.Agents[name] = PluginAgent{Name: name, SystemPrompt: body}
+		desc, tools, prompt, ok, parseErr := parseMarkdownFrontMatter(body)
+		if parseErr != nil {
+			return nil, fmt.Errorf("parse %s frontmatter: %w", filePath, parseErr)
+		}
+		if !ok {
+			prompt = body
+		}
+		out.Agents[name] = PluginAgent{
+			Name:         name,
+			SystemPrompt: prompt,
+			Description:  desc,
+			Tools:        tools,
+		}
 	}
 
 	out.Manifest.Commands = sortedKeys(out.Commands)
@@ -452,9 +476,107 @@ func parseFrontMatter(md string) (PluginManifest, bool) {
 	return out, true
 }
 
+func parseMarkdownFrontMatter(md string) (description string, tools []ToolName, body string, ok bool, err error) {
+	md = strings.TrimSpace(md)
+	if md == "" {
+		return "", nil, "", false, nil
+	}
+	lines := splitLines(md)
+	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
+		return "", nil, md, false, nil
+	}
+	end := -1
+	for i := 1; i < len(lines); i++ {
+		if strings.TrimSpace(lines[i]) == "---" {
+			end = i
+			break
+		}
+	}
+	if end == -1 {
+		return "", nil, md, false, nil
+	}
+	var toolItems []string
+	currentListKind := ""
+	for _, ln := range lines[1:end] {
+		raw := strings.TrimSpace(ln)
+		if raw == "" || strings.HasPrefix(raw, "#") {
+			continue
+		}
+		if strings.HasPrefix(raw, "- ") && currentListKind != "" {
+			item := strings.TrimSpace(strings.TrimPrefix(raw, "- "))
+			if item != "" && currentListKind == "tools" {
+				toolItems = append(toolItems, item)
+			}
+			continue
+		}
+		currentListKind = ""
+		parts := strings.SplitN(raw, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.ToLower(strings.TrimSpace(parts[0]))
+		val := strings.TrimSpace(parts[1])
+		val = strings.Trim(val, `"'`)
+		if key == "description" {
+			description = val
+		}
+		if key == "tools" {
+			if val == "" {
+				currentListKind = "tools"
+				continue
+			}
+			toolItems = append(toolItems, splitFrontMatterList(val)...)
+		}
+	}
+	if len(toolItems) > 0 {
+		parsed, parseErr := parseToolNames(toolItems)
+		if parseErr != nil {
+			return "", nil, "", false, parseErr
+		}
+		tools = parsed
+	}
+	body = strings.Join(lines[end+1:], "\n")
+	body = strings.TrimLeft(body, "\n\r")
+	return description, tools, body, true, nil
+}
+
 func splitLines(s string) []string {
 	s = strings.ReplaceAll(s, "\r\n", "\n")
 	return strings.Split(s, "\n")
+}
+
+func splitFrontMatterList(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	raw = strings.TrimPrefix(raw, "[")
+	raw = strings.TrimSuffix(raw, "]")
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		val := strings.TrimSpace(strings.Trim(part, `"'`))
+		if val != "" {
+			out = append(out, val)
+		}
+	}
+	return out
+}
+
+func parseToolNames(raw []string) ([]ToolName, error) {
+	allowed := AllowedToolNamesSet()
+	out := make([]ToolName, 0, len(raw))
+	for _, entry := range raw {
+		name := ToolName(strings.TrimSpace(entry))
+		if name == "" {
+			continue
+		}
+		if _, ok := allowed[name]; !ok {
+			return nil, fmt.Errorf("unknown tool %q", name)
+		}
+		out = append(out, name)
+	}
+	return out, nil
 }
 
 func joinRepoPath(base, elem string) string {

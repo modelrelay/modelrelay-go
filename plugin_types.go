@@ -147,6 +147,7 @@ type PluginManifest struct {
 type PluginCommand struct {
 	Name      PluginCommandName `json:"name"`
 	Prompt    string            `json:"prompt"`
+	Tools     []ToolName        `json:"tools,omitempty"`
 	AgentRefs []PluginAgentName `json:"agent_refs,omitempty"`
 }
 
@@ -154,4 +155,23 @@ type PluginCommand struct {
 type PluginAgent struct {
 	Name         PluginAgentName `json:"name"`
 	SystemPrompt string          `json:"system_prompt"`
+	Description  string          `json:"description,omitempty"`
+	Tools        []ToolName      `json:"tools,omitempty"`
+}
+
+// OrchestrationMode controls how plugins select and run agents.
+type OrchestrationMode string
+
+const (
+	OrchestrationModeDAG     OrchestrationMode = "dag"
+	OrchestrationModeDynamic OrchestrationMode = "dynamic"
+)
+
+func (m OrchestrationMode) Valid() bool {
+	switch m {
+	case OrchestrationModeDAG, OrchestrationModeDynamic:
+		return true
+	default:
+		return false
+	}
 }

@@ -154,5 +154,7 @@ package sdk
 // 4.0.0: Breaking - CustomerMeUsage: remove credits_granted_cents/credits_remaining_cents,
 // add spend_limit_cents/spend_remaining_cents. SpendLimitCents is now the single source of truth
 // for usage budget (distinct from subscription price).
+// 7.3.0: Improve dynamic plugin orchestration (tool scoping, plan schema, validation).
+// 7.2.0: Add dynamic plugin orchestration with description-based agent selection.
 // 7.1.0: Add user.ask tool helpers + user interaction run events.
-const Version = "7.1.0"
+const Version = "7.3.0"
