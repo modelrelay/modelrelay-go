@@ -72,8 +72,8 @@ func (id ToolCallID) Validate() error {
 			return fmt.Errorf("tool call id must not contain whitespace")
 		}
 	}
-	if len(id) > 256 {
-		return fmt.Errorf("tool call id too long: max 256 bytes")
+	if len(id) > 1024 {
+		return fmt.Errorf("tool call id too long: max 1024 bytes")
 	}
 	return nil
 }
