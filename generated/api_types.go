@@ -124,6 +124,11 @@ const (
 	OutputItemTypeMessage OutputItemType = "message"
 )
 
+// Defines values for PluginsCompileRequestMode.
+const (
+	Intent PluginsCompileRequestMode = "intent"
+)
+
 // Defines values for PriceInterval.
 const (
 	Month PriceInterval = "month"
@@ -1004,6 +1009,43 @@ type PluginAgentV0 struct {
 	SystemPrompt string `json:"system_prompt"`
 }
 
+// PluginSummaryV0 defines model for PluginSummaryV0.
+type PluginSummaryV0 struct {
+	Agents      []PluginAgentV0 `json:"agents"`
+	Description *string         `json:"description,omitempty"`
+	Name        string          `json:"name"`
+}
+
+// PluginsCompileRequest Request to compile a Claude Code plugin into a workflow. One of source or files must be provided (mutually exclusive).
+type PluginsCompileRequest struct {
+	// Content Deprecated. Use files instead.
+	Content *string `json:"content,omitempty"`
+
+	// Files Map of file paths to content for inline plugins (e.g., .claude-plugin/plugin.json, agents/worker.md). Mutually exclusive with source.
+	Files       *map[string]string `json:"files,omitempty"`
+	MaxAttempts *int               `json:"max_attempts,omitempty"`
+
+	// Mode Compile mode. Currently only 'intent' is supported.
+	Mode  *PluginsCompileRequestMode `json:"mode,omitempty"`
+	Model *string                    `json:"model,omitempty"`
+
+	// Source GitHub URL to fetch plugin from (e.g., github:owner/repo@ref). Mutually exclusive with files.
+	Source *string `json:"source,omitempty"`
+}
+
+// PluginsCompileRequestMode Compile mode. Currently only 'intent' is supported.
+type PluginsCompileRequestMode string
+
+// PluginsCompileResponse defines model for PluginsCompileResponse.
+type PluginsCompileResponse struct {
+	CompiledAt time.Time       `json:"compiled_at"`
+	Plugin     PluginSummaryV0 `json:"plugin"`
+	SourceRef  string          `json:"source_ref"`
+
+	// Workflow A `workflow` spec. The canonical JSON Schema is available at `/schemas/workflow.schema.json`.
+	Workflow WorkflowSpec `json:"workflow"`
+}
+
 // PriceInterval Billing interval for a tier.
 type PriceInterval string
 
@@ -1470,37 +1512,6 @@ type SessionWithMessagesResponse struct {
 
 	// UpdatedAt Session last update timestamp
 	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// SkillSummaryV0 defines model for SkillSummaryV0.
-type SkillSummaryV0 struct {
-	Agents      []PluginAgentV0 `json:"agents"`
-	Description *string         `json:"description,omitempty"`
-	Name        string          `json:"name"`
-}
-
-// SkillsCompileRequest Request to compile a skill into a workflow. One of source, content, or files must be provided (mutually exclusive).
-type SkillsCompileRequest struct {
-	// Content Inline skill content (single SKILL.md file). Mutually exclusive with source and files.
-	Content *string `json:"content,omitempty"`
-
-	// Files Map of file paths to content for inline skills with multiple files (e.g., SKILL.md, agents/worker.md, commands/run.md). Mutually exclusive with source and content.
-	Files       *map[string]string `json:"files,omitempty"`
-	MaxAttempts *int               `json:"max_attempts,omitempty"`
-	Model       *string            `json:"model,omitempty"`
-
-	// Source GitHub URL to fetch skill from. Mutually exclusive with content and files.
-	Source *string `json:"source,omitempty"`
-}
-
-// SkillsCompileResponse defines model for SkillsCompileResponse.
-type SkillsCompileResponse struct {
-	CompiledAt time.Time      `json:"compiled_at"`
-	Skill      SkillSummaryV0 `json:"skill"`
-	SourceRef  string         `json:"source_ref"`
-
-	// Workflow A `workflow` spec. The canonical JSON Schema is available at `/schemas/workflow.schema.json`.
-	Workflow WorkflowSpec `json:"workflow"`
 }
 
 // StateHandleCreateRequest defines model for StateHandleCreateRequest.
@@ -2160,6 +2171,9 @@ type GenerateImageJSONRequestBody = ImageRequest
 // SendMessageJSONRequestBody defines body for SendMessage for application/json ContentType.
 type SendMessageJSONRequestBody = MessageSendRequest
 
+// CompilePluginJSONRequestBody defines body for CompilePlugin for application/json ContentType.
+type CompilePluginJSONRequestBody = PluginsCompileRequest
+
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody CreateProjectJSONBody
 
@@ -2225,9 +2239,6 @@ type UpdateSessionJSONRequestBody = SessionUpdateRequest
 
 // AddSessionMessageJSONRequestBody defines body for AddSessionMessage for application/json ContentType.
 type AddSessionMessageJSONRequestBody = SessionMessageCreateRequest
-
-// CompileSkillJSONRequestBody defines body for CompileSkill for application/json ContentType.
-type CompileSkillJSONRequestBody = SkillsCompileRequest
 
 // CreateStateHandleJSONRequestBody defines body for CreateStateHandle for application/json ContentType.
 type CreateStateHandleJSONRequestBody = StateHandleCreateRequest
