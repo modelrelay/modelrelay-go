@@ -18,13 +18,13 @@ func ParseToolCallID(raw string) (ToolCallID, error) { return llm.ParseToolCallI
 
 // tools.v0 reserved tool names.
 const (
-	ToolNameFSReadFile  ToolName = "fs.read_file"
-	ToolNameFSListFiles ToolName = "fs.list_files"
-	ToolNameFSSearch    ToolName = "fs.search"
-	ToolNameFSEdit      ToolName = "fs.edit"
+	ToolNameFSReadFile  ToolName = "fs_read_file"
+	ToolNameFSListFiles ToolName = "fs_list_files"
+	ToolNameFSSearch    ToolName = "fs_search"
+	ToolNameFSEdit      ToolName = "fs_edit"
 	ToolNameBash        ToolName = "bash"
 	ToolNameWriteFile   ToolName = "write_file"
-	ToolNameUserAsk     ToolName = "user.ask"
+	ToolNameUserAsk     ToolName = "user_ask"
 )
 
 // AllowedToolNames is the canonical list of allowed tools.v0 client tool names.

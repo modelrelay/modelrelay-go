@@ -27,8 +27,8 @@ This description should be ignored because front matter exists.
 `
 	command := `---
 tools:
-  - fs.read_file
-  - fs.search
+  - fs_read_file
+  - fs_search
 ---
 
 # analyze
@@ -38,7 +38,7 @@ Use agents/reviewer.md to review changes.
 	agent := `---
 description: Expert reviewer
 tools:
-  - fs.read_file
+  - fs_read_file
 ---
 
 # reviewer

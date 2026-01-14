@@ -207,10 +207,10 @@ func TestToolsConformance_LocalFS(t *testing.T) {
 		}
 	}
 
-	t.Run("fs.read_file", func(t *testing.T) {
+	t.Run("fs_read_file", func(t *testing.T) {
 		fixture, ok := cases[string(ToolNameFSReadFile)]
 		if !ok {
-			t.Fatalf("missing fs.read_file fixture")
+			t.Fatalf("missing fs_read_file fixture")
 		}
 		for _, c := range fixture.SchemaInvalid {
 			assertSchemaInvalid(ToolNameFSReadFile, c)
@@ -220,10 +220,10 @@ func TestToolsConformance_LocalFS(t *testing.T) {
 		}
 	})
 
-	t.Run("fs.list_files", func(t *testing.T) {
+	t.Run("fs_list_files", func(t *testing.T) {
 		fixture, ok := cases[string(ToolNameFSListFiles)]
 		if !ok {
-			t.Fatalf("missing fs.list_files fixture")
+			t.Fatalf("missing fs_list_files fixture")
 		}
 		for _, c := range fixture.SchemaInvalid {
 			assertSchemaInvalid(ToolNameFSListFiles, c)
@@ -233,10 +233,10 @@ func TestToolsConformance_LocalFS(t *testing.T) {
 		}
 	})
 
-	t.Run("fs.search", func(t *testing.T) {
+	t.Run("fs_search", func(t *testing.T) {
 		fixture, ok := cases[string(ToolNameFSSearch)]
 		if !ok {
-			t.Fatalf("missing fs.search fixture")
+			t.Fatalf("missing fs_search fixture")
 		}
 		for _, c := range fixture.SchemaInvalid {
 			assertSchemaInvalid(ToolNameFSSearch, c)
@@ -246,10 +246,10 @@ func TestToolsConformance_LocalFS(t *testing.T) {
 		}
 	})
 
-	t.Run("fs.edit", func(t *testing.T) {
+	t.Run("fs_edit", func(t *testing.T) {
 		fixture, ok := cases[string(ToolNameFSEdit)]
 		if !ok {
-			t.Fatalf("missing fs.edit fixture")
+			t.Fatalf("missing fs_edit fixture")
 		}
 		for _, c := range fixture.SchemaInvalid {
 			assertSchemaInvalid(ToolNameFSEdit, c)

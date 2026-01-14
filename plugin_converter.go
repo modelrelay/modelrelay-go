@@ -219,7 +219,7 @@ Rules:
   - Target tools.v0 client tools (see docs/reference/tools.md).
   - Workspace access MUST use these exact function tool names:
     - ` + AllowedToolNamesString() + `
-  - Prefer fs.* tools for reading/listing/searching the workspace (use bash only when necessary).
+  - Prefer fs_* tools for reading/listing/searching the workspace (use bash only when necessary).
   - Do NOT invent ad-hoc tool names (no repo.*, github.*, filesystem.*, etc.).
   - All client tools MUST be represented as type="function" tools.
   - Any node that includes tools MUST set tool_execution.mode="client".
@@ -939,7 +939,7 @@ func toolNameMode(name ToolName) (workflowintent.ToolExecutionMode, error) {
 	if _, ok := knownClientTools[name]; ok {
 		return workflowintent.ToolExecutionModeClient, nil
 	}
-	return "", fmt.Errorf("unknown tool %q for mode detection; expected one of: bash, write_file, fs.read_file, fs.search, fs.list_files", name)
+	return "", fmt.Errorf("unknown tool %q for mode detection; expected one of: bash, write_file, fs_read_file, fs_search, fs_list_files", name)
 }
 
 func validatePluginWorkflowTargetsToolsIntent(spec *WorkflowSpec) error {

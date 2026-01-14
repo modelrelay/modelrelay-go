@@ -76,10 +76,10 @@ func IsUserAskToolCall(call llm.ToolCall) bool {
 // ParseUserAskArgs parses and validates user.ask arguments from a tool call.
 func ParseUserAskArgs(call llm.ToolCall) (UserAskToolArgs, error) {
 	if call.Function == nil {
-		return UserAskToolArgs{}, errors.New("user.ask requires function tool arguments")
+		return UserAskToolArgs{}, errors.New("user_ask requires function tool arguments")
 	}
 	if strings.TrimSpace(call.Function.Arguments) == "" {
-		return UserAskToolArgs{}, errors.New("user.ask arguments required")
+		return UserAskToolArgs{}, errors.New("user_ask arguments required")
 	}
 	var args UserAskToolArgs
 	if err := json.Unmarshal([]byte(call.Function.Arguments), &args); err != nil {
@@ -87,13 +87,13 @@ func ParseUserAskArgs(call llm.ToolCall) (UserAskToolArgs, error) {
 	}
 	args.Question = strings.TrimSpace(args.Question)
 	if args.Question == "" {
-		return UserAskToolArgs{}, errors.New("user.ask question required")
+		return UserAskToolArgs{}, errors.New("user_ask question required")
 	}
 	for i := range args.Options {
 		args.Options[i].Label = strings.TrimSpace(args.Options[i].Label)
 		args.Options[i].Description = strings.TrimSpace(args.Options[i].Description)
 		if args.Options[i].Label == "" {
-			return UserAskToolArgs{}, errors.New("user.ask options label required")
+			return UserAskToolArgs{}, errors.New("user_ask options label required")
 		}
 	}
 	return args, nil
@@ -103,7 +103,7 @@ func ParseUserAskArgs(call llm.ToolCall) (UserAskToolArgs, error) {
 func FormatUserAskResult(result UserAskToolResult) (string, error) {
 	result.Answer = strings.TrimSpace(result.Answer)
 	if result.Answer == "" {
-		return "", errors.New("user.ask answer required")
+		return "", errors.New("user_ask answer required")
 	}
 	out, err := json.Marshal(result)
 	if err != nil {

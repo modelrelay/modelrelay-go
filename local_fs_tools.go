@@ -57,7 +57,7 @@ type localFSConfig struct {
 	maxSearchBytes uint64
 }
 
-// WithLocalFSIgnoreDirs configures directory names to skip during fs.list_files and fs.search.
+// WithLocalFSIgnoreDirs configures directory names to skip during fs_list_files and fs_search.
 // Names are matched by path segment (e.g. ".git" skips any ".git" directory anywhere under root).
 func WithLocalFSIgnoreDirs(names ...string) LocalFSOption {
 	return func(c *localFSConfig) {
@@ -79,7 +79,7 @@ func WithLocalFSMaxReadBytes(n uint64) LocalFSOption {
 	return func(c *localFSConfig) { c.maxReadBytes = n }
 }
 
-// WithLocalFSHardMaxReadBytes changes the hard cap for fs.read_file max_bytes.
+// WithLocalFSHardMaxReadBytes changes the hard cap for fs_read_file max_bytes.
 func WithLocalFSHardMaxReadBytes(n uint64) LocalFSOption {
 	return func(c *localFSConfig) { c.hardMaxReadBytes = n }
 }
@@ -89,7 +89,7 @@ func WithLocalFSMaxListEntries(n uint64) LocalFSOption {
 	return func(c *localFSConfig) { c.maxListEntries = n }
 }
 
-// WithLocalFSHardMaxListEntries changes the hard cap for fs.list_files max_entries.
+// WithLocalFSHardMaxListEntries changes the hard cap for fs_list_files max_entries.
 func WithLocalFSHardMaxListEntries(n uint64) LocalFSOption {
 	return func(c *localFSConfig) { c.hardMaxListEntries = n }
 }
@@ -99,30 +99,30 @@ func WithLocalFSMaxSearchMatches(n uint64) LocalFSOption {
 	return func(c *localFSConfig) { c.maxSearchMatches = n }
 }
 
-// WithLocalFSHardMaxSearchMatches changes the hard cap for fs.search max_matches.
+// WithLocalFSHardMaxSearchMatches changes the hard cap for fs_search max_matches.
 func WithLocalFSHardMaxSearchMatches(n uint64) LocalFSOption {
 	return func(c *localFSConfig) { c.hardMaxSearchMatches = n }
 }
 
-// WithLocalFSSearchTimeout configures the timeout for fs.search.
+// WithLocalFSSearchTimeout configures the timeout for fs_search.
 func WithLocalFSSearchTimeout(d time.Duration) LocalFSOption {
 	return func(c *localFSConfig) { c.searchTimeout = d }
 }
 
-// WithLocalFSMaxSearchBytes sets a per-file byte limit for the Go fallback implementation of fs.search.
+// WithLocalFSMaxSearchBytes sets a per-file byte limit for the Go fallback implementation of fs_search.
 func WithLocalFSMaxSearchBytes(n uint64) LocalFSOption {
 	return func(c *localFSConfig) { c.maxSearchBytes = n }
 }
 
 // LocalFSToolPack provides safe-by-default implementations of tools.v0 filesystem tools:
-// - fs.read_file
-// - fs.list_files
-// - fs.search
-// - fs.edit
+// - fs_read_file
+// - fs_list_files
+// - fs_search
+// - fs_edit
 //
 // The pack enforces a root sandbox, path traversal prevention, ignore lists, and size/time caps.
 //
-// fs.search uses ripgrep ("rg") if available, otherwise falls back to a Go implementation.
+// fs_search uses ripgrep ("rg") if available, otherwise falls back to a Go implementation.
 type LocalFSToolPack struct {
 	cfg localFSConfig
 
@@ -257,7 +257,7 @@ func (a *fsSearchArgs) Validate() error {
 	return nil
 }
 
-// fsEditArgsWire is the wire format for fs.edit tool arguments.
+// fsEditArgsWire is the wire format for fs_edit tool arguments.
 // Use Parse() to convert to validated domain type.
 type fsEditArgsWire struct {
 	Path       string  `json:"path"`
@@ -297,7 +297,7 @@ func (a *fsEditArgsWire) Parse() (fsEditRequest, error) {
 	}, nil
 }
 
-// fsEditRequest is the validated domain type for fs.edit operations.
+// fsEditRequest is the validated domain type for fs_edit operations.
 // All fields are guaranteed valid after parsing - no nil checks needed.
 type fsEditRequest struct {
 	Path       string // non-empty
@@ -393,16 +393,16 @@ func (p *LocalFSToolPack) readFileTool(_ map[string]any, call llm.ToolCall) (any
 
 	info, err := os.Stat(abs)
 	if err != nil {
-		return nil, fmt.Errorf("fs.read_file: stat: %w", err)
+		return nil, fmt.Errorf("fs_read_file: stat: %w", err)
 	}
 	if info.IsDir() {
-		return nil, fmt.Errorf("fs.read_file: path is a directory: %s", args.Path)
+		return nil, fmt.Errorf("fs_read_file: path is a directory: %s", args.Path)
 	}
 
 	//nolint:gosec // G304: path is sandboxed via resolveExistingPath (root containment + symlink resolution)
 	f, err := os.Open(abs)
 	if err != nil {
-		return nil, fmt.Errorf("fs.read_file: open: %w", err)
+		return nil, fmt.Errorf("fs_read_file: open: %w", err)
 	}
 	defer func() { _ = f.Close() }()
 
@@ -416,13 +416,13 @@ func (p *LocalFSToolPack) readFileTool(_ map[string]any, call llm.ToolCall) (any
 
 	data, err := io.ReadAll(io.LimitReader(f, limit+1))
 	if err != nil {
-		return nil, fmt.Errorf("fs.read_file: read: %w", err)
+		return nil, fmt.Errorf("fs_read_file: read: %w", err)
 	}
 	if uint64(len(data)) > maxBytes {
-		return nil, fmt.Errorf("fs.read_file: file exceeds max_bytes (%d)", maxBytes)
+		return nil, fmt.Errorf("fs_read_file: file exceeds max_bytes (%d)", maxBytes)
 	}
 	if !utf8.Valid(data) {
-		return nil, fmt.Errorf("fs.read_file: file is not valid UTF-8: %s", args.Path)
+		return nil, fmt.Errorf("fs_read_file: file is not valid UTF-8: %s", args.Path)
 	}
 	return string(data), nil
 }
@@ -460,10 +460,10 @@ func (p *LocalFSToolPack) listFilesTool(_ map[string]any, call llm.ToolCall) (an
 
 	info, err := os.Stat(dirAbs)
 	if err != nil {
-		return nil, fmt.Errorf("fs.list_files: stat: %w", err)
+		return nil, fmt.Errorf("fs_list_files: stat: %w", err)
 	}
 	if !info.IsDir() {
-		return nil, fmt.Errorf("fs.list_files: path is not a directory: %s", start)
+		return nil, fmt.Errorf("fs_list_files: path is not a directory: %s", start)
 	}
 
 	var out []string
@@ -483,7 +483,7 @@ func (p *LocalFSToolPack) listFilesTool(_ map[string]any, call llm.ToolCall) (an
 			return err
 		}
 		if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-			return fmt.Errorf("fs.list_files: internal error: escaped root")
+			return fmt.Errorf("fs_list_files: internal error: escaped root")
 		}
 		out = append(out, filepath.ToSlash(rel))
 		if uint64(len(out)) >= maxEntries {
@@ -494,7 +494,7 @@ func (p *LocalFSToolPack) listFilesTool(_ map[string]any, call llm.ToolCall) (an
 	if walkErr != nil {
 		var stop localFSStopWalk
 		if !errors.As(walkErr, &stop) {
-			return nil, fmt.Errorf("fs.list_files: walk: %w", walkErr)
+			return nil, fmt.Errorf("fs_list_files: walk: %w", walkErr)
 		}
 	}
 
@@ -559,28 +559,28 @@ func (p *LocalFSToolPack) editTool(_ map[string]any, call llm.ToolCall) (any, er
 
 	info, err := os.Stat(abs)
 	if err != nil {
-		return nil, fmt.Errorf("fs.edit: stat: %w", err)
+		return nil, fmt.Errorf("fs_edit: stat: %w", err)
 	}
 	if info.IsDir() {
-		return nil, fmt.Errorf("fs.edit: path is a directory: %s", req.Path)
+		return nil, fmt.Errorf("fs_edit: path is a directory: %s", req.Path)
 	}
 
 	//nolint:gosec // G304: path is sandboxed via resolveExistingPath (root containment + symlink resolution)
 	data, err := os.ReadFile(abs)
 	if err != nil {
-		return nil, fmt.Errorf("fs.edit: read: %w", err)
+		return nil, fmt.Errorf("fs_edit: read: %w", err)
 	}
 	if !utf8.Valid(data) {
-		return nil, fmt.Errorf("fs.edit: file is not valid UTF-8: %s", req.Path)
+		return nil, fmt.Errorf("fs_edit: file is not valid UTF-8: %s", req.Path)
 	}
 
 	contents := string(data)
 	matches := findOccurrences(contents, req.OldString)
 	if len(matches) == 0 {
-		return nil, fmt.Errorf("fs.edit: old_string not found")
+		return nil, fmt.Errorf("fs_edit: old_string not found")
 	}
 	if !req.ReplaceAll && len(matches) > 1 {
-		return nil, fmt.Errorf("fs.edit: old_string appears multiple times")
+		return nil, fmt.Errorf("fs_edit: old_string appears multiple times")
 	}
 
 	applied := matches
@@ -596,7 +596,7 @@ func (p *LocalFSToolPack) editTool(_ map[string]any, call llm.ToolCall) (any, er
 	}
 
 	if err := os.WriteFile(abs, []byte(updated), info.Mode()); err != nil {
-		return nil, fmt.Errorf("fs.edit: write: %w", err)
+		return nil, fmt.Errorf("fs_edit: write: %w", err)
 	}
 
 	lineSpec := formatLineRanges(buildLineRanges(contents, applied, len(req.OldString)))
@@ -639,15 +639,15 @@ func (p *LocalFSToolPack) searchWithRipgrep(rgPath, query string, dirAbs string,
 	cmd := exec.CommandContext(ctx, rgPath, args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("fs.search: rg stdout: %w", err)
+		return nil, fmt.Errorf("fs_search: rg stdout: %w", err)
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return nil, fmt.Errorf("fs.search: rg stderr: %w", err)
+		return nil, fmt.Errorf("fs_search: rg stderr: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("fs.search: rg start: %w", err)
+		return nil, fmt.Errorf("fs_search: rg start: %w", err)
 	}
 
 	var stderrBuf bytes.Buffer
@@ -682,7 +682,7 @@ func (p *LocalFSToolPack) searchWithRipgrep(rgPath, query string, dirAbs string,
 		return strings.Join(lines, "\n"), nil
 	}
 	if scanErr != nil {
-		return nil, fmt.Errorf("fs.search: rg scan: %w", scanErr)
+		return nil, fmt.Errorf("fs_search: rg scan: %w", scanErr)
 	}
 	if waitErr == nil {
 		return strings.Join(lines, "\n"), nil
@@ -699,13 +699,13 @@ func (p *LocalFSToolPack) searchWithRipgrep(rgPath, query string, dirAbs string,
 			return nil, &ToolArgsError{Message: "invalid query regex: " + stderrText}
 		}
 		if stderrText != "" {
-			return nil, fmt.Errorf("fs.search: rg failed: %s", stderrText)
+			return nil, fmt.Errorf("fs_search: rg failed: %s", stderrText)
 		}
 	}
 	if errors.Is(waitErr, context.DeadlineExceeded) || errors.Is(waitErr, context.Canceled) {
-		return nil, fmt.Errorf("fs.search: timed out after %s", timeout)
+		return nil, fmt.Errorf("fs_search: timed out after %s", timeout)
 	}
-	return nil, fmt.Errorf("fs.search: rg failed: %w", waitErr)
+	return nil, fmt.Errorf("fs_search: rg failed: %w", waitErr)
 }
 
 func (p *LocalFSToolPack) normalizeRipgrepLine(line string) string {
@@ -771,7 +771,7 @@ func (p *LocalFSToolPack) searchWithGo(query string, dirAbs string, maxMatches u
 			return err
 		}
 		if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-			return fmt.Errorf("fs.search: internal error: escaped root")
+			return fmt.Errorf("fs_search: internal error: escaped root")
 		}
 
 		// Best-effort binary skip: only scan UTF-8 text up to cap.
@@ -782,7 +782,7 @@ func (p *LocalFSToolPack) searchWithGo(query string, dirAbs string, maxMatches u
 		}
 		if p.cfg.maxSearchBytes > uint64(math.MaxInt64) {
 			_ = f.Close()
-			return fmt.Errorf("fs.search: maxSearchBytes too large")
+			return fmt.Errorf("fs_search: maxSearchBytes too large")
 		}
 		limit := int64(p.cfg.maxSearchBytes) //nolint:gosec // G115: bounded by check above
 		if limit <= 0 {
@@ -823,9 +823,9 @@ func (p *LocalFSToolPack) searchWithGo(query string, dirAbs string, maxMatches u
 			return strings.Join(out, "\n"), nil
 		}
 		if errors.Is(walkErr, context.DeadlineExceeded) {
-			return nil, fmt.Errorf("fs.search: timed out after %s", timeout)
+			return nil, fmt.Errorf("fs_search: timed out after %s", timeout)
 		}
-		return nil, fmt.Errorf("fs.search: walk: %w", walkErr)
+		return nil, fmt.Errorf("fs_search: walk: %w", walkErr)
 	}
 
 	return strings.Join(out, "\n"), nil

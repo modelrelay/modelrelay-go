@@ -11,7 +11,7 @@ var toolNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`
 
 // ToolName is the identifier used for function tools.
 //
-// For tools.v0 client tools, use dot-separated lowercase segments (e.g. "fs.search").
+// For tools.v0 client tools, use underscore-separated lowercase segments (e.g. "fs_search").
 type ToolName string
 
 func (n ToolName) String() string { return string(n) }
