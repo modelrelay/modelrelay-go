@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 8.0.0: Breaking - GetOrCreateCustomerTokenRequest.TierCode is now required (was optional).
 // 7.0.0: Breaking - remove ThoughtSignature from FunctionCall; provider-specific state handled server-side.
 // 6.0.0: Breaking - /responses no longer accepts session_id; add state handles for persistent tool state.
 // 5.10.0: Add TierCode field to CustomerTokenRequest for customers without existing subscriptions.
@@ -158,4 +159,4 @@ package sdk
 // 7.3.0: Improve dynamic plugin orchestration (tool scoping, plan schema, validation).
 // 7.2.0: Add dynamic plugin orchestration with description-based agent selection.
 // 7.1.0: Add user.ask tool helpers + user interaction run events.
-const Version = "7.4.0"
+const Version = "8.0.0"

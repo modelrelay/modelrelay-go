@@ -189,3 +189,76 @@ func TestCustomerTokenRequestValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestGetOrCreateCustomerTokenRequestValidation(t *testing.T) {
+	tests := []struct {
+		name      string
+		req       GetOrCreateCustomerTokenRequest
+		wantError bool
+		errMsg    string
+	}{
+		{
+			name: "valid request",
+			req: GetOrCreateCustomerTokenRequest{
+				ExternalID: NewCustomerExternalID("customer_123"),
+				Email:      "test@example.com",
+				TierCode:   TierCode("free"),
+			},
+			wantError: false,
+		},
+		{
+			name: "missing external_id",
+			req: GetOrCreateCustomerTokenRequest{
+				Email:    "test@example.com",
+				TierCode: TierCode("free"),
+			},
+			wantError: true,
+			errMsg:    "external_id is required",
+		},
+		{
+			name: "missing email",
+			req: GetOrCreateCustomerTokenRequest{
+				ExternalID: NewCustomerExternalID("customer_123"),
+				TierCode:   TierCode("free"),
+			},
+			wantError: true,
+			errMsg:    "email is required",
+		},
+		{
+			name: "missing tier_code",
+			req: GetOrCreateCustomerTokenRequest{
+				ExternalID: NewCustomerExternalID("customer_123"),
+				Email:      "test@example.com",
+			},
+			wantError: true,
+			errMsg:    "tier_code is required",
+		},
+		{
+			name: "negative ttl",
+			req: GetOrCreateCustomerTokenRequest{
+				ExternalID: NewCustomerExternalID("customer_123"),
+				Email:      "test@example.com",
+				TierCode:   TierCode("free"),
+				TTLSeconds: -1,
+			},
+			wantError: true,
+			errMsg:    "ttl_seconds must be non-negative",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.req.Validate()
+			if tt.wantError {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if tt.errMsg != "" && err.Error() != tt.errMsg {
+					t.Fatalf("expected error %q, got %q", tt.errMsg, err.Error())
+				}
+			} else if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+		})
+	}
+}
