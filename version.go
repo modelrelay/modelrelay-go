@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 8.2.0: Add tools.v0 schema inspection tool names for client tool allowlist.
 // 8.1.0: Add tools.v0 execute_sql tool name for client tool allowlist.
 // 8.0.0: Breaking - GetOrCreateCustomerTokenRequest.TierCode is now required (was optional).
 // 7.5.1: Add sql.validate workflow node + SQL validation schema.
@@ -162,4 +163,4 @@ package sdk
 // 7.3.0: Improve dynamic plugin orchestration (tool scoping, plan schema, validation).
 // 7.2.0: Add dynamic plugin orchestration with description-based agent selection.
 // 7.1.0: Add user.ask tool helpers + user interaction run events.
-const Version = "8.1.0"
+const Version = "8.2.0"

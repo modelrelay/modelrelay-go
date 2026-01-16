@@ -67,7 +67,7 @@ func normalizePrompt(prompt string) string {
 	// Go: ` + AllowedToolNamesString() + `
 	// TS: ${Object.values(PluginToolNames).join(", ")}
 	// Rust: {tools} (interpolated)
-	toolNamePattern := regexp.MustCompile(`(bash|write_file|fs_read_file|fs_list_files|fs_search|fs_edit|user_ask|execute_sql)(\s*,\s*(bash|write_file|fs_read_file|fs_list_files|fs_search|fs_edit|user_ask|execute_sql))*`)
+	toolNamePattern := regexp.MustCompile(`(bash|write_file|fs_read_file|fs_list_files|fs_search|fs_edit|user_ask|execute_sql|list_tables|describe_table|sample_rows)(\s*,\s*(bash|write_file|fs_read_file|fs_list_files|fs_search|fs_edit|user_ask|execute_sql|list_tables|describe_table|sample_rows))*`)
 	prompt = toolNamePattern.ReplaceAllString(prompt, "<TOOL_NAMES>")
 
 	// Also replace the TS template literal pattern
