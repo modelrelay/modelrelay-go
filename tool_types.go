@@ -25,6 +25,7 @@ const (
 	ToolNameBash        ToolName = "bash"
 	ToolNameWriteFile   ToolName = "write_file"
 	ToolNameUserAsk     ToolName = "user_ask"
+	ToolNameExecuteSQL  ToolName = "execute_sql"
 )
 
 // AllowedToolNames is the canonical list of allowed tools.v0 client tool names.
@@ -36,6 +37,7 @@ var AllowedToolNames = []ToolName{
 	ToolNameBash,
 	ToolNameWriteFile,
 	ToolNameUserAsk,
+	ToolNameExecuteSQL,
 }
 
 // AllowedToolNamesString returns a comma-separated string of allowed tool names.
