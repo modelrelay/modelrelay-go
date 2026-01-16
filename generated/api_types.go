@@ -159,6 +159,14 @@ const (
 	Pending    RunTaskStatus = "pending"
 )
 
+// Defines values for SQLPolicyDialect.
+const (
+	Mysql     SQLPolicyDialect = "mysql"
+	Postgres  SQLPolicyDialect = "postgres"
+	Sqlite    SQLPolicyDialect = "sqlite"
+	Sqlserver SQLPolicyDialect = "sqlserver"
+)
+
 // Defines values for SubscriptionStatusKind.
 const (
 	Active            SubscriptionStatusKind = "active"
@@ -1406,6 +1414,97 @@ type RunsToolResultsResponse struct {
 	Status   RunStatusV0 `json:"status"`
 }
 
+// SQLPolicy defines model for SQLPolicy.
+type SQLPolicy struct {
+	Aggregations *SQLPolicyAggregations `json:"aggregations,omitempty"`
+	Columns      *SQLPolicyColumns      `json:"columns,omitempty"`
+	Dialect      SQLPolicyDialect       `json:"dialect"`
+	Fts          *SQLPolicyFTS          `json:"fts,omitempty"`
+	Joins        *SQLPolicyJoins        `json:"joins,omitempty"`
+	Limits       *SQLPolicyLimits       `json:"limits,omitempty"`
+	Ordering     *SQLPolicyOrdering     `json:"ordering,omitempty"`
+	ReadOnly     bool                   `json:"read_only"`
+	SchemaHints  *map[string]string     `json:"schema_hints,omitempty"`
+	Subqueries   *SQLPolicySubqueries   `json:"subqueries,omitempty"`
+	Tables       *SQLPolicyTables       `json:"tables,omitempty"`
+}
+
+// SQLPolicyDialect defines model for SQLPolicy.Dialect.
+type SQLPolicyDialect string
+
+// SQLPolicyAggregations defines model for SQLPolicyAggregations.
+type SQLPolicyAggregations struct {
+	Allowed   *bool     `json:"allowed,omitempty"`
+	Functions *[]string `json:"functions,omitempty"`
+}
+
+// SQLPolicyColumns defines model for SQLPolicyColumns.
+type SQLPolicyColumns struct {
+	Allowed *[]string `json:"allowed,omitempty"`
+	Hidden  *[]string `json:"hidden,omitempty"`
+}
+
+// SQLPolicyFTS defines model for SQLPolicyFTS.
+type SQLPolicyFTS struct {
+	DefaultOrder  *[]string `json:"default_order,omitempty"`
+	Enabled       *bool     `json:"enabled,omitempty"`
+	MatchRequired *bool     `json:"match_required,omitempty"`
+	RankExpr      *string   `json:"rank_expr,omitempty"`
+	Table         *string   `json:"table,omitempty"`
+}
+
+// SQLPolicyJoins defines model for SQLPolicyJoins.
+type SQLPolicyJoins struct {
+	AllowedPatterns *[]string `json:"allowed_patterns,omitempty"`
+	MaxJoins        *int      `json:"max_joins,omitempty"`
+}
+
+// SQLPolicyLimits defines model for SQLPolicyLimits.
+type SQLPolicyLimits struct {
+	DefaultLimit *int `json:"default_limit,omitempty"`
+	MaxLimit     *int `json:"max_limit,omitempty"`
+	TimeoutMs    *int `json:"timeout_ms,omitempty"`
+}
+
+// SQLPolicyOrdering defines model for SQLPolicyOrdering.
+type SQLPolicyOrdering struct {
+	Inject  *[]string `json:"inject,omitempty"`
+	Require *bool     `json:"require,omitempty"`
+}
+
+// SQLPolicySubqueries defines model for SQLPolicySubqueries.
+type SQLPolicySubqueries struct {
+	Allowed *bool `json:"allowed,omitempty"`
+}
+
+// SQLPolicyTables defines model for SQLPolicyTables.
+type SQLPolicyTables struct {
+	Allowlist *[]string `json:"allowlist,omitempty"`
+	Denylist  *[]string `json:"denylist,omitempty"`
+}
+
+// SQLProfile defines model for SQLProfile.
+type SQLProfile struct {
+	CreatedAt *time.Time          `json:"created_at,omitempty"`
+	Id        *openapi_types.UUID `json:"id,omitempty"`
+	Name      *string             `json:"name,omitempty"`
+	Policy    *SQLPolicy          `json:"policy,omitempty"`
+	ProjectId *openapi_types.UUID `json:"project_id,omitempty"`
+	UpdatedAt *time.Time          `json:"updated_at,omitempty"`
+}
+
+// SQLProfileInput defines model for SQLProfileInput.
+type SQLProfileInput struct {
+	Name   string    `json:"name"`
+	Policy SQLPolicy `json:"policy"`
+}
+
+// SQLProfileUpdate defines model for SQLProfileUpdate.
+type SQLProfileUpdate struct {
+	Name   string    `json:"name"`
+	Policy SQLPolicy `json:"policy"`
+}
+
 // SessionCreateRequest Request body for creating a session.
 type SessionCreateRequest struct {
 	// CustomerId Optional customer ID to associate with the session
@@ -1956,6 +2055,9 @@ type WorkflowsLintResponse struct {
 // ProjectID defines model for ProjectID.
 type ProjectID = openapi_types.UUID
 
+// SQLProfileID defines model for SQLProfileID.
+type SQLProfileID = openapi_types.UUID
+
 // ToolHookID defines model for ToolHookID.
 type ToolHookID = openapi_types.UUID
 
@@ -2197,6 +2299,12 @@ type TestAgentJSONRequestBody = AgentTestRequest
 
 // CreateCustomerJSONRequestBody defines body for CreateCustomer for application/json ContentType.
 type CreateCustomerJSONRequestBody = CustomerCreate
+
+// CreateProjectSQLProfileJSONRequestBody defines body for CreateProjectSQLProfile for application/json ContentType.
+type CreateProjectSQLProfileJSONRequestBody = SQLProfileInput
+
+// UpdateProjectSQLProfileJSONRequestBody defines body for UpdateProjectSQLProfile for application/json ContentType.
+type UpdateProjectSQLProfileJSONRequestBody = SQLProfileUpdate
 
 // CreateTierJSONRequestBody defines body for CreateTier for application/json ContentType.
 type CreateTierJSONRequestBody = TierCreate

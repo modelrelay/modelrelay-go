@@ -2,6 +2,8 @@ package sdk
 
 // Version is the published SDK version.
 // 8.0.0: Breaking - GetOrCreateCustomerTokenRequest.TierCode is now required (was optional).
+// 7.5.1: Add sql.validate workflow node + SQL validation schema.
+// 7.5.0: Add SQL profile management endpoints and types.
 // 7.0.0: Breaking - remove ThoughtSignature from FunctionCall; provider-specific state handled server-side.
 // 6.0.0: Breaking - /responses no longer accepts session_id; add state handles for persistent tool state.
 // 5.10.0: Add TierCode field to CustomerTokenRequest for customers without existing subscriptions.
