@@ -104,13 +104,13 @@ type GetOrCreateCustomerTokenRequest struct {
 	ExternalID CustomerExternalID `json:"external_id"`
 	// Email is the customer's email address (required for customer creation).
 	Email string `json:"email"`
+	// TierCode is the tier for the customer's subscription (required for new customers).
+	// Existing customers use their current tier if not provided.
+	TierCode TierCode `json:"tier_code"`
 	// Metadata is optional customer metadata.
 	Metadata CustomerMetadata `json:"metadata,omitempty"`
 	// TTLSeconds is the optional token TTL in seconds (default: 7 days, max: 30 days).
 	TTLSeconds int64 `json:"ttl_seconds,omitempty"`
-	// TierCode is required for customers without an existing subscription.
-	// When provided, a billing profile is created for the customer with this tier.
-	TierCode TierCode `json:"tier_code,omitempty"`
 }
 
 // Validate checks that required fields are present.
@@ -120,6 +120,9 @@ func (r GetOrCreateCustomerTokenRequest) Validate() error {
 	}
 	if r.Email == "" {
 		return fmt.Errorf("email is required")
+	}
+	if r.TierCode == "" {
+		return fmt.Errorf("tier_code is required")
 	}
 	if r.TTLSeconds < 0 {
 		return fmt.Errorf("ttl_seconds must be non-negative")
