@@ -115,6 +115,7 @@ type Client struct {
 	Messages     *MessagesClient
 	Tiers        *TiersClient
 	Billing      *BillingClient
+	SQL          *SQLClient
 
 	pluginsOnce sync.Once
 	plugins     *PluginsClient
@@ -254,6 +255,7 @@ func newClientFromOptions(apiKey APIKeyAuth, accessToken string, opts clientOpti
 	client.Messages = &MessagesClient{client: client}
 	client.Tiers = &TiersClient{client: client}
 	client.Billing = &BillingClient{client: client}
+	client.SQL = &SQLClient{client: client}
 	return client, nil
 }
 

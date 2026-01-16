@@ -1505,6 +1505,36 @@ type SQLProfileUpdate struct {
 	Policy SQLPolicy `json:"policy"`
 }
 
+// SQLValidateOverrides defines model for SQLValidateOverrides.
+type SQLValidateOverrides struct {
+	// Limit Override row limit for validation
+	Limit *int64 `json:"limit,omitempty"`
+
+	// TimeoutMs Override timeout in milliseconds
+	TimeoutMs *int64 `json:"timeout_ms,omitempty"`
+}
+
+// SQLValidateRequest Validate a SQL query against a policy or profile
+type SQLValidateRequest struct {
+	Overrides *SQLValidateOverrides `json:"overrides,omitempty"`
+	Policy    *SQLPolicy            `json:"policy,omitempty"`
+	ProfileId *openapi_types.UUID   `json:"profile_id,omitempty"`
+
+	// Sql SQL query to validate
+	Sql string `json:"sql"`
+}
+
+// SQLValidateResponse SQL validation result
+type SQLValidateResponse struct {
+	Limit         *int      `json:"limit,omitempty"`
+	NormalizedSql string    `json:"normalized_sql"`
+	OrderBy       *[]string `json:"order_by,omitempty"`
+	ReadOnly      bool      `json:"read_only"`
+	Tables        *[]string `json:"tables,omitempty"`
+	TimeoutMs     *int      `json:"timeout_ms,omitempty"`
+	Valid         bool      `json:"valid"`
+}
+
 // SessionCreateRequest Request body for creating a session.
 type SessionCreateRequest struct {
 	// CustomerId Optional customer ID to associate with the session
@@ -2347,6 +2377,9 @@ type UpdateSessionJSONRequestBody = SessionUpdateRequest
 
 // AddSessionMessageJSONRequestBody defines body for AddSessionMessage for application/json ContentType.
 type AddSessionMessageJSONRequestBody = SessionMessageCreateRequest
+
+// ValidateSQLJSONRequestBody defines body for ValidateSQL for application/json ContentType.
+type ValidateSQLJSONRequestBody = SQLValidateRequest
 
 // CreateStateHandleJSONRequestBody defines body for CreateStateHandle for application/json ContentType.
 type CreateStateHandleJSONRequestBody = StateHandleCreateRequest
