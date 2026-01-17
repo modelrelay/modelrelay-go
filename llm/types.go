@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -140,6 +141,66 @@ type Response struct {
 	Model      string       `json:"model"`
 	Usage      Usage        `json:"usage"`
 	Citations  []Citation   `json:"citations,omitempty"`
+	// DecodingWarnings captures malformed output items without failing the response.
+	DecodingWarnings []string `json:"-"`
+}
+
+type responseWire struct {
+	Provider   string          `json:"provider,omitempty"`
+	ID         string          `json:"id"`
+	Output     json.RawMessage `json:"output"`
+	StopReason string          `json:"stop_reason,omitempty"`
+	Model      string          `json:"model"`
+	Usage      Usage           `json:"usage"`
+	Citations  []Citation      `json:"citations,omitempty"`
+}
+
+func (r *Response) UnmarshalJSON(data []byte) error {
+	var wire responseWire
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+
+	r.Provider = wire.Provider
+	r.ID = wire.ID
+	r.StopReason = wire.StopReason
+	r.Model = wire.Model
+	r.Usage = wire.Usage
+	r.Citations = wire.Citations
+	r.Output = nil
+	r.DecodingWarnings = nil
+
+	if len(wire.Output) == 0 {
+		return nil
+	}
+
+	var rawItems []json.RawMessage
+	if err := json.Unmarshal(wire.Output, &rawItems); err != nil {
+		return err
+	}
+
+	output := make([]OutputItem, 0, len(rawItems))
+	warnings := make([]string, 0)
+	for i, raw := range rawItems {
+		var item OutputItem
+		if err := json.Unmarshal(raw, &item); err != nil {
+			warnings = append(warnings, fmt.Sprintf("output[%d]: %v", i, err))
+			continue
+		}
+		if item.Type == "" {
+			warnings = append(warnings, fmt.Sprintf("output[%d]: missing type", i))
+		}
+		if item.Type == OutputItemTypeMessage && item.Role == "" {
+			warnings = append(warnings, fmt.Sprintf("output[%d]: message role missing", i))
+		}
+		output = append(output, item)
+	}
+
+	r.Output = output
+	if len(warnings) > 0 {
+		r.DecodingWarnings = warnings
+	}
+	return nil
 }
 
 // Text returns the first text content block found in the output.
