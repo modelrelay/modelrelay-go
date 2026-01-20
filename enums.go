@@ -206,8 +206,6 @@ const (
 	ModelCapabilityDocument        ModelCapability = "document"
 	ModelCapabilityAudio           ModelCapability = "audio"
 	ModelCapabilityVideo           ModelCapability = "video"
-	ModelCapabilityWebSearch       ModelCapability = "web_search"
-	ModelCapabilityWebFetch        ModelCapability = "web_fetch"
 	ModelCapabilityComputerUse     ModelCapability = "computer_use"
 	ModelCapabilityCodeExec        ModelCapability = "code_execution"
 	ModelCapabilityImageGeneration ModelCapability = "image_generation"
@@ -227,8 +225,6 @@ func IsKnownModelCapability(c ModelCapability) bool {
 		ModelCapabilityDocument,
 		ModelCapabilityAudio,
 		ModelCapabilityVideo,
-		ModelCapabilityWebSearch,
-		ModelCapabilityWebFetch,
 		ModelCapabilityComputerUse,
 		ModelCapabilityCodeExec,
 		ModelCapabilityImageGeneration:

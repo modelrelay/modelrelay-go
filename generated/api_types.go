@@ -89,8 +89,6 @@ const (
 	ModelCapabilityTools           ModelCapability = "tools"
 	ModelCapabilityVideo           ModelCapability = "video"
 	ModelCapabilityVision          ModelCapability = "vision"
-	ModelCapabilityWebFetch        ModelCapability = "web_fetch"
-	ModelCapabilityWebSearch       ModelCapability = "web_search"
 )
 
 // Defines values for NodeStatusV0.
@@ -942,7 +940,7 @@ type Model struct {
 	TrainingCutoff string `json:"training_cutoff"`
 }
 
-// ModelCapability Workflow-critical model capability identifier.
+// ModelCapability Workflow-critical model capability identifier. Server-side tools are not model capabilities; they require only tools support.
 type ModelCapability string
 
 // ModelId LLM model identifier (e.g., claude-sonnet-4-5, gpt-4o).
