@@ -1,6 +1,8 @@
 package sdk
 
 // Version is the published SDK version.
+// 8.4.1: NormalizeMimeType now returns empty string on parse error (fail-fast).
+// 8.4.0: Add multimodal content parts for file inputs.
 // 8.3.1: Surface response decoding warnings for malformed output items.
 // 8.3.0: Add SQL tool loop quickstart helper.
 // 8.2.0: Add tools.v0 schema inspection tool names for client tool allowlist.
@@ -165,4 +167,4 @@ package sdk
 // 7.3.0: Improve dynamic plugin orchestration (tool scoping, plan schema, validation).
 // 7.2.0: Add dynamic plugin orchestration with description-based agent selection.
 // 7.1.0: Add user.ask tool helpers + user interaction run events.
-const Version = "8.3.1"
+const Version = "8.4.1"

@@ -4,8 +4,11 @@
 package generated
 
 import (
+	"encoding/json"
+	"errors"
 	"time"
 
+	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -56,11 +59,6 @@ const (
 	Stripe   BillingProvider = "stripe"
 )
 
-// Defines values for ContentPartType.
-const (
-	ContentPartTypeText ContentPartType = "text"
-)
-
 // Defines values for ImageResponseFormat.
 const (
 	B64Json ImageResponseFormat = "b64_json"
@@ -82,11 +80,14 @@ const (
 
 // Defines values for ModelCapability.
 const (
+	ModelCapabilityAudio           ModelCapability = "audio"
 	ModelCapabilityCodeExecution   ModelCapability = "code_execution"
 	ModelCapabilityComputerUse     ModelCapability = "computer_use"
+	ModelCapabilityDocument        ModelCapability = "document"
 	ModelCapabilityImageGeneration ModelCapability = "image_generation"
 	ModelCapabilityTextGeneration  ModelCapability = "text_generation"
 	ModelCapabilityTools           ModelCapability = "tools"
+	ModelCapabilityVideo           ModelCapability = "video"
 	ModelCapabilityVision          ModelCapability = "vision"
 	ModelCapabilityWebFetch        ModelCapability = "web_fetch"
 	ModelCapabilityWebSearch       ModelCapability = "web_search"
@@ -115,8 +116,8 @@ const (
 
 // Defines values for OutputFormatType.
 const (
-	OutputFormatTypeJsonSchema OutputFormatType = "json_schema"
-	OutputFormatTypeText       OutputFormatType = "text"
+	JsonSchema OutputFormatType = "json_schema"
+	Text       OutputFormatType = "text"
 )
 
 // Defines values for OutputItemType.
@@ -530,12 +531,28 @@ type Citation struct {
 
 // ContentPart defines model for ContentPart.
 type ContentPart struct {
-	Text *string         `json:"text,omitempty"`
-	Type ContentPartType `json:"type"`
+	union json.RawMessage
 }
 
-// ContentPartType defines model for ContentPart.Type.
-type ContentPartType string
+// ContentPartFile defines model for ContentPartFile.
+type ContentPartFile struct {
+	File struct {
+		// DataBase64 Base64-encoded file content
+		DataBase64 string  `json:"data_base64"`
+		Filename   *string `json:"filename,omitempty"`
+
+		// MimeType IANA media type (e.g., application/pdf, image/png)
+		MimeType  string `json:"mime_type"`
+		SizeBytes *int64 `json:"size_bytes,omitempty"`
+	} `json:"file"`
+	Type interface{} `json:"type"`
+}
+
+// ContentPartText defines model for ContentPartText.
+type ContentPartText struct {
+	Text string      `json:"text"`
+	Type interface{} `json:"type"`
+}
 
 // Customer defines model for Customer.
 type Customer struct {
@@ -2389,3 +2406,92 @@ type CompileWorkflowJSONRequestBody = WorkflowSpec
 
 // LintWorkflowJSONRequestBody defines body for LintWorkflow for application/json ContentType.
 type LintWorkflowJSONRequestBody = WorkflowSpec
+
+// AsContentPartText returns the union data inside the ContentPart as a ContentPartText
+func (t ContentPart) AsContentPartText() (ContentPartText, error) {
+	var body ContentPartText
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromContentPartText overwrites any union data inside the ContentPart as the provided ContentPartText
+func (t *ContentPart) FromContentPartText(v ContentPartText) error {
+	v.Type = "text"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeContentPartText performs a merge with any union data inside the ContentPart, using the provided ContentPartText
+func (t *ContentPart) MergeContentPartText(v ContentPartText) error {
+	v.Type = "text"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsContentPartFile returns the union data inside the ContentPart as a ContentPartFile
+func (t ContentPart) AsContentPartFile() (ContentPartFile, error) {
+	var body ContentPartFile
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromContentPartFile overwrites any union data inside the ContentPart as the provided ContentPartFile
+func (t *ContentPart) FromContentPartFile(v ContentPartFile) error {
+	v.Type = "file"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeContentPartFile performs a merge with any union data inside the ContentPart, using the provided ContentPartFile
+func (t *ContentPart) MergeContentPartFile(v ContentPartFile) error {
+	v.Type = "file"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ContentPart) Discriminator() (string, error) {
+	var discriminator struct {
+		Discriminator string `json:"type"`
+	}
+	err := json.Unmarshal(t.union, &discriminator)
+	return discriminator.Discriminator, err
+}
+
+func (t ContentPart) ValueByDiscriminator() (interface{}, error) {
+	discriminator, err := t.Discriminator()
+	if err != nil {
+		return nil, err
+	}
+	switch discriminator {
+	case "file":
+		return t.AsContentPartFile()
+	case "text":
+		return t.AsContentPartText()
+	default:
+		return nil, errors.New("unknown discriminator value: " + discriminator)
+	}
+}
+
+func (t ContentPart) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ContentPart) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}

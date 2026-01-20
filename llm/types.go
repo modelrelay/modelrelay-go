@@ -54,17 +54,27 @@ type ContentPartType string
 
 const (
 	ContentPartTypeText ContentPartType = "text"
+	ContentPartTypeFile ContentPartType = "file"
 )
 
 // ContentPart represents one chunk of message content.
-// Today we support text only; additional content types are additive.
+// Additional content types are additive.
 type ContentPart struct {
 	Type ContentPartType `json:"type"`
-	Text string          `json:"text"`
+	Text string          `json:"text,omitempty"`
+	File *FileContent    `json:"file,omitempty"`
 }
 
 func TextPart(text string) ContentPart {
 	return ContentPart{Type: ContentPartTypeText, Text: text}
+}
+
+// FileContent represents base64-encoded file data for multimodal inputs.
+type FileContent struct {
+	DataBase64 string   `json:"data_base64"`
+	MimeType   MimeType `json:"mime_type"`
+	Filename   string   `json:"filename,omitempty"`
+	SizeBytes  int64    `json:"size_bytes,omitempty"`
 }
 
 type InputItemType string

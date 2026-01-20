@@ -200,12 +200,17 @@ func (m *ModelID) UnmarshalJSON(data []byte) error {
 type ModelCapability = generated.ModelCapability
 
 const (
-	ModelCapabilityTools       ModelCapability = "tools"
-	ModelCapabilityVision      ModelCapability = "vision"
-	ModelCapabilityWebSearch   ModelCapability = "web_search"
-	ModelCapabilityWebFetch    ModelCapability = "web_fetch"
-	ModelCapabilityComputerUse ModelCapability = "computer_use"
-	ModelCapabilityCodeExec    ModelCapability = "code_execution"
+	ModelCapabilityTextGeneration  ModelCapability = "text_generation"
+	ModelCapabilityTools           ModelCapability = "tools"
+	ModelCapabilityVision          ModelCapability = "vision"
+	ModelCapabilityDocument        ModelCapability = "document"
+	ModelCapabilityAudio           ModelCapability = "audio"
+	ModelCapabilityVideo           ModelCapability = "video"
+	ModelCapabilityWebSearch       ModelCapability = "web_search"
+	ModelCapabilityWebFetch        ModelCapability = "web_fetch"
+	ModelCapabilityComputerUse     ModelCapability = "computer_use"
+	ModelCapabilityCodeExec        ModelCapability = "code_execution"
+	ModelCapabilityImageGeneration ModelCapability = "image_generation"
 )
 
 // ParseModelCapability trims whitespace and preserves the raw value.
@@ -216,12 +221,17 @@ func ParseModelCapability(val string) ModelCapability {
 // IsKnownModelCapability reports whether the capability is one of the known constants.
 func IsKnownModelCapability(c ModelCapability) bool {
 	switch c {
-	case ModelCapabilityTools,
+	case ModelCapabilityTextGeneration,
+		ModelCapabilityTools,
 		ModelCapabilityVision,
+		ModelCapabilityDocument,
+		ModelCapabilityAudio,
+		ModelCapabilityVideo,
 		ModelCapabilityWebSearch,
 		ModelCapabilityWebFetch,
 		ModelCapabilityComputerUse,
-		ModelCapabilityCodeExec:
+		ModelCapabilityCodeExec,
+		ModelCapabilityImageGeneration:
 		return true
 	default:
 		return strings.TrimSpace(string(c)) != ""
