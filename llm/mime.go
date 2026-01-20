@@ -25,6 +25,7 @@ const (
 	FileKindUnknown FileKind = ""
 	FileKindImage   FileKind = "image"
 	FileKindPDF     FileKind = "pdf"
+	FileKindText    FileKind = "text"
 	FileKindAudio   FileKind = "audio"
 	FileKindVideo   FileKind = "video"
 )
@@ -52,6 +53,8 @@ func FileKindFromMimeType(mimeType MimeType) FileKind {
 		return FileKindImage
 	case base == string(MimeTypePDF):
 		return FileKindPDF
+	case strings.HasPrefix(base, "text/"):
+		return FileKindText
 	case strings.HasPrefix(base, "audio/"):
 		return FileKindAudio
 	case strings.HasPrefix(base, "video/"):
