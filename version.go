@@ -1,6 +1,8 @@
 package sdk
 
 // Version is the published SDK version.
+// 9.1.1: Log cleanup errors in local RLM session Close() for operational visibility.
+// 9.1.0: Add local RLM interpreter helpers (sdk/go/rlm).
 // 9.0.0: Breaking - remove web_search/web_fetch from ModelCapability; server tools require tools.
 // 8.4.2: FileKindFromMimeType recognizes text/* as FileKindText.
 // 8.4.1: NormalizeMimeType now returns empty string on parse error (fail-fast).
@@ -169,4 +171,4 @@ package sdk
 // 7.3.0: Improve dynamic plugin orchestration (tool scoping, plan schema, validation).
 // 7.2.0: Add dynamic plugin orchestration with description-based agent selection.
 // 7.1.0: Add user.ask tool helpers + user interaction run events.
-const Version = "9.0.0"
+const Version = "9.1.1"
