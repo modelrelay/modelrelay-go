@@ -153,9 +153,9 @@ const (
 
 // Defines values for RunTaskStatus.
 const (
-	Completed  RunTaskStatus = "completed"
-	InProgress RunTaskStatus = "in_progress"
-	Pending    RunTaskStatus = "pending"
+	RunTaskStatusCompleted  RunTaskStatus = "completed"
+	RunTaskStatusInProgress RunTaskStatus = "in_progress"
+	RunTaskStatusPending    RunTaskStatus = "pending"
 )
 
 // Defines values for SQLPolicyDialect.
@@ -204,9 +204,9 @@ const (
 
 // Defines values for ToolChoiceType.
 const (
-	Auto     ToolChoiceType = "auto"
-	None     ToolChoiceType = "none"
-	Required ToolChoiceType = "required"
+	ToolChoiceTypeAuto     ToolChoiceType = "auto"
+	ToolChoiceTypeNone     ToolChoiceType = "none"
+	ToolChoiceTypeRequired ToolChoiceType = "required"
 )
 
 // Defines values for ToolHookConfigFailBehavior.
@@ -255,6 +255,20 @@ const (
 	ToolHookTestResultStatusError   ToolHookTestResultStatus = "error"
 	ToolHookTestResultStatusSuccess ToolHookTestResultStatus = "success"
 	ToolHookTestResultStatusTimeout ToolHookTestResultStatus = "timeout"
+)
+
+// Defines values for TopupSource.
+const (
+	TopupSourceAuto     TopupSource = "auto"
+	TopupSourceCheckout TopupSource = "checkout"
+)
+
+// Defines values for TopupStatus.
+const (
+	TopupStatusCompleted TopupStatus = "completed"
+	TopupStatusExpired   TopupStatus = "expired"
+	TopupStatusFailed    TopupStatus = "failed"
+	TopupStatusPending   TopupStatus = "pending"
 )
 
 // Defines values for WebhookConfigEvents.
@@ -550,6 +564,22 @@ type ContentPartFile struct {
 type ContentPartText struct {
 	Text string      `json:"text"`
 	Type interface{} `json:"type"`
+}
+
+// CryptoTopupConfigResponse defines model for CryptoTopupConfigResponse.
+type CryptoTopupConfigResponse struct {
+	ChainId            int64  `json:"chain_id"`
+	Confirmations      int64  `json:"confirmations"`
+	DestinationAddress string `json:"destination_address"`
+	SessionTtlSeconds  int64  `json:"session_ttl_seconds"`
+	UsdcContract       string `json:"usdc_contract"`
+}
+
+// CryptoTopupSubmitRequest defines model for CryptoTopupSubmitRequest.
+type CryptoTopupSubmitRequest struct {
+	SenderAddress string             `json:"sender_address"`
+	SessionId     openapi_types.UUID `json:"session_id"`
+	TxHash        string             `json:"tx_hash"`
 }
 
 // Customer defines model for Customer.
@@ -1999,6 +2029,60 @@ type ToolHookTestResultStatus string
 // ToolName Tool identifier. For tools.v0 client tools, use dot-separated lowercase segments (e.g. fs.search).
 type ToolName = string
 
+// TopupHistoryResponse defines model for TopupHistoryResponse.
+type TopupHistoryResponse struct {
+	Topups []TopupSessionResponse `json:"topups"`
+}
+
+// TopupRequest defines model for TopupRequest.
+type TopupRequest struct {
+	AmountCents int64 `json:"amount_cents"`
+
+	// BillingProvider Billing provider backing the subscription or tier.
+	BillingProvider *BillingProvider `json:"billing_provider,omitempty"`
+}
+
+// TopupResponse defines model for TopupResponse.
+type TopupResponse struct {
+	AmountCents int64 `json:"amount_cents"`
+
+	// BillingProvider Billing provider backing the subscription or tier.
+	BillingProvider *BillingProvider   `json:"billing_provider,omitempty"`
+	CheckoutUrl     string             `json:"checkout_url"`
+	Currency        string             `json:"currency"`
+	SessionId       openapi_types.UUID `json:"session_id"`
+
+	// Status Status of a top-up session.
+	Status TopupStatus `json:"status"`
+}
+
+// TopupSessionResponse defines model for TopupSessionResponse.
+type TopupSessionResponse struct {
+	AmountCents int64 `json:"amount_cents"`
+
+	// BillingProvider Billing provider backing the subscription or tier.
+	BillingProvider     BillingProvider    `json:"billing_provider"`
+	CompletedAt         *time.Time         `json:"completed_at,omitempty"`
+	CreatedAt           time.Time          `json:"created_at"`
+	CryptoChainId       *int64             `json:"crypto_chain_id,omitempty"`
+	CryptoSenderAddress *string            `json:"crypto_sender_address,omitempty"`
+	CryptoTxHash        *string            `json:"crypto_tx_hash,omitempty"`
+	Currency            string             `json:"currency"`
+	Id                  openapi_types.UUID `json:"id"`
+
+	// Source How a top-up was initiated.
+	Source TopupSource `json:"source"`
+
+	// Status Status of a top-up session.
+	Status TopupStatus `json:"status"`
+}
+
+// TopupSource How a top-up was initiated.
+type TopupSource string
+
+// TopupStatus Status of a top-up session.
+type TopupStatus string
+
 // Usage Token usage statistics. All fields default to 0 if not present.
 type Usage struct {
 	InputTokens  *uint64 `json:"input_tokens,omitempty"`
@@ -2117,6 +2201,11 @@ type ToolHookID = openapi_types.UUID
 
 // WebhookID defines model for WebhookID.
 type WebhookID = openapi_types.UUID
+
+// ListAccountTopupsParams defines parameters for ListAccountTopups.
+type ListAccountTopupsParams struct {
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+}
 
 // MintCustomerTokenJSONBody defines parameters for MintCustomerToken.
 type MintCustomerTokenJSONBody struct {
@@ -2284,6 +2373,12 @@ type UpdateAccountAutoTopupJSONRequestBody = AutoTopupConfigRequest
 
 // ConfirmAccountAutoTopupSetupJSONRequestBody defines body for ConfirmAccountAutoTopupSetup for application/json ContentType.
 type ConfirmAccountAutoTopupSetupJSONRequestBody = AutoTopupConfirmRequest
+
+// CreateAccountTopupJSONRequestBody defines body for CreateAccountTopup for application/json ContentType.
+type CreateAccountTopupJSONRequestBody = TopupRequest
+
+// SubmitAccountCryptoTopupJSONRequestBody defines body for SubmitAccountCryptoTopup for application/json ContentType.
+type SubmitAccountCryptoTopupJSONRequestBody = CryptoTopupSubmitRequest
 
 // MintCustomerTokenJSONRequestBody defines body for MintCustomerToken for application/json ContentType.
 type MintCustomerTokenJSONRequestBody MintCustomerTokenJSONBody
