@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 9.2.0: Add promo_credits_cents to tier pricing.
 // 9.1.1: Log cleanup errors in local RLM session Close() for operational visibility.
 // 9.1.0: Add local RLM interpreter helpers (sdk/go/rlm).
 // 9.0.0: Breaking - remove web_search/web_fetch from ModelCapability; server tools require tools.
@@ -171,4 +172,4 @@ package sdk
 // 7.3.0: Improve dynamic plugin orchestration (tool scoping, plan schema, validation).
 // 7.2.0: Add dynamic plugin orchestration with description-based agent selection.
 // 7.1.0: Add user.ask tool helpers + user interaction run events.
-const Version = "9.1.1"
+const Version = "9.2.0"
