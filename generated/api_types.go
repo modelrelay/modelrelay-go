@@ -454,10 +454,12 @@ type AgentVersionToolFailurePolicy string
 
 // AuthResponse defines model for AuthResponse.
 type AuthResponse struct {
-	AccessToken  *string     `json:"access_token,omitempty"`
-	RefreshToken *string     `json:"refresh_token,omitempty"`
-	Tokens       *AuthTokens `json:"tokens,omitempty"`
-	User         *User       `json:"user,omitempty"`
+	AccessToken   *string        `json:"access_token,omitempty"`
+	ExpiresAt     *time.Time     `json:"expires_at,omitempty"`
+	RefreshToken  *string        `json:"refresh_token,omitempty"`
+	SignupProject *SignupProject `json:"signup_project,omitempty"`
+	Tokens        *AuthTokens    `json:"tokens,omitempty"`
+	User          *User          `json:"user,omitempty"`
 }
 
 // AuthTokens defines model for AuthTokens.
@@ -907,6 +909,17 @@ type InputItem struct {
 
 // InputItemType defines model for InputItem.Type.
 type InputItemType string
+
+// IssuedAPIKey defines model for IssuedAPIKey.
+type IssuedAPIKey struct {
+	CreatedAt   *time.Time          `json:"created_at,omitempty"`
+	Id          *openapi_types.UUID `json:"id,omitempty"`
+	Kind        *string             `json:"kind,omitempty"`
+	Label       *string             `json:"label,omitempty"`
+	ProjectId   *openapi_types.UUID `json:"project_id,omitempty"`
+	RedactedKey *string             `json:"redacted_key,omitempty"`
+	SecretKey   *string             `json:"secret_key,omitempty"`
+}
 
 // JSONSchemaFormat defines model for JSONSchemaFormat.
 type JSONSchemaFormat struct {
@@ -1686,6 +1699,12 @@ type SessionWithMessagesResponse struct {
 
 	// UpdatedAt Session last update timestamp
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// SignupProject defines model for SignupProject.
+type SignupProject struct {
+	IssuedKey *IssuedAPIKey `json:"issued_key,omitempty"`
+	Project   *Project      `json:"project,omitempty"`
 }
 
 // StateHandleCreateRequest defines model for StateHandleCreateRequest.
