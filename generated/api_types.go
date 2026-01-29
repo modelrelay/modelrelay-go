@@ -142,6 +142,12 @@ const (
 	Xai            ProviderId = "xai"
 )
 
+// Defines values for ResponsesBatchResultStatus.
+const (
+	ResponsesBatchResultStatusError   ResponsesBatchResultStatus = "error"
+	ResponsesBatchResultStatusSuccess ResponsesBatchResultStatus = "success"
+)
+
 // Defines values for RunStatusV0.
 const (
 	RunStatusV0Canceled  RunStatusV0 = "canceled"
@@ -251,10 +257,10 @@ const (
 
 // Defines values for ToolHookTestResultStatus.
 const (
-	ToolHookTestResultStatusBlocked ToolHookTestResultStatus = "blocked"
-	ToolHookTestResultStatusError   ToolHookTestResultStatus = "error"
-	ToolHookTestResultStatusSuccess ToolHookTestResultStatus = "success"
-	ToolHookTestResultStatusTimeout ToolHookTestResultStatus = "timeout"
+	Blocked ToolHookTestResultStatus = "blocked"
+	Error   ToolHookTestResultStatus = "error"
+	Success ToolHookTestResultStatus = "success"
+	Timeout ToolHookTestResultStatus = "timeout"
 )
 
 // Defines values for TopupSource.
@@ -1144,27 +1150,60 @@ type ResponsesBatchError struct {
 	Status  int     `json:"status"`
 }
 
+// ResponsesBatchItem defines model for ResponsesBatchItem.
+type ResponsesBatchItem struct {
+	Id              string      `json:"id"`
+	Input           []InputItem `json:"input"`
+	MaxOutputTokens *uint32     `json:"max_output_tokens,omitempty"`
+
+	// Model LLM model identifier (e.g., claude-sonnet-4-5, gpt-4o).
+	Model        *ModelId      `json:"model,omitempty"`
+	OutputFormat *OutputFormat `json:"output_format,omitempty"`
+
+	// Provider LLM provider identifier.
+	Provider    *ProviderId         `json:"provider,omitempty"`
+	StateId     *openapi_types.UUID `json:"state_id,omitempty"`
+	Stop        *[]string           `json:"stop,omitempty"`
+	Temperature *float32            `json:"temperature,omitempty"`
+	ToolChoice  *ToolChoice         `json:"tool_choice,omitempty"`
+	Tools       *[]Tool             `json:"tools,omitempty"`
+}
+
 // ResponsesBatchRequest defines model for ResponsesBatchRequest.
 type ResponsesBatchRequest struct {
 	Options *struct {
-		AbortOnError   *bool   `json:"abort_on_error,omitempty"`
-		MaxParallelism *uint32 `json:"max_parallelism,omitempty"`
+		FailFast      *bool   `json:"fail_fast,omitempty"`
+		MaxConcurrent *uint32 `json:"max_concurrent,omitempty"`
+		TimeoutMs     *int    `json:"timeout_ms,omitempty"`
 	} `json:"options,omitempty"`
-	Requests []ResponsesRequest `json:"requests"`
+	Requests []ResponsesBatchItem `json:"requests"`
 }
 
 // ResponsesBatchResponse defines model for ResponsesBatchResponse.
 type ResponsesBatchResponse struct {
-	RequestId *string                `json:"request_id,omitempty"`
-	Results   []ResponsesBatchResult `json:"results"`
+	Id      string                 `json:"id"`
+	Results []ResponsesBatchResult `json:"results"`
+	Usage   ResponsesBatchUsage    `json:"usage"`
 }
 
 // ResponsesBatchResult defines model for ResponsesBatchResult.
 type ResponsesBatchResult struct {
-	Error    *ResponsesBatchError `json:"error,omitempty"`
-	Index    uint32               `json:"index"`
-	Ok       bool                 `json:"ok"`
-	Response *ResponsesResponse   `json:"response,omitempty"`
+	Error    *ResponsesBatchError       `json:"error,omitempty"`
+	Id       string                     `json:"id"`
+	Response *ResponsesResponse         `json:"response,omitempty"`
+	Status   ResponsesBatchResultStatus `json:"status"`
+}
+
+// ResponsesBatchResultStatus defines model for ResponsesBatchResult.Status.
+type ResponsesBatchResultStatus string
+
+// ResponsesBatchUsage defines model for ResponsesBatchUsage.
+type ResponsesBatchUsage struct {
+	FailedRequests     int `json:"failed_requests"`
+	SuccessfulRequests int `json:"successful_requests"`
+	TotalInputTokens   int `json:"total_input_tokens"`
+	TotalOutputTokens  int `json:"total_output_tokens"`
+	TotalRequests      int `json:"total_requests"`
 }
 
 // ResponsesRequest defines model for ResponsesRequest.

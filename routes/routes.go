@@ -63,7 +63,7 @@ const (
 	Responses = "/responses"
 
 	// ResponsesBatch runs multiple /responses calls concurrently under a single request.
-	ResponsesBatch = "/responses:batch"
+	ResponsesBatch = "/responses/batch"
 
 	// Runs starts a workflow run (workflow) and returns a run_id.
 	Runs = "/runs"
