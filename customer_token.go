@@ -174,5 +174,6 @@ func (a *AuthClient) GetOrCreateCustomerToken(ctx context.Context, req GetOrCrea
 	return a.CustomerToken(ctx, CustomerTokenRequest{
 		CustomerExternalID: req.ExternalID,
 		TTLSeconds:         req.TTLSeconds,
+		TierCode:           req.TierCode,
 	})
 }

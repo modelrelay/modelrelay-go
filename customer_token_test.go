@@ -190,6 +190,56 @@ func TestCustomerTokenRequestValidation(t *testing.T) {
 	}
 }
 
+func TestGetOrCreateCustomerToken_PassesTierCode(t *testing.T) {
+	issued := CustomerToken{
+		Token:              "test_token",
+		ExpiresAt:          time.Now().Add(time.Hour).UTC(),
+		ExpiresIn:          3600,
+		TokenType:          TokenTypeBearer,
+		ProjectID:          uuid.New(),
+		CustomerID:         uuidPtr(uuid.New()),
+		CustomerExternalID: NewCustomerExternalID("customer_123"),
+		TierCode:           TierCodePtr("pro"),
+	}
+
+	var receivedTierCode string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/customers", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	mux.HandleFunc("/auth/customer-token", func(w http.ResponseWriter, r *http.Request) {
+		var req CustomerTokenRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		receivedTierCode = string(req.TierCode)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(issued)
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+
+	client, err := NewClientWithKey(SecretKey("mr_sk_test"), WithBaseURL(ts.URL))
+	if err != nil {
+		t.Fatalf("NewClientWithKey: %v", err)
+	}
+
+	req := GetOrCreateCustomerTokenRequest{
+		ExternalID: NewCustomerExternalID("customer_123"),
+		Email:      "test@example.com",
+		TierCode:   TierCode("pro"),
+	}
+	_, err = client.Auth.GetOrCreateCustomerToken(context.Background(), req)
+	if err != nil {
+		t.Fatalf("GetOrCreateCustomerToken: %v", err)
+	}
+
+	if receivedTierCode != "pro" {
+		t.Fatalf("expected tier_code 'pro' to be passed to CustomerToken endpoint, got %q", receivedTierCode)
+	}
+}
+
 func TestGetOrCreateCustomerTokenRequestValidation(t *testing.T) {
 	tests := []struct {
 		name      string
