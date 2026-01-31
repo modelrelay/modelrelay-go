@@ -1824,7 +1824,7 @@ type Tier struct {
 	PriceInterval *PriceInterval      `json:"price_interval,omitempty"`
 	ProjectId     *openapi_types.UUID `json:"project_id,omitempty"`
 
-	// PromoCreditsCents One-time promotional credits in cents applied on first paid invoice
+	// PromoCreditsCents One-time promotional credits in cents applied when a customer first subscribes to the tier.
 	PromoCreditsCents *uint64 `json:"promo_credits_cents,omitempty"`
 
 	// SpendLimitCents Monthly spend limit in cents (e.g., 2000 = $20/month). Must be non-negative.
@@ -1862,7 +1862,7 @@ type TierCreate struct {
 	// PriceInterval Billing interval for a tier.
 	PriceInterval *PriceInterval `json:"price_interval,omitempty"`
 
-	// PromoCreditsCents One-time promotional credits in cents applied on first paid invoice (paid tiers)
+	// PromoCreditsCents One-time promotional credits in cents applied when a customer first subscribes to the tier.
 	PromoCreditsCents *uint64 `json:"promo_credits_cents,omitempty"`
 
 	// SpendLimitCents Monthly spend limit in cents (e.g., 2000 = $20/month). Must be non-negative.
@@ -1935,7 +1935,7 @@ type TierUpdate struct {
 	// PriceInterval Billing interval for a tier.
 	PriceInterval *PriceInterval `json:"price_interval,omitempty"`
 
-	// PromoCreditsCents One-time promotional credits in cents applied on first paid invoice (paid tiers)
+	// PromoCreditsCents One-time promotional credits in cents applied when a customer first subscribes to the tier.
 	PromoCreditsCents *uint64 `json:"promo_credits_cents,omitempty"`
 
 	// SpendLimitCents Monthly spend limit in cents (e.g., 2000 = $20/month). Must be non-negative.
