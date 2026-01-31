@@ -1,5 +1,5 @@
 // Package rlm provides local RLM (Recursive Language Model) execution for the mrl CLI.
-// It implements the platform/rlm.CodeInterpreter interface using local Python subprocesses.
+// It implements the CodeInterpreter interface using local Python subprocesses.
 package rlm
 
 import (
@@ -13,8 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	rm "github.com/modelrelay/modelrelay/platform/rlm"
 )
 
 const defaultMaxInlineBytes = int64(128 * 1024) // 128KB
@@ -22,8 +20,8 @@ const defaultMaxInlineBytes = int64(128 * 1024) // 128KB
 // LocalInterpreterConfig configures the local Python interpreter.
 type LocalInterpreterConfig struct {
 	PythonPath string
-	Limits     rm.InterpreterLimits
-	Caps       rm.InterpreterCapabilities
+	Limits     InterpreterLimits
+	Caps       InterpreterCapabilities
 	Env        []string
 	WorkDir    string
 }
@@ -51,30 +49,30 @@ func NewLocalInterpreter(cfg LocalInterpreterConfig) *LocalInterpreter {
 }
 
 // Limits returns interpreter limits.
-func (l *LocalInterpreter) Limits() rm.InterpreterLimits {
+func (l *LocalInterpreter) Limits() InterpreterLimits {
 	if l == nil {
-		return rm.InterpreterLimits{}
+		return InterpreterLimits{}
 	}
 	return l.cfg.Limits
 }
 
 // Capabilities returns interpreter capabilities.
-func (l *LocalInterpreter) Capabilities() rm.InterpreterCapabilities {
+func (l *LocalInterpreter) Capabilities() InterpreterCapabilities {
 	if l == nil {
-		return rm.InterpreterCapabilities{}
+		return InterpreterCapabilities{}
 	}
 	return l.cfg.Caps
 }
 
 // PlanContext applies the local default context policy (PreferInline=true).
-func (l *LocalInterpreter) PlanContext(payload []byte, contextPath string) (rm.ContextPlan, error) {
-	policy := rm.DefaultContextPolicy(l.Capabilities())
+func (l *LocalInterpreter) PlanContext(payload []byte, contextPath string) (ContextPlan, error) {
+	policy := DefaultContextPolicy(l.Capabilities())
 	policy.PreferInline = true
-	return rm.PlanContext(payload, policy, contextPath)
+	return PlanContext(payload, policy, contextPath)
 }
 
 // Start creates a new local session. NetworkPolicy is currently ignored in trusted dev mode.
-func (l *LocalInterpreter) Start(ctx context.Context, name string, _ *rm.NetworkPolicy) (rm.CodeSession, error) {
+func (l *LocalInterpreter) Start(ctx context.Context, name string, _ *NetworkPolicy) (CodeSession, error) {
 	if l == nil {
 		return nil, errors.New("local interpreter not configured")
 	}
@@ -97,7 +95,7 @@ func (l *LocalInterpreter) Start(ctx context.Context, name string, _ *rm.Network
 
 type localSession struct {
 	pythonPath string
-	limits     rm.InterpreterLimits
+	limits     InterpreterLimits
 	env        []string
 	workDir    string
 	ownsDir    bool
@@ -117,12 +115,12 @@ func (s *localSession) WriteFile(_ context.Context, path string, data []byte, pe
 	return os.WriteFile(writePath, data, perm)
 }
 
-func (s *localSession) RunPython(ctx context.Context, script string, env []string, timeoutMS int) (*rm.ExecutionResult, error) {
+func (s *localSession) RunPython(ctx context.Context, script string, env []string, timeoutMS int) (*ExecutionResult, error) {
 	if s == nil {
 		return nil, errors.New("session not configured")
 	}
 	if strings.TrimSpace(script) == "" {
-		return nil, &rm.ExecutionError{Kind: rm.ExecutionErrorUnknown, Cause: errors.New("empty script")}
+		return nil, &ExecutionError{Kind: ExecutionErrorUnknown, Cause: errors.New("empty script")}
 	}
 	timeout := timeoutMS
 	if timeout <= 0 {
@@ -157,7 +155,7 @@ func (s *localSession) RunPython(ctx context.Context, script string, env []strin
 	runErr := cmd.Run()
 	durationMS := time.Since(start).Milliseconds()
 
-	result := &rm.ExecutionResult{
+	result := &ExecutionResult{
 		Stdout:     stdout.String(),
 		Stderr:     stderr.String(),
 		DurationMS: durationMS,
@@ -165,7 +163,7 @@ func (s *localSession) RunPython(ctx context.Context, script string, env []strin
 
 	if execCtx.Err() == context.DeadlineExceeded {
 		result.TimedOut = true
-		return result, rm.ErrExecutionTimeout
+		return result, ErrExecutionTimeout
 	}
 
 	if runErr != nil {
@@ -174,8 +172,8 @@ func (s *localSession) RunPython(ctx context.Context, script string, env []strin
 			exitCode = exitErr.ExitCode()
 		}
 		result.ExitCode = exitCode
-		return result, &rm.ExecutionError{
-			Kind:     rm.ExecutionErrorExit,
+		return result, &ExecutionError{
+			Kind:     ExecutionErrorExit,
 			ExitCode: exitCode,
 			Stderr:   result.Stderr,
 			Cause:    runErr,

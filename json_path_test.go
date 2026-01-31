@@ -1,3 +1,5 @@
+//go:build monorepo
+
 package sdk
 
 import (
