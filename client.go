@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/modelrelay/modelrelay/sdk/go/generated"
 )
 
 const (
@@ -629,4 +631,24 @@ func shouldRetry(req *http.Request, resp *http.Response, err error, cfg RetryCon
 		return true, status, resp.Status
 	}
 	return false, status, resp.Status
+}
+
+// AccountBalanceResponse represents the account balance for PAYGO billing.
+type AccountBalanceResponse = generated.AccountBalanceResponse
+
+// AccountBalance returns the authenticated account's PAYGO balance.
+//
+// This endpoint requires authentication via API key (X-ModelRelay-Api-Key header)
+// or bearer token.
+//
+// Example:
+//
+//	balance, err := client.AccountBalance(ctx)
+//	fmt.Printf("Balance: %s (%d cents)\n", balance.BalanceFormatted, balance.BalanceCents)
+func (c *Client) AccountBalance(ctx context.Context) (AccountBalanceResponse, error) {
+	var payload AccountBalanceResponse
+	if err := c.sendAndDecode(ctx, http.MethodGet, "/account/balance", nil, &payload); err != nil {
+		return AccountBalanceResponse{}, err
+	}
+	return payload, nil
 }

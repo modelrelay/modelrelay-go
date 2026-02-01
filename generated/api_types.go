@@ -320,6 +320,21 @@ type APIError struct {
 	Message string `json:"message"`
 }
 
+// AccountBalanceResponse Account balance information for PAYGO billing
+type AccountBalanceResponse struct {
+	// BalanceCents Current account balance in cents
+	BalanceCents int64 `json:"balance_cents"`
+
+	// BalanceFormatted Human-readable balance (e.g., "$50.00")
+	BalanceFormatted string `json:"balance_formatted"`
+
+	// Currency Currency code (e.g., "usd")
+	Currency string `json:"currency"`
+
+	// LowBalanceThresholdCents Threshold for low balance warnings in cents
+	LowBalanceThresholdCents int64 `json:"low_balance_threshold_cents"`
+}
+
 // Agent defines model for Agent.
 type Agent struct {
 	CreatedAt       time.Time          `json:"created_at"`
