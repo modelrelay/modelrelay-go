@@ -142,6 +142,11 @@ const (
 	Xai            ProviderId = "xai"
 )
 
+// Defines values for RLMExecuteRequestDataSourceType.
+const (
+	WrapperV1 RLMExecuteRequestDataSourceType = "wrapper_v1"
+)
+
 // Defines values for ResponsesBatchResultStatus.
 const (
 	ResponsesBatchResultStatusError   ResponsesBatchResultStatus = "error"
@@ -1151,6 +1156,138 @@ type Project struct {
 
 // ProviderId LLM provider identifier.
 type ProviderId string
+
+// RLMContextRequest Request body for uploading RLM context
+type RLMContextRequest struct {
+	// Context JSON context data to store
+	Context interface{} `json:"context"`
+
+	// TtlSeconds Time-to-live in seconds (server may cap this)
+	TtlSeconds *int `json:"ttl_seconds,omitempty"`
+}
+
+// RLMContextResponse Response from RLM context upload
+type RLMContextResponse struct {
+	// ContextRef Reference ID to use with /rlm/execute context_ref field
+	ContextRef openapi_types.UUID `json:"context_ref"`
+
+	// ExpiresAt When the context will expire
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// SizeBytes Size of the stored context in bytes
+	SizeBytes int `json:"size_bytes"`
+}
+
+// RLMExecuteRequest Request body for RLM execute endpoint
+type RLMExecuteRequest struct {
+	// Context JSON context data accessible to the Python sandbox
+	Context interface{} `json:"context,omitempty"`
+
+	// ContextRef Reference to previously uploaded context (from /rlm/context)
+	ContextRef *openapi_types.UUID `json:"context_ref,omitempty"`
+
+	// DataSource External data source configuration for wrapper_v1 integration
+	DataSource *struct {
+		// AllowedHosts Additional hosts the sandbox may connect to
+		AllowedHosts *[]string `json:"allowed_hosts,omitempty"`
+
+		// BaseUrl HTTPS base URL for the data source wrapper
+		BaseUrl string `json:"base_url"`
+
+		// Limits Request/response limits for the data source
+		Limits *struct {
+			MaxRequests      *int `json:"max_requests,omitempty"`
+			MaxResponseBytes *int `json:"max_response_bytes,omitempty"`
+		} `json:"limits,omitempty"`
+
+		// Token Bearer token for authenticating with the data source
+		Token string                          `json:"token"`
+		Type  RLMExecuteRequestDataSourceType `json:"type"`
+	} `json:"data_source,omitempty"`
+
+	// Input Input items (alternative to query for multi-turn conversations)
+	Input *[]map[string]interface{} `json:"input,omitempty"`
+
+	// MaxDepth Maximum recursion depth for llm_query calls (default: 1)
+	MaxDepth *int `json:"max_depth,omitempty"`
+
+	// MaxIterations Maximum code generation cycles (default: 10)
+	MaxIterations *int `json:"max_iterations,omitempty"`
+
+	// MaxOutputTokens Maximum output tokens per LLM call
+	MaxOutputTokens *int64 `json:"max_output_tokens,omitempty"`
+
+	// MaxSubcalls Maximum total llm_query/llm_batch subcalls (default: 50)
+	MaxSubcalls *int `json:"max_subcalls,omitempty"`
+
+	// Model Model ID to use for LLM calls
+	Model string `json:"model"`
+
+	// Provider Optional provider override
+	Provider *string `json:"provider,omitempty"`
+
+	// Query The query to answer (provide either query or input, not both)
+	Query *string `json:"query,omitempty"`
+
+	// Stop Stop sequences
+	Stop *[]string `json:"stop,omitempty"`
+
+	// SystemPrompt Custom instructions prepended to the default RLM system prompt. Use this to provide persona, domain context, or constraints while preserving core RLM workflow instructions.
+	SystemPrompt *string `json:"system_prompt,omitempty"`
+
+	// Temperature Sampling temperature
+	Temperature *float32 `json:"temperature,omitempty"`
+
+	// TimeoutMs Python execution timeout in milliseconds per iteration
+	TimeoutMs *int `json:"timeout_ms,omitempty"`
+}
+
+// RLMExecuteRequestDataSourceType defines model for RLMExecuteRequest.DataSource.Type.
+type RLMExecuteRequestDataSourceType string
+
+// RLMExecuteResponse Response from RLM execute endpoint
+type RLMExecuteResponse struct {
+	// Answer The final answer as JSON (string, object, array, etc.)
+	Answer interface{} `json:"answer"`
+
+	// Id Response ID
+	Id *string `json:"id,omitempty"`
+
+	// Iterations Number of code generation iterations used
+	Iterations int `json:"iterations"`
+
+	// Model Model used
+	Model string `json:"model"`
+
+	// Output Output items (assistant message with the answer)
+	Output *[]map[string]interface{} `json:"output,omitempty"`
+
+	// Provider Provider that served the request
+	Provider *string `json:"provider,omitempty"`
+
+	// StopReason Reason the execution stopped
+	StopReason *string `json:"stop_reason,omitempty"`
+
+	// Subcalls Number of llm_query/llm_batch subcalls made
+	Subcalls int `json:"subcalls"`
+
+	// Trajectory Execution trajectory showing each iteration's code and output
+	Trajectory []struct {
+		Code      *string `json:"code,omitempty"`
+		ExitCode  *int    `json:"exit_code,omitempty"`
+		Iteration *int    `json:"iteration,omitempty"`
+		Stderr    *string `json:"stderr,omitempty"`
+		Stdout    *string `json:"stdout,omitempty"`
+		TimedOut  *bool   `json:"timed_out,omitempty"`
+	} `json:"trajectory"`
+
+	// Usage Aggregated token usage across all LLM calls
+	Usage struct {
+		InputTokens  *int `json:"input_tokens,omitempty"`
+		OutputTokens *int `json:"output_tokens,omitempty"`
+		TotalTokens  *int `json:"total_tokens,omitempty"`
+	} `json:"usage"`
+}
 
 // RequestId Unique identifier for an LLM request within a workflow run.
 type RequestId = openapi_types.UUID
@@ -2554,6 +2691,12 @@ type CreateResponseJSONRequestBody = ResponsesRequest
 
 // CreateResponsesBatchJSONRequestBody defines body for CreateResponsesBatch for application/json ContentType.
 type CreateResponsesBatchJSONRequestBody = ResponsesBatchRequest
+
+// CreateRLMContextJSONRequestBody defines body for CreateRLMContext for application/json ContentType.
+type CreateRLMContextJSONRequestBody = RLMContextRequest
+
+// ExecuteRLMJSONRequestBody defines body for ExecuteRLM for application/json ContentType.
+type ExecuteRLMJSONRequestBody = RLMExecuteRequest
 
 // CreateRunJSONRequestBody defines body for CreateRun for application/json ContentType.
 type CreateRunJSONRequestBody = RunsCreateRequest
