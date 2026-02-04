@@ -1,6 +1,7 @@
 package sdk
 
 // Version is the published SDK version.
+// 9.4.0: Add RLMExecuteResponse.Progress to surface execution progress in /rlm/execute responses.
 // 9.3.0: Add AccountBalance() method for programmatic access to account PAYGO balance via API key.
 // 9.2.4: Regenerate OpenAPI types for tier promo credits updates.
 // 9.2.3: Fix GetOrCreateCustomerToken to pass TierCode to CustomerToken endpoint.
@@ -177,4 +178,4 @@ package sdk
 // 7.3.0: Improve dynamic plugin orchestration (tool scoping, plan schema, validation).
 // 7.2.0: Add dynamic plugin orchestration with description-based agent selection.
 // 7.1.0: Add user.ask tool helpers + user interaction run events.
-const Version = "9.3.0"
+const Version = "9.4.0"

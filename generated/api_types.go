@@ -1262,6 +1262,11 @@ type RLMExecuteResponse struct {
 	// Output Output items (assistant message with the answer)
 	Output *[]map[string]interface{} `json:"output,omitempty"`
 
+	// Progress Progress events emitted during execution
+	Progress *[]struct {
+		Status string `json:"status"`
+	} `json:"progress,omitempty"`
+
 	// Provider Provider that served the request
 	Provider *string `json:"provider,omitempty"`
 
